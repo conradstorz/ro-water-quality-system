@@ -219,3 +219,50 @@ def test_preset_silent(responder):
 def test_preset_unknown(responder):
     with pytest.raises(ValueError):
         apply_preset(responder, "nope")
+
+
+def test_tcp_server_survives_client_reset_quietly(responder, capfd):
+    import struct as _s
+
+    with TcpSimServer(responder) as srv:
+        s = socket.create_connection(srv.address)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, _s.pack("ii", 1, 0))
+        responder.delay_s = 0.2
+        s.sendall(frames.build_mbap(1, reg.UNIT_ID, READ_BLOCK))
+        time.sleep(0.05)
+        s.close()  # RST while the handler is about to write
+        time.sleep(0.4)
+    assert "Traceback" not in capfd.readouterr().err
+
+
+def test_request_count_is_exact_under_concurrency(responder):
+    def hammer() -> None:
+        for _ in range(2000):
+            responder.respond(reg.UNIT_ID, READ_BLOCK)
+
+    threads = [threading.Thread(target=hammer) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert responder.request_count == 16000
+
+
+def test_stop_closes_accepted_connections_and_is_idempotent(responder, capfd):
+    srv = TcpSimServer(responder)
+    srv.start()
+    s = socket.create_connection(srv.address)
+    s.settimeout(1)
+    s.sendall(frames.build_mbap(1, reg.UNIT_ID, READ_BLOCK))
+    assert len(s.recv(200)) > 0
+    srv.stop()
+    srv.stop()
+    try:
+        s.sendall(frames.build_mbap(2, reg.UNIT_ID, READ_BLOCK))
+        data = s.recv(200)
+    except OSError:
+        data = b""
+    s.close()
+    assert data == b""
+    time.sleep(0.1)
+    assert "Traceback" not in capfd.readouterr().err

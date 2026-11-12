@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import socket
 import socketserver
 import threading
 import time
@@ -28,6 +29,7 @@ class Responder:
         self.drop_responses = False
         self.delay_s = 0.0
         self.request_count = 0
+        self._count_lock = threading.Lock()
 
     def respond(self, unit: int, pdu: bytes) -> bytes | None:
         """Answer one request.
@@ -39,9 +41,11 @@ class Responder:
         """
         if unit != self.unit_id:
             return None
-        self.request_count += 1
+        with self._count_lock:
+            self.request_count += 1
+            count = self.request_count
         if self.drop_responses:
-            logger.debug("dropping response to request {}", self.request_count)
+            logger.debug("dropping response to request {}", count)
             return None
         if self.delay_s > 0:
             time.sleep(self.delay_s)
@@ -54,24 +58,35 @@ def _read_exact(rfile, size: int) -> bytes | None:
 
 
 class _Handler(socketserver.StreamRequestHandler):
+    def setup(self) -> None:
+        super().setup()
+        self.server.track(self.request)  # type: ignore[attr-defined]
+
+    def finish(self) -> None:
+        self.server.untrack(self.request)  # type: ignore[attr-defined]
+        super().finish()
+
     def handle(self) -> None:
         responder: Responder = self.server.responder  # type: ignore[attr-defined]
-        while True:
-            header = _read_exact(self.rfile, 7)
-            if header is None:
-                return
-            try:
-                transaction, length, unit = parse_mbap_header(header)
-            except FrameError as exc:
-                logger.debug("closing connection: {}", exc)
-                return
-            pdu = _read_exact(self.rfile, length - 1)
-            if pdu is None:
-                return
-            resp = responder.respond(unit, pdu)
-            if resp is not None:
-                self.wfile.write(build_mbap(transaction, unit, resp))
-                self.wfile.flush()
+        try:
+            while True:
+                header = _read_exact(self.rfile, 7)
+                if header is None:
+                    return
+                try:
+                    transaction, length, unit = parse_mbap_header(header)
+                except FrameError as exc:
+                    logger.debug("closing connection: {}", exc)
+                    return
+                pdu = _read_exact(self.rfile, length - 1)
+                if pdu is None:
+                    return
+                resp = responder.respond(unit, pdu)
+                if resp is not None:
+                    self.wfile.write(build_mbap(transaction, unit, resp))
+                    self.wfile.flush()
+        except OSError as exc:
+            logger.debug("connection ended: {}", exc)
 
 
 class _Server(socketserver.ThreadingTCPServer):
@@ -81,6 +96,29 @@ class _Server(socketserver.ThreadingTCPServer):
     def __init__(self, address: tuple[str, int], responder: Responder) -> None:
         super().__init__(address, _Handler)
         self.responder = responder
+        self._clients: set[socket.socket] = set()
+        self._clients_lock = threading.Lock()
+
+    def track(self, sock: socket.socket) -> None:
+        with self._clients_lock:
+            self._clients.add(sock)
+
+    def untrack(self, sock: socket.socket) -> None:
+        with self._clients_lock:
+            self._clients.discard(sock)
+
+    def close_clients(self) -> None:
+        with self._clients_lock:
+            clients = list(self._clients)
+        for sock in clients:
+            try:
+                sock.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+            try:
+                sock.close()
+            except OSError:
+                pass
 
 
 class TcpSimServer:
@@ -111,6 +149,7 @@ class TcpSimServer:
             self._thread.join()
             self._thread = None
         self._server.server_close()
+        self._server.close_clients()
 
     def __enter__(self) -> Self:
         """Start the server."""
