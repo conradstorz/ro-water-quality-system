@@ -156,3 +156,95 @@ def test_parser_rejects(argv):
 def test_bad_tcp_endpoint_is_usage_error():
     with pytest.raises(SystemExit):
         cli.main(["read", "--tcp", "no-port"])
+
+
+def test_validate_missing_file_message(tmp_path, capsys):
+    assert cli.main(["validate", str(tmp_path / "absent.yaml")]) == 1
+    assert "absent.yaml" in capsys.readouterr().err
+
+
+def test_generate_check_reports_drift(monkeypatch, capsys):
+    monkeypatch.setattr(cli.codegen, "is_current", lambda m: False)
+    assert cli.main(["generate", "--check"]) == 1
+    assert "differs" in capsys.readouterr().err
+
+
+def test_publish_status_comms_failure_exit_2(server):
+    server.responder.drop_responses = True
+    rc = cli.main(
+        ["publish-status", "--tcp", _tcp(server), "--state", "standby", "--timeout", "0.3"]
+    )
+    assert rc == 2
+
+
+@pytest.mark.parametrize(
+    "extra", [["--fault-code", "70000"], ["--sequence", "-1"], ["--fault-count", "70000"]]
+)
+def test_publish_status_out_of_range_exit_1(server, capsys, extra):
+    rc = cli.main(
+        ["publish-status", "--tcp", _tcp(server), "--state", "standby", "--timeout", "0.5", *extra]
+    )
+    assert rc == 1
+    assert capsys.readouterr().err.strip()
+    assert server.responder.bank.controller_status is None
+
+
+def test_sim_serial_unopenable_port_exits_1(capsys):
+    assert cli.main(["sim", "--serial", "NO_SUCH_PORT_XYZ"]) == 1
+    assert "NO_SUCH_PORT_XYZ" in capsys.readouterr().err
+
+
+def test_sim_tcp_port_in_use_exits_1(capsys):
+    import socket
+
+    with socket.socket() as blocker:
+        blocker.bind(("127.0.0.1", 0))
+        blocker.listen()
+        port = blocker.getsockname()[1]
+        assert cli.main(["sim", "--tcp", f"127.0.0.1:{port}"]) == 1
+    captured = capsys.readouterr()
+    assert captured.err.strip()
+    assert "SIMULATED" not in captured.out
+
+
+def test_sim_bad_endpoint_prints_no_banner(capsys):
+    with pytest.raises(SystemExit):
+        cli.main(["sim", "--tcp", "no-port"])
+    assert "SIMULATED" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("period", ["0", "-1", "abc"])
+def test_parser_rejects_bad_period(period):
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(["sim", "--tcp", "a:1", "--period", period])
+
+
+def test_read_bad_map_exits_1(server, monkeypatch, capsys):
+    def boom():
+        raise FileNotFoundError("map missing")
+
+    monkeypatch.setattr(cli.schema, "load", boom)
+    assert cli.main(["read", "--tcp", _tcp(server), "--timeout", "0.5"]) == 1
+    assert "map missing" in capsys.readouterr().err
+
+
+@pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledThreadExceptionWarning")
+def test_sim_serial_server_thread_death_exits_1(monkeypatch, capsys):
+    import serial
+
+    closed = []
+
+    class DyingPort:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def read(self, size=1):
+            raise OSError("device unplugged")
+
+        def close(self):
+            closed.append(True)
+
+    monkeypatch.setattr(serial, "Serial", DyingPort)
+    assert cli.main(["sim", "--serial", "COM99", "--period", "0.05"]) == 1
+    assert "stopped unexpectedly" in capsys.readouterr().err
+    assert closed

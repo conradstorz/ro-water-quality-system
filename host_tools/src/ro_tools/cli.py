@@ -10,7 +10,7 @@ import argparse
 import sys
 import threading
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import yaml
@@ -21,7 +21,7 @@ from ro_tools.client import CommsError, ModbusExceptionError, SensorNodeClient
 from ro_tools.generated import registers as reg
 from ro_tools.sim.presets import PRESETS, apply_preset
 from ro_tools.sim.register_bank import RegisterBank
-from ro_tools.sim.server import Responder, TcpSimServer, serve_rtu
+from ro_tools.sim.server import Responder, TcpSimServer, serve_rtu_on
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -48,6 +48,22 @@ def _endpoint(parser: argparse.ArgumentParser) -> None:
     group.add_argument("--serial", metavar="DEVICE", help="serial device, e.g. COM5")
 
 
+def _positive_float(text: str) -> float:
+    """Argparse type for a strictly positive float.
+
+    :param text: Argument text.
+    :returns: The parsed value.
+    :raises argparse.ArgumentTypeError: If not a number greater than zero.
+    """
+    try:
+        value = float(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not a number: {text!r}") from None
+    if not value > 0:
+        raise argparse.ArgumentTypeError(f"must be greater than 0, got {text!r}")
+    return value
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser.
 
@@ -65,7 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("sim", help="run the simulated sensor node (SIMULATED VALUES ONLY)")
     _endpoint(p)
     p.add_argument("--preset", choices=PRESETS, default="healthy")
-    p.add_argument("--period", type=float, default=1.0, metavar="SECONDS")
+    p.add_argument("--period", type=_positive_float, default=1.0, metavar="SECONDS")
 
     p = sub.add_parser("read", help="read and print one snapshot")
     _endpoint(p)
@@ -144,6 +160,26 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _commit_loop(responder: Responder, period: float, alive: Callable[[], bool], what: str) -> int:
+    """Commit a new snapshot every ``period`` seconds until interrupted.
+
+    :param responder: Responder whose bank is committed.
+    :param period: Seconds between commits.
+    :param alive: Returns False if the server has died.
+    :param what: Server description for the failure message.
+    :returns: 0 on Ctrl-C, 1 if the server died.
+    """
+    try:
+        while True:
+            time.sleep(period)
+            if not alive():
+                print(f"simulator stopped unexpectedly: {what}", file=sys.stderr)
+                return EXIT_FAIL
+            responder.bank.commit()
+    except KeyboardInterrupt:
+        return EXIT_OK
+
+
 def _cmd_sim(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     """Run the simulator until interrupted.
 
@@ -151,37 +187,49 @@ def _cmd_sim(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     :param args: Parsed arguments.
     :returns: Exit status.
     """
+    endpoint = _parse_tcp(parser, args.tcp) if args.tcp is not None else None
     responder = Responder(RegisterBank())
-    apply_preset(responder, args.preset)
-    print(f"SIMULATED VALUES ONLY - not equipment limits; preset={args.preset}", flush=True)
-    if args.tcp is not None:
-        host, port = _parse_tcp(parser, args.tcp)
-        server = TcpSimServer(responder, host, port)
-        server.start()
+    if endpoint is not None:
+        try:
+            server = TcpSimServer(responder, *endpoint)
+            server.start()
+        except OSError as exc:
+            print(f"cannot start TCP simulator on {args.tcp}: {exc}", file=sys.stderr)
+            return EXIT_FAIL
+        apply_preset(responder, args.preset)
+        print(f"SIMULATED VALUES ONLY - not equipment limits; preset={args.preset}", flush=True)
         logger.info("simulator listening on {}:{}", *server.address)
         try:
-            while True:
-                time.sleep(args.period)
-                responder.bank.commit()
-        except KeyboardInterrupt:
-            pass
+            return _commit_loop(responder, args.period, lambda: True, args.tcp)
         finally:
             server.stop()
-        return EXIT_OK
-    stop = threading.Event()
-    thread = threading.Thread(target=serve_rtu, args=(responder, args.serial, stop), daemon=True)
-    thread.start()
-    logger.info("simulator serving RTU on {}", args.serial)
+    import serial
+
     try:
-        while True:
-            time.sleep(args.period)
-            responder.bank.commit()
-    except KeyboardInterrupt:
-        pass
+        port = serial.Serial(
+            args.serial,
+            baudrate=reg.SERIAL_BAUD,
+            bytesize=8,
+            parity=reg.SERIAL_PARITY,
+            stopbits=reg.SERIAL_STOP_BITS,
+            timeout=0.02,
+        )
+    except (serial.SerialException, OSError) as exc:
+        print(f"cannot open serial port {args.serial}: {exc}", file=sys.stderr)
+        return EXIT_FAIL
+    stop = threading.Event()
+    thread = threading.Thread(target=serve_rtu_on, args=(responder, port, stop), daemon=True)
+    try:
+        apply_preset(responder, args.preset)
+        print(f"SIMULATED VALUES ONLY - not equipment limits; preset={args.preset}", flush=True)
+        thread.start()
+        logger.info("simulator serving RTU on {}", args.serial)
+        return _commit_loop(responder, args.period, thread.is_alive, args.serial)
     finally:
         stop.set()
-        thread.join(timeout=2.0)
-    return EXIT_OK
+        if thread.is_alive():
+            thread.join(timeout=2.0)
+        port.close()
 
 
 def _open_client(parser: argparse.ArgumentParser, args: argparse.Namespace) -> SensorNodeClient:
@@ -222,15 +270,22 @@ def _cmd_read(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     """
     client = _open_client(parser, args)
     try:
+        by_name = {r.name: r for r in schema.load().input_registers}
         with client:
             snap = client.read_snapshot()
+    except schema.SchemaError as exc:
+        for violation in exc.violations:
+            print(violation, file=sys.stderr)
+        return EXIT_FAIL
+    except (OSError, yaml.YAMLError) as exc:
+        print(f"cannot load register map: {exc}", file=sys.stderr)
+        return EXIT_FAIL
     except CommsError as exc:
         print(f"communication failure: {exc}", file=sys.stderr)
         return EXIT_COMMS
     except ModbusExceptionError as exc:
         print(f"modbus exception: {exc}", file=sys.stderr)
         return EXIT_MODBUS
-    by_name = {r.name: r for r in schema.load().input_registers}
     for name, _typ, _offset in reg.SNAPSHOT_LAYOUT:
         print(_format_field(name, getattr(snap, name), by_name))
     mask = snap.validity_mask
@@ -260,6 +315,9 @@ def _cmd_publish_status(parser: argparse.ArgumentParser, args: argparse.Namespac
     try:
         with client:
             client.publish_status(status)
+    except ValueError as exc:
+        print(f"invalid status, nothing sent: {exc}", file=sys.stderr)
+        return EXIT_FAIL
     except CommsError as exc:
         print(f"communication failure: {exc}", file=sys.stderr)
         return EXIT_COMMS
