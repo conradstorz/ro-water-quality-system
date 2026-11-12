@@ -389,7 +389,8 @@ def _parse_faults(raw: dict, severities: dict[int, str], bad: list[str]) -> tupl
     if not isinstance(src, list):
         bad.append("fault_codes: must be a list")
         return ()
-    names = set(severities.values())
+    # Malformed members are already recorded as violations by _parse_enums.
+    names = {name for name in severities.values() if isinstance(name, str)}
     out: dict[int, FaultCode] = {}
     for entry in src:
         if not isinstance(entry, dict):

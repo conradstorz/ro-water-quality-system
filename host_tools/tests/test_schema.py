@@ -277,3 +277,14 @@ def test_all_duplicate_keys_are_collected(tmp_path):
         schema.load(_write(tmp_path, text))
     keys = " ".join(exc.value.violations)
     assert "'unit_id'" in keys and "'version'" in keys
+
+
+@pytest.mark.parametrize("enum_name", ["fault_severity", "ro_state", "pump_commanded"])
+@pytest.mark.parametrize("member", [["critical"], {"a": 1}, 3, None])
+def test_malformed_enum_member_is_a_violation_not_a_crash(raw, enum_name, member):
+    broken = copy.deepcopy(raw)
+    key = max(broken["enums"][enum_name])
+    broken["enums"][enum_name][key] = member
+    with pytest.raises(schema.SchemaError) as exc:
+        schema.parse(broken)
+    assert any(enum_name in v for v in exc.value.violations)
