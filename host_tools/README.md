@@ -13,6 +13,8 @@ uv run pytest
 
 ## Commands
 
+The global `-v` / `--verbose` flag (before the command) logs at DEBUG level; the default is INFO. `--tcp` ports must be 0-65535 and `--timeout` must be greater than 0.
+
 ```
 uv run ro-tools validate [PATH]
 uv run ro-tools generate [--check]
@@ -29,8 +31,16 @@ uv run ro-tools publish-status (--tcp HOST:PORT | --serial DEVICE) --state NAME 
   `uv run ro-tools sim --tcp 127.0.0.1:5020 --preset healthy`
 - `read`: print one decoded snapshot, one line per field, with scaled values and units, the validity bits set, and whether all critical validity bits are set. Exit 2 on communication failure, 3 on a Modbus exception.
   `uv run ro-tools read --tcp 127.0.0.1:5020`
-- `publish-status`: write one display-only controller status block (exit 2 / 3 as for `read`). Options: `--pump off|on|unknown` (default `unknown`), `--fault-code`, `--severity`, `--fault-count`, `--sequence`. The simulator rejects inconsistent fault code/severity/count with a Modbus exception.
+- `publish-status`: write one display-only controller status block (exit 2 / 3 as for `read`). Options: `--pump off|on|unknown` (default `unknown`), `--fault-code`, `--severity`, `--fault-count`, `--sequence`. Range errors exit 1 before any connection is opened. Consistency is not checked locally: the simulator rejects inconsistent fault code/severity/count with a Modbus exception (exit 3) and logs the reason at WARNING.
   `uv run ro-tools publish-status --tcp 127.0.0.1:5020 --state production --pump on --sequence 1`
+
+## Safeguards
+
+- The client checks that every reply answers its request (function code, register count, FC16 echo) and raises `ProtocolError` otherwise. `ModbusExceptionError.function_code` is the function code of the request that was sent.
+- `SensorNodeClient.read_status()` returns `None` when the node holds an all-zero block (no valid status received since boot), never a zero-valued status. A non-zero block that fails validation raises `ProtocolError`.
+- `ControllerStatus` has no defaults: every field, including `pump_commanded`, must be passed explicitly.
+- The simulated bank exposes `last_valid_status_received_ms` and `last_status_sequence_progress_ms` (advanced only when the status sequence changes), plus `last_rejection` for the reason behind the latest exception response. A boot counter at its u32 maximum saturates and sets the overflow bit on `reboot()`.
+- The simulator does not reply to a request whose function code has the 0x80 bit set (it may be hearing its own exception response on a 2-wire serial line).
 
 ## Generated code
 

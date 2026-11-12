@@ -123,7 +123,7 @@ A test parses the tables in `docs/specs/FAULT_CODE_CATALOG.md` and `protocol/CON
 - **Flags:** `ValidityBits`, `StatusBits`, `FaultBits` as `IntFlag`; `CRITICAL_VALIDITY` as a `ValidityBits` value.
 - **Enums:** `RoState`, `PumpCommanded`, `FaultSeverity` as `IntEnum`; `FAULT_CODES` as a mapping from code to a frozen record.
 - **`Snapshot`:** frozen dataclass with one raw-integer field per non-reserved input register, plus read-only properties giving engineering units as `float` (for example `feed_ec_us_cm` returns `feed_ec_us_cm_x10 / 10`).
-- **`ControllerStatus`:** frozen dataclass with one raw-integer field per register 220–227.
+- **`ControllerStatus`:** frozen, keyword-only dataclass with one raw-integer field per register 220–227 and **no defaults**: every field must be given explicitly, so a forgotten `pump_commanded` is a `TypeError` and not a silent "off". (`Snapshot` keeps zero defaults; a zero snapshot has validity 0 and asserts nothing.) The constant `STATUS_REQUIRE_SEQUENCE_PROGRESS` is emitted from `controller_status_extension.require_sequence_progress`; the schema validator also checks that extension's write function code (16), write mode (`atomic_full_block_only`), `display_only` flag and `status_schema_major` against the register map.
 - **`encode_snapshot(s) -> list[int]`** and **`decode_snapshot(words) -> Snapshot`** for exactly `INPUT_COUNT` words. Encoding range-checks every field against its type and raises `ValueError` on overflow; it never wraps or clamps. Reserved registers encode as zero and are ignored on decode. 32-bit values are high word first; signed values are two's complement.
 - **`encode_status(s) -> list[int]`** and **`decode_status(words) -> ControllerStatus`** for exactly `STATUS_COUNT` words.
 - **`validate_status(words) -> None`** raising `StatusValidationError` with a reason when: length is wrong, schema major is not 1, an enum field is out of range, a reserved flag bit is set, or the cross-field rule in section 2 is violated. An unknown non-zero `controller_fault_code` is valid, because the LCD spec requires displaying `CTRL FAULT <code>`.
@@ -138,7 +138,8 @@ Decoding performs no validity, freshness, or plausibility judgement. A decoded `
 
 - a **pending** snapshot that setters mutate, and a **published** snapshot that reads copy. `commit()` copies pending to published and advances `snapshot_sequence` modulo 65536. A read never observes a half-updated snapshot.
 - holding metadata 200–202.
-- the last accepted `ControllerStatus` and `last_valid_status_received_ms` taken from the injected clock. The bank stores the timestamp; it applies no expiry.
+- the last accepted `ControllerStatus`, `last_valid_status_received_ms` (every valid write) and `last_status_sequence_progress_ms` (the first valid write after construction or `reboot()`, and afterwards only a valid write whose `status_sequence` differs from the previously accepted one), all taken from the injected clock. A publisher that keeps rewriting an unchanged block therefore cannot look fresh to a consumer that checks sequence progress. The bank stores the timestamps; it applies no expiry.
+- `last_rejection`: a short reason (including the `StatusValidationError` text for FC16 value rejections) for the most recent `handle_pdu` call that returned an exception response; reset to `None` by a call that returned a normal response. The bank stays pure: it does no logging.
 
 Operations and their results:
 
@@ -148,7 +149,7 @@ Operations and their results:
 | FC04, any address outside 100–139 | exception 0x02 illegal data address |
 | FC03, range inside 200–202 or inside 220–227 | stored values |
 | FC03, any other address, or a range spanning the 203–219 gap | exception 0x02 |
-| FC16, exactly 220–227 (8 words), passes `validate_status` | accepted; status and timestamp updated |
+| FC16, exactly 220–227 (8 words), passes `validate_status` | accepted; status and timestamps updated |
 | FC16, exactly 220–227, fails `validate_status` | exception 0x03 illegal data value; prior status and timestamp kept |
 | FC16, any other start or count, including any touching 200–202 | exception 0x02; prior status kept |
 | FC06 or any other function code | exception 0x01 illegal function |
@@ -162,7 +163,7 @@ Methods on the bank, each affecting the next `commit()` unless noted:
 - `freeze_sequence(on)`: `commit()` publishes without advancing the sequence
 - `force_critical_age(ms)`: saturates at 65535
 - `saturate(field)`: sets the field to its type maximum and sets status bit `overflow_or_saturation`
-- `reboot()`: increments `boot_counter`, zeroes `uptime_seconds`, resets the sequence to 0, sets status bit `watchdog_reset_seen`, discards the stored controller status, and commits immediately
+- `reboot()`: increments `boot_counter` (saturating at the u32 maximum, never wrapping, and setting status bit `overflow_or_saturation` when it is already there), zeroes `uptime_seconds`, resets the sequence to 0, sets status bit `watchdog_reset_seen`, discards the stored controller status and both status timestamps, and commits immediately
 
 Methods on the server adapter, effective immediately:
 
@@ -173,7 +174,7 @@ A default bank starts with simulated values clearly labelled as simulated in log
 
 ### 8.3 Adapter
 
-`sim.server` exposes a `Responder` (bank, unit ID, drop and delay controls), a `TcpSimServer` running in a background thread, and `serve_rtu` for a serial port with defaults from the generated constants. Both transports use the same responder. A unit ID other than `UNIT_ID` receives no reply. The serial transport delimits frames by idle gap and silently discards frames with a bad CRC.
+`sim.server` exposes a `Responder` (bank, unit ID, drop and delay controls), a `TcpSimServer` running in a background thread, and `open_serial_port(device, ...)`, which opens a serial port (8 data bits, 20 ms read timeout) with defaults from the generated constants for `serve_rtu_on`; the CLI uses it instead of building its own port. Both transports use the same responder. A unit ID other than `UNIT_ID` receives no reply. A request whose function code has the `0x80` bit set also receives no reply (on a 2-wire serial adapter the simulator can hear its own exception response echoed back and must not answer it). Whenever the response is an exception, `Responder.respond` logs at WARNING the request function code, the exception code and `bank.last_rejection`. The serial transport delimits frames by idle gap and silently discards frames with a bad CRC.
 
 ## 9. Client
 
@@ -181,10 +182,10 @@ A default bank starts with simulated values clearly labelled as simulated in log
 
 - `read_snapshot() -> Snapshot`: one FC04 read of the full block, then `decode_snapshot`.
 - `read_metadata()`: FC03 200–202.
-- `read_status() -> ControllerStatus`: FC03 220–227.
+- `read_status() -> ControllerStatus | None`: FC03 220–227. All-zero words mean the node has received no valid status since boot and return `None`, never a zero-valued status. Otherwise the words are run through `validate_status`; a failure raises `ProtocolError`.
 - `publish_status(status)`: one FC16 write of the full block.
 
-Transport failures raise `CommsError` (timeout, no response, connection lost). A Modbus exception response raises `ModbusExceptionError` carrying the exception code. The client never retries silently and never returns a cached or default snapshot.
+Transport failures raise `CommsError` (timeout, no response, connection lost). A Modbus exception response raises `ModbusExceptionError` carrying the exception code and the function code of the request that was sent. pymodbus does not check that a reply matches its request, so the client does: the reply's function code must equal the request's, a read must return exactly the requested register count, the FC16 echo must carry `STATUS_START` and `STATUS_COUNT`, and an exception reply must carry the request's function code with bit `0x80`. Any mismatch raises `ProtocolError` (a `CommsError` subclass), and the connection is closed as for any transport failure. No malformed reply leaks a bare `ValueError` or `IndexError`. The client never retries silently and never returns a cached or default snapshot.
 
 ## 10. CLI
 
@@ -198,14 +199,16 @@ Transport failures raise `CommsError` (timeout, no response, connection lost). A
 | `read --tcp ...` or `--serial ...` | Read and print one decoded snapshot with validity bits |
 | `publish-status --tcp ...` or `--serial ...` `--state ... --fault-code ...` | Write one status block |
 
+Global option: `-v` / `--verbose` sets the Loguru level to DEBUG (default INFO). `--tcp` ports must be 0–65535 and `--timeout` must be greater than 0. `publish-status` range-checks the status (`encode_status`) before connecting; it does not run `validate_status`, so an inconsistent block is still sent and the node's own rejection (exit 3) is observable.
+
 Presets for `sim`: `healthy`, `critical_sensor_invalid`, `stale`, `frozen_sequence`, `silent`.
 
 ## 11. Error handling
 
 - Schema violations are collected and reported together, each naming the offending register or key.
 - Codec functions raise on wrong length or out-of-range values; they never substitute a value.
-- The simulator maps every rejected request to a specific Modbus exception code and logs the reason.
-- The client distinguishes transport failure from a Modbus exception, and surfaces both to the caller.
+- The simulator maps every rejected request to a specific Modbus exception code; `Responder` logs each one at WARNING with the reason from `bank.last_rejection`.
+- The client distinguishes transport failure, a Modbus exception and a reply that does not match its request (`ProtocolError`), and surfaces all of them to the caller.
 
 ## 12. Testing
 
