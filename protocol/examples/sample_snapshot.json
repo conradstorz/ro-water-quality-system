@@ -1,0 +1,13 @@
+{
+  "unit_id": 1,
+  "protocol_version": "1.0",
+  "snapshot_sequence": 42,
+  "feed_ec_us_cm": 425.7,
+  "permeate_ec_us_cm": 18.3,
+  "permeate_flow_gpm": 0.35,
+  "concentrate_flow_gpm": 1.05,
+  "feed_pressure_psi": 125.0,
+  "tank_volume_gal": 28.7,
+  "validity_mask": "0x00FF",
+  "note": "SIMULATED VALUES ONLY; not equipment limits"
+}

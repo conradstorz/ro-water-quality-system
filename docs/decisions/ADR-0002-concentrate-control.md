@@ -1,0 +1,2 @@
+# ADR-0002: Manual concentrate restriction + flush bypass
+**Accepted as design baseline.** Manual needle valve sets normal concentrate restriction. Normally open motorized ball valve in parallel opens for flushing and on power loss if auto-return behavior verified. One flow meter downstream of recombination. Enforce minimum concentrate flow and maximum recovery during normal production. Candidate USS-MSV00072 rated 145 PSI is provisional and requires pressure suitability review.

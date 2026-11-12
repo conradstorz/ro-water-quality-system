@@ -1,0 +1,14 @@
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.pyc
+.env
+*.log
+logs/*
+!logs/.gitkeep
+*.bin
+*.uf2
+*.elf
+*.map
+.DS_Store
