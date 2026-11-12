@@ -12,3 +12,4 @@ logs/*
 *.elf
 *.map
 .DS_Store
+.superpowers/
