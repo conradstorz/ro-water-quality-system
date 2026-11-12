@@ -67,3 +67,70 @@ def test_mbap_round_trip():
 def test_mbap_rejects_bad_header(header):
     with pytest.raises(frames.FrameError):
         frames.parse_mbap_header(header)
+
+
+def _fc04(unit: int = 1, start: int = 100, count: int = 40) -> bytes:
+    return frames.build_rtu(unit, bytes([4]) + start.to_bytes(2, "big") + count.to_bytes(2, "big"))
+
+
+def _fc16(unit: int = 1, start: int = 220, words: int = 8) -> bytes:
+    pdu = bytes([16]) + start.to_bytes(2, "big") + words.to_bytes(2, "big") + bytes([words * 2])
+    return frames.build_rtu(unit, pdu + bytes(words * 2))
+
+
+def test_split_single_frame():
+    assert frames.split_rtu_requests(_fc04()) == [_fc04()]
+
+
+def test_split_fc04_then_fc16():
+    assert frames.split_rtu_requests(_fc04() + _fc16()) == [_fc04(), _fc16()]
+
+
+def test_split_wrong_unit_then_addressed():
+    assert frames.split_rtu_requests(_fc04(unit=7) + _fc04()) == [_fc04(unit=7), _fc04()]
+
+
+@pytest.mark.parametrize("fc", [1, 2, 3, 4, 5, 6])
+def test_split_fixed_length_function_codes(fc):
+    frame = frames.build_rtu(1, bytes([fc, 0, 10, 0, 1]))
+    assert frames.split_rtu_requests(frame + frame) == [frame, frame]
+
+
+def test_split_fc15_uses_byte_count():
+    frame = frames.build_rtu(1, bytes([15, 0, 0, 0, 10, 2, 0xFF, 0x03]))
+    assert frames.split_rtu_requests(frame + _fc04()) == [frame, _fc04()]
+
+
+def test_split_trailing_garbage_is_one_remainder():
+    garbage = b"\xde\xad\xbe"
+    assert frames.split_rtu_requests(_fc04() + garbage) == [_fc04(), garbage]
+
+
+def test_split_garbage_only_is_one_frame():
+    assert frames.split_rtu_requests(b"\xff\xff\xff\xff\xff") == [b"\xff\xff\xff\xff\xff"]
+
+
+def test_split_empty_buffer():
+    assert frames.split_rtu_requests(b"") == []
+
+
+def test_split_truncated_fc16_is_kept_whole():
+    truncated = _fc16()[:-3]
+    assert frames.split_rtu_requests(truncated) == [truncated]
+    assert frames.split_rtu_requests(_fc04() + truncated) == [_fc04(), truncated]
+
+
+def test_split_bad_crc_is_kept_whole():
+    bad = bytearray(_fc04())
+    bad[-1] ^= 0xFF
+    assert frames.split_rtu_requests(bytes(bad) + _fc04()) == [bytes(bad) + _fc04()]
+
+
+def test_split_unknown_function_code_is_kept_whole():
+    unknown = frames.build_rtu(1, bytes([0x2B, 0x0E, 0x01, 0x00]))
+    assert frames.split_rtu_requests(unknown + _fc04()) == [unknown + _fc04()]
+
+
+def test_split_fc16_header_cut_before_byte_count():
+    short = bytes([1, 16, 0, 0xDC, 0, 8])
+    assert frames.split_rtu_requests(short) == [short]

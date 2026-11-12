@@ -18,3 +18,5 @@
 - Client verifies every reply against its request (function code, register count, FC16 echo, exception code) and raises `ProtocolError`; exception errors report the request's function code.
 - Status-block safeguards: `ControllerStatus` has no defaults, `read_status()` returns `None` for a never-written block, the simulated bank exposes `last_status_sequence_progress_ms` (schema models `require_sequence_progress`), and the boot counter saturates and flags overflow on `reboot()`.
 - Simulator logs each rejected request at WARNING with its reason (`bank.last_rejection`) and ignores requests with function code >= 0x80; added `ro-tools -v`.
+- Schema hardening: duplicate YAML mapping keys and duplicate `critical_validity_bits` are rejected, Python keywords and unusable generated member names are rejected, wrong-typed values are reported as violations instead of `TypeError`, and generated masks use bitwise OR.
+- Serial simulator: suppresses the echo of its own transmission and splits closely spaced RTU frames by request length instead of discarding the merged burst.

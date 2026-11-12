@@ -335,3 +335,107 @@ def test_open_serial_port_overrides(monkeypatch):
     monkeypatch.setattr(serial, "Serial", lambda *a, **k: calls.append(k))
     open_serial_port("COM7", baud=9600, parity="N", stop_bits=2)
     assert (calls[0]["baudrate"], calls[0]["parity"], calls[0]["stopbits"]) == (9600, "N", 2)
+
+
+class EchoSerial(FakeSerial):
+    """A 2-wire adapter: every transmitted frame is heard again on receive."""
+
+    def write(self, data: bytes) -> int:
+        self.feed(bytes(data))
+        return super().write(data)
+
+
+def _other_block() -> bytes:
+    return struct.pack(">BHH", 4, 100, 2)
+
+
+def test_serial_server_does_not_answer_its_own_echo(responder):
+    port = EchoSerial()
+    stop, t = _run_serial(responder, port)
+    try:
+        port.feed(frames.build_rtu(reg.UNIT_ID, READ_BLOCK))
+        assert _wait_for(lambda: port.tx)
+        time.sleep(0.2)  # echo has come back and been through an idle gap
+        assert len(port.tx) == 1
+        assert port.tx[0][1] == 4
+        assert responder.request_count == 1
+    finally:
+        stop.set()
+        t.join(2)
+
+
+def test_serial_server_answers_different_request_after_echo(responder):
+    port = EchoSerial()
+    stop, t = _run_serial(responder, port)
+    try:
+        port.feed(frames.build_rtu(reg.UNIT_ID, READ_BLOCK))
+        assert _wait_for(lambda: len(port.tx) == 1)
+        time.sleep(0.1)
+        port.feed(frames.build_rtu(reg.UNIT_ID, _other_block()))
+        assert _wait_for(lambda: len(port.tx) == 2)
+        time.sleep(0.1)
+        assert len(port.tx) == 2
+        assert frames.parse_rtu(port.tx[1])[1][:2] == bytes([4, 4])
+    finally:
+        stop.set()
+        t.join(2)
+
+
+def test_serial_server_answers_identical_request_twice_with_echo(responder):
+    port = EchoSerial()
+    stop, t = _run_serial(responder, port)
+    try:
+        for expected in (1, 2):
+            port.feed(frames.build_rtu(reg.UNIT_ID, _other_block()))
+            assert _wait_for(lambda n=expected: len(port.tx) == n)
+            time.sleep(0.1)
+        assert len(port.tx) == 2
+        assert responder.request_count == 2
+    finally:
+        stop.set()
+        t.join(2)
+
+
+def test_serial_server_handles_echo_merged_with_next_request(responder):
+    port = EchoSerial()
+    stop, t = _run_serial(responder, port)
+    try:
+        req = frames.build_rtu(reg.UNIT_ID, _other_block())
+        port.feed(req)
+        assert _wait_for(lambda: len(port.tx) == 1)
+        port.feed(frames.build_rtu(reg.UNIT_ID, READ_BLOCK))  # may land right behind the echo
+        assert _wait_for(lambda: len(port.tx) == 2)
+        time.sleep(0.2)
+        assert len(port.tx) == 2
+    finally:
+        stop.set()
+        t.join(2)
+
+
+def test_serial_server_answers_back_to_back_requests_in_order(responder):
+    port = FakeSerial()
+    stop, t = _run_serial(responder, port)
+    try:
+        port.feed(
+            frames.build_rtu(reg.UNIT_ID, _other_block())
+            + frames.build_rtu(reg.UNIT_ID, READ_BLOCK)
+        )
+        assert _wait_for(lambda: len(port.tx) == 2)
+        assert [len(frames.parse_rtu(f)[1]) for f in port.tx] == [6, 82]
+    finally:
+        stop.set()
+        t.join(2)
+
+
+def test_serial_server_wrong_unit_then_addressed_gives_one_response(responder):
+    port = FakeSerial()
+    stop, t = _run_serial(responder, port)
+    try:
+        port.feed(frames.build_rtu(7, READ_BLOCK) + frames.build_rtu(reg.UNIT_ID, READ_BLOCK))
+        assert _wait_for(lambda: port.tx)
+        time.sleep(0.2)
+        assert len(port.tx) == 1
+        assert frames.parse_rtu(port.tx[0])[0] == reg.UNIT_ID
+    finally:
+        stop.set()
+        t.join(2)

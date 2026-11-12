@@ -101,15 +101,15 @@ A test parses the tables in `docs/specs/FAULT_CODE_CATALOG.md` and `protocol/CON
 
 ## 6. Validator rules
 
-`schema.load()` rejects the map when any of these fail, reporting all failures together:
+`schema.load()` rejects the map when any of these fail, reporting all failures together. Before the rules run, `load()` parses the YAML with a loader that reports every repeated mapping key (key and line number) as a violation, because plain `yaml.safe_load` keeps only the last value of a repeated key (a duplicated bit index or enum value would silently replace the earlier meaning). A value of the wrong YAML type (for example `type: [u16]`) is reported as a violation naming the key; it never surfaces as a `TypeError`.
 
 1. Required top-level keys are present; `addressing` is `zero_based_pdu_offset`; `word_order_32bit` is `high_word_first`; `byte_order_per_word` is `big_endian`.
 2. Every register `type` is one of `u16`, `i16`, `u32`, `i32`, and `words` equals 1 for 16-bit types and 2 for 32-bit types.
 3. Within each table no two registers occupy the same address.
 4. Input registers cover `polling.input_start` through `input_start + input_count - 1` contiguously, with no gap and nothing outside.
 5. `scale_divisor` is a positive integer, defaulting to 1 when absent (holding registers omit it). A name ending `_x10`, `_x100`, or `_x1000` has the matching divisor; a name without such a suffix has divisor 1.
-6. Register names are unique across both tables and are valid Python identifiers.
-7. Bit indices in `validity_bits`, `status_bits`, `fault_bits`, and `controller_flags_bits` are 0–15 and unique per table. `critical_validity_bits` is a subset of `validity_bits`.
+6. Register names are unique across both tables and are valid Python identifiers that are not Python keywords or soft keywords.
+7. Bit indices in `validity_bits`, `status_bits`, `fault_bits`, and `controller_flags_bits` are 0–15 and unique per table. `critical_validity_bits` is a subset of `validity_bits` with no repeated entry (the generated mask is built with bitwise OR, never by summation). Bit names and enum member names must be strings that are identifiers whose upper-cased form is an identifier and not a keyword, with no leading underscore, and must be unique after upper-casing within their table; enum names must yield a valid, unique CamelCase class name.
 8. `controller_status_extension.start` and `count` match exactly the holding registers whose access is `write_multiple_only`, and those registers are contiguous.
 9. `access` is one of `read_only`, `write_multiple_only`.
 10. Every `enum:` reference resolves; enum values are unique non-negative integers that fit in 16 bits.
@@ -174,7 +174,7 @@ A default bank starts with simulated values clearly labelled as simulated in log
 
 ### 8.3 Adapter
 
-`sim.server` exposes a `Responder` (bank, unit ID, drop and delay controls), a `TcpSimServer` running in a background thread, and `open_serial_port(device, ...)`, which opens a serial port (8 data bits, 20 ms read timeout) with defaults from the generated constants for `serve_rtu_on`; the CLI uses it instead of building its own port. Both transports use the same responder. A unit ID other than `UNIT_ID` receives no reply. A request whose function code has the `0x80` bit set also receives no reply (on a 2-wire serial adapter the simulator can hear its own exception response echoed back and must not answer it). Whenever the response is an exception, `Responder.respond` logs at WARNING the request function code, the exception code and `bank.last_rejection`. The serial transport delimits frames by idle gap and silently discards frames with a bad CRC.
+`sim.server` exposes a `Responder` (bank, unit ID, drop and delay controls), a `TcpSimServer` running in a background thread, and `open_serial_port(device, ...)`, which opens a serial port (8 data bits, 20 ms read timeout) with defaults from the generated constants for `serve_rtu_on`; the CLI uses it instead of building its own port. Both transports use the same responder. A unit ID other than `UNIT_ID` receives no reply. A request whose function code has the `0x80` bit set also receives no reply (on a 2-wire serial adapter the simulator can hear its own exception response echoed back and must not answer it). Whenever the response is an exception, `Responder.respond` logs at WARNING the request function code, the exception code and `bank.last_rejection`. The serial transport groups bytes into a burst by idle gap, then splits the burst into frames by Modbus request length (8 bytes for function codes 1-6, `9 + byte_count` for 15 and 16, each accepted only if its CRC verifies), so closely spaced frames, including one for another unit, do not hide a following valid request. Anything that cannot be split (unknown function code, short or bad-CRC slice, trailing bytes) is kept as one frame and silently discarded when its CRC fails. For transmit-echo suppression the transport remembers the frames it has written; a burst that begins with exactly those bytes has them stripped before dispatch, and the memory is cleared by the next burst, so a genuine identical request is dropped at most once per transmission.
 
 ## 9. Client
 

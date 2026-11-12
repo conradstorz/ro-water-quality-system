@@ -41,6 +41,7 @@ uv run ro-tools publish-status (--tcp HOST:PORT | --serial DEVICE) --state NAME 
 - `ControllerStatus` has no defaults: every field, including `pump_commanded`, must be passed explicitly.
 - The simulated bank exposes `last_valid_status_received_ms` and `last_status_sequence_progress_ms` (advanced only when the status sequence changes), plus `last_rejection` for the reason behind the latest exception response. A boot counter at its u32 maximum saturates and sets the overflow bit on `reboot()`.
 - The simulator does not reply to a request whose function code has the 0x80 bit set (it may be hearing its own exception response on a 2-wire serial line).
+- The serial simulator strips the echo of its own last transmission (2-wire adapters) before dispatching, and splits an idle-gap burst into frames by Modbus request length, so back-to-back requests are each answered.
 
 ## Generated code
 

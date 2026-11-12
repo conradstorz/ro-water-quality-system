@@ -11,7 +11,14 @@ from typing import TYPE_CHECKING, Protocol, Self
 from loguru import logger
 
 from ro_tools.generated.registers import SERIAL_BAUD, SERIAL_PARITY, SERIAL_STOP_BITS, UNIT_ID
-from ro_tools.sim.frames import FrameError, build_mbap, build_rtu, parse_mbap_header, parse_rtu
+from ro_tools.sim.frames import (
+    FrameError,
+    build_mbap,
+    build_rtu,
+    parse_mbap_header,
+    parse_rtu,
+    split_rtu_requests,
+)
 from ro_tools.sim.register_bank import RegisterBank
 
 if TYPE_CHECKING:
@@ -193,14 +200,23 @@ class SerialLike(Protocol):
 def serve_rtu_on(responder: Responder, port: SerialLike, stop: threading.Event) -> None:
     """Run the RTU loop on an open port until ``stop`` is set.
 
-    Frames are delimited by an idle gap (a read timeout with bytes buffered).
-    Frames with a bad CRC are discarded silently.
+    Bytes are grouped into a burst by an idle gap (a read timeout with bytes
+    buffered). A burst is split into frames with
+    :func:`~ro_tools.sim.frames.split_rtu_requests`, so closely spaced frames
+    are each answered. Frames with a bad CRC are discarded silently.
+
+    A 2-wire adapter may echo what is transmitted. The frames written since
+    the last burst are remembered; a burst that begins with exactly those
+    bytes has them stripped before dispatch. The memory is cleared by the
+    next burst whether or not it matched, so a genuine later request that
+    looks identical is only ever dropped once per transmission.
 
     :param responder: Responder that answers requests.
     :param port: Open port with a short read timeout.
     :param stop: Set to end the loop.
     """
     buf = bytearray()
+    sent = bytearray()
     while not stop.is_set():
         chunk = port.read(1)
         if chunk:
@@ -210,15 +226,22 @@ def serve_rtu_on(responder: Responder, port: SerialLike, stop: threading.Event) 
             continue
         if not buf:
             continue
-        frame, buf = bytes(buf), bytearray()
-        try:
-            unit, pdu = parse_rtu(frame)
-        except FrameError as exc:
-            logger.debug("discarding frame: {}", exc)
-            continue
-        resp = responder.respond(unit, pdu)
-        if resp is not None:
-            port.write(build_rtu(unit, resp))
+        burst, buf = bytes(buf), bytearray()
+        if sent and burst.startswith(sent):
+            logger.debug("stripping {} echoed byte(s)", len(sent))
+            burst = burst[len(sent) :]
+        sent.clear()
+        for frame in split_rtu_requests(burst):
+            try:
+                unit, pdu = parse_rtu(frame)
+            except FrameError as exc:
+                logger.debug("discarding frame: {}", exc)
+                continue
+            resp = responder.respond(unit, pdu)
+            if resp is not None:
+                out = build_rtu(unit, resp)
+                port.write(out)
+                sent += out
 
 
 def open_serial_port(
