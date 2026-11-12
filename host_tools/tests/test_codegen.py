@@ -1,5 +1,7 @@
 """Tests for the code generator itself."""
 
+import dataclasses
+
 from ro_tools import codegen, schema
 
 
@@ -37,3 +39,8 @@ def test_is_current_detects_a_single_changed_byte(tmp_path):
     data[len(data) // 2] ^= 0x01
     out.write_bytes(bytes(data))
     assert codegen.is_current(m, out) is False
+
+
+def test_critical_mask_uses_or_not_sum():
+    m = dataclasses.replace(schema.load(), critical_validity_bits=(0, 1, 2, 3, 7, 0))
+    assert "CRITICAL_VALIDITY = ValidityBits(0x008f)" in codegen.render(m)

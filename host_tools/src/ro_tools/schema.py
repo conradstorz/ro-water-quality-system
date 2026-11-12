@@ -7,6 +7,7 @@ raising :class:`SchemaError` carrying every violation found.
 
 from __future__ import annotations
 
+import keyword
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -135,6 +136,69 @@ def _is_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def _is_name(value: Any) -> bool:
+    """Return True for a string usable as a Python identifier and not a keyword.
+
+    :param value: Value to test.
+    :returns: Whether ``value`` is an identifier that is neither a hard nor a
+        soft keyword.
+    """
+    return (
+        isinstance(value, str)
+        and value.isidentifier()
+        and not keyword.iskeyword(value)
+        and not keyword.issoftkeyword(value)
+    )
+
+
+def camel_case(name: str) -> str:
+    """Convert a snake_case name to CamelCase (the generated class name).
+
+    :param name: Snake-case identifier.
+    :returns: CamelCase identifier.
+    """
+    return "".join(part.capitalize() for part in name.split("_"))
+
+
+def _member_problem(name: Any) -> str | None:
+    """Explain why ``name`` cannot become an upper-cased class member.
+
+    :param name: Candidate enum-member or bit name from the YAML.
+    :returns: A reason, or None when the upper-cased name is a usable member.
+    """
+    if not isinstance(name, str):
+        return f"{name!r} must be a string"
+    if not name.isidentifier():
+        return f"{name!r} is not an identifier"
+    upper = name.upper()
+    if not upper.isidentifier() or keyword.iskeyword(upper) or keyword.issoftkeyword(upper):
+        return f"{name!r} upper-cases to {upper!r}, which is not a usable member name"
+    if upper.startswith("_"):
+        return f"{name!r} must not start with an underscore"
+    return None
+
+
+def _check_member_names(where: str, names: list[Any], bad: list[str]) -> None:
+    """Record unusable and case-colliding generated member names.
+
+    :param where: Table description for messages.
+    :param names: Member names in table order.
+    :param bad: Violation list to append to.
+    """
+    owner: dict[str, str] = {}
+    for name in names:
+        problem = _member_problem(name)
+        if problem:
+            bad.append(f"{where}: member name {problem}")
+        elif name.upper() in owner:
+            bad.append(
+                f"{where}: member names {owner[name.upper()]!r} and {name!r} "
+                f"both upper-case to {name.upper()!r}"
+            )
+        else:
+            owner[name.upper()] = name
+
+
 def _section(raw: dict, key: str, keys: tuple[str, ...], bad: list[str]) -> dict:
     """Return ``raw[key]`` as a mapping, recording missing sub-keys.
 
@@ -187,7 +251,8 @@ def _parse_bits(raw: dict, table: str, bad: list[str]) -> dict[int, str]:
         if not _is_int(bit) or not 0 <= bit <= 15:
             bad.append(f"{table}: bit index {bit!r} must be an integer in 0..15")
             continue
-        out[bit] = str(name)
+        out[bit] = name
+    _check_member_names(table, list(out.values()), bad)
     return out
 
 
@@ -203,20 +268,24 @@ def _parse_enums(raw: dict, bad: list[str]) -> dict[str, dict[int, str]]:
         bad.append("enums: must be a mapping")
         return {}
     out: dict[str, dict[int, str]] = {}
+    classes: dict[str, str] = {}
     for ename, members in src.items():
+        if not _is_name(ename) or not _is_name(camel_case(ename)):
+            bad.append(f"enums: name {ename!r} cannot become a generated class name")
+        elif camel_case(ename) in classes:
+            bad.append(f"enums: {classes[camel_case(ename)]!r} and {ename!r} generate one class")
+        else:
+            classes[camel_case(ename)] = ename
         if not isinstance(members, dict):
             bad.append(f"enums.{ename}: must be a mapping")
             continue
         table: dict[int, str] = {}
-        seen: set[str] = set()
         for value, member in members.items():
             if not _is_int(value) or not 0 <= value <= 65535:
                 bad.append(f"enums.{ename}: value {value!r} must be an integer in 0..65535")
                 continue
-            if str(member) in seen:
-                bad.append(f"enums.{ename}: duplicate member name {member!r}")
-            seen.add(str(member))
-            table[value] = str(member)
+            table[value] = member
+        _check_member_names(f"enums.{ename}", list(table.values()), bad)
         out[str(ename)] = table
     return out
 
@@ -247,7 +316,7 @@ def _parse_register(
         ok = False
     rtype = entry.get("type")
     words = entry.get("words", 1)
-    if rtype not in _TYPE_WORDS:
+    if not isinstance(rtype, str) or rtype not in _TYPE_WORDS:
         bad.append(f"{where}: type {rtype!r} not in {sorted(_TYPE_WORDS)}")
         ok = False
     elif words != _TYPE_WORDS[rtype] or not _is_int(words):
@@ -264,11 +333,11 @@ def _parse_register(
             bad.append(f"{where}: scale_divisor {divisor} must be {expected} given the name")
             ok = False
     access = entry.get("access")
-    if access not in _ACCESS:
+    if not isinstance(access, str) or access not in _ACCESS:
         bad.append(f"{where}: access {access!r} not in {sorted(_ACCESS)}")
         ok = False
     enum = entry.get("enum")
-    if enum is not None and enum not in enums:
+    if enum is not None and (not isinstance(enum, str) or enum not in enums):
         bad.append(f"{where}: enum {enum!r} is not defined in enums")
         ok = False
     equals = entry.get("equals")
@@ -336,11 +405,11 @@ def _parse_faults(raw: dict, severities: dict[int, str], bad: list[str]) -> tupl
             bad.append(f"{where}: duplicate code")
             ok = False
         source = entry.get("source")
-        if source not in _FAULT_SOURCES:
+        if not isinstance(source, str) or source not in _FAULT_SOURCES:
             bad.append(f"{where}: source {source!r} not in {sorted(_FAULT_SOURCES)}")
             ok = False
         severity = entry.get("default_severity")
-        if severity not in names:
+        if not isinstance(severity, str) or severity not in names:
             bad.append(f"{where}: default_severity {severity!r} not in fault_severity enum")
             ok = False
         if ok:
@@ -449,9 +518,14 @@ def parse(raw: dict) -> RegisterMap:
     if not isinstance(critical, list):
         bad.append("critical_validity_bits: must be a list")
         critical = []
+    seen_critical: set[int] = set()
     for bit in critical:
-        if bit not in bits["validity_bits"]:
+        if not _is_int(bit) or bit not in bits["validity_bits"]:
             bad.append(f"critical_validity_bits: bit {bit!r} is not a key of validity_bits")
+        elif bit in seen_critical:
+            bad.append(f"critical_validity_bits: duplicate bit {bit!r}")
+        else:
+            seen_critical.add(bit)
 
     enums = _parse_enums(raw, bad)
 
@@ -470,8 +544,8 @@ def parse(raw: dict) -> RegisterMap:
         if reg.name in seen_names:
             bad.append(f"{reg.name}: register name is not unique across tables")
         seen_names.add(reg.name)
-        if not reg.name.isidentifier():
-            bad.append(f"{reg.name}: register name is not a valid identifier")
+        if not _is_name(reg.name):
+            bad.append(f"{reg.name}: register name is not a valid identifier or is a keyword")
 
     occupied_in = _occupied(tables["input_registers"], "input_registers", bad)
     _occupied(tables["holding_registers"], "holding_registers", bad)
@@ -542,6 +616,44 @@ def parse(raw: dict) -> RegisterMap:
     )
 
 
+class _UniqueKeyLoader(yaml.SafeLoader):
+    """Safe YAML loader that records repeated mapping keys instead of hiding them.
+
+    :ivar duplicates: One message per repeated key, with its line number.
+    """
+
+    def __init__(self, stream: str) -> None:
+        super().__init__(stream)
+        self.duplicates: list[str] = []
+
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict:
+        """Build a mapping, noting keys that occur more than once.
+
+        :param node: The YAML mapping node.
+        :param deep: Passed through to the base constructor.
+        :returns: The constructed mapping (the last duplicate still wins here;
+            :func:`load` rejects the document before it is used).
+        """
+        if isinstance(node, yaml.MappingNode):
+            self.flatten_mapping(node)
+            first_line: dict[Any, int] = {}
+            for key_node, _ in node.value:
+                key = self.construct_object(key_node, deep=True)
+                try:
+                    hash(key)
+                except TypeError:
+                    continue  # the base constructor reports unhashable keys
+                line = key_node.start_mark.line + 1
+                if key in first_line:
+                    self.duplicates.append(
+                        f"duplicate key {key!r} at line {line} "
+                        f"(first used at line {first_line[key]})"
+                    )
+                else:
+                    first_line[key] = line
+        return super().construct_mapping(node, deep)
+
+
 def load(path: Path = DEFAULT_MAP_PATH) -> RegisterMap:
     """Read and validate a register-map YAML file.
 
@@ -550,5 +662,11 @@ def load(path: Path = DEFAULT_MAP_PATH) -> RegisterMap:
     :raises SchemaError: If the map violates the schema.
     :raises OSError: If the file cannot be read.
     """
-    raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    loader = _UniqueKeyLoader(Path(path).read_text(encoding="utf-8"))
+    try:
+        raw = loader.get_single_data()
+    finally:
+        loader.dispose()
+    if loader.duplicates:
+        raise SchemaError(loader.duplicates)
     return parse(raw)

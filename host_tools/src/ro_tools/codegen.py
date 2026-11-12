@@ -6,6 +6,9 @@ depends on the standard library only and is byte-for-byte deterministic.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+from functools import reduce
+from operator import or_
 from pathlib import Path
 
 from ro_tools import schema
@@ -116,7 +119,18 @@ def _camel(name: str) -> str:
     :param name: Snake-case identifier.
     :returns: CamelCase identifier.
     """
-    return "".join(part.capitalize() for part in name.split("_"))
+    return schema.camel_case(name)
+
+
+def _bit_mask(bits: Iterable[int]) -> int:
+    """Combine bit indices into a mask with bitwise OR.
+
+    A repeated index sets the same bit again instead of carrying into the next.
+
+    :param bits: Bit indices.
+    :returns: The mask.
+    """
+    return reduce(or_, (1 << b for b in bits), 0)
 
 
 def _layout(regs: list[Register], base: int) -> list[tuple[str, str, int]]:
@@ -254,8 +268,8 @@ def render(m: RegisterMap) -> str:
     for cls, table, doc in _FLAG_CLASSES:
         out += _emit_flag(cls, doc, getattr(m, table))
         out += ["", ""]
-    crit_mask = sum(1 << b for b in m.critical_validity_bits)
-    flags_mask = sum(1 << b for b in m.controller_flags_bits)
+    crit_mask = _bit_mask(m.critical_validity_bits)
+    flags_mask = _bit_mask(m.controller_flags_bits)
     out += [
         f"CRITICAL_VALIDITY = ValidityBits({crit_mask:#06x})",
         f"CONTROLLER_FLAGS_DEFINED_MASK = {flags_mask}",
