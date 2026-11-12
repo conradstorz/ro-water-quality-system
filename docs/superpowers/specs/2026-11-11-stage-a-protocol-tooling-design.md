@@ -103,7 +103,7 @@ A test parses the tables in `docs/specs/FAULT_CODE_CATALOG.md` and `protocol/CON
 2. Every register `type` is one of `u16`, `i16`, `u32`, `i32`, and `words` equals 1 for 16-bit types and 2 for 32-bit types.
 3. Within each table no two registers occupy the same address.
 4. Input registers cover `polling.input_start` through `input_start + input_count - 1` contiguously, with no gap and nothing outside.
-5. `scale_divisor` is a positive integer. A name ending `_x10`, `_x100`, or `_x1000` has the matching divisor; a name without such a suffix has divisor 1.
+5. `scale_divisor` is a positive integer, defaulting to 1 when absent (holding registers omit it). A name ending `_x10`, `_x100`, or `_x1000` has the matching divisor; a name without such a suffix has divisor 1.
 6. Register names are unique across both tables and are valid Python identifiers.
 7. Bit indices in `validity_bits`, `status_bits`, `fault_bits`, and `controller_flags_bits` are 0–15 and unique per table. `critical_validity_bits` is a subset of `validity_bits`.
 8. `controller_status_extension.start` and `count` match exactly the holding registers whose access is `write_multiple_only`, and those registers are contiguous.
