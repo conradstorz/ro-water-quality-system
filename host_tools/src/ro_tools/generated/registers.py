@@ -130,6 +130,8 @@ class FaultBits(IntFlag):
 class ControllerFlags(IntFlag):
     """Bits of the controller flags register."""
 
+    NONE = 0
+
 
 CRITICAL_VALIDITY = ValidityBits(0x008f)
 CONTROLLER_FLAGS_DEFINED_MASK = 0

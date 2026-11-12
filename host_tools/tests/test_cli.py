@@ -322,3 +322,22 @@ def test_generate_value_error_exits_1(monkeypatch, capsys, argv):
     monkeypatch.setattr(cli.codegen, "is_current", boom)
     assert cli.main(argv) == 1
     assert "cannot render" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("text", ["inf", "1e309", "nan", "-inf"])
+def test_non_finite_period_and_timeout_are_usage_errors(text):
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(["sim", "--tcp", "127.0.0.1:5020", "--period", text])
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(["read", "--tcp", "127.0.0.1:5020", "--timeout", text])
+
+
+@pytest.mark.parametrize("argv", [["generate"], ["generate", "--check"]])
+def test_generate_filesystem_error_exits_1(monkeypatch, capsys, argv):
+    def boom(*args, **kwargs):
+        raise PermissionError("read-only checkout")
+
+    monkeypatch.setattr(cli.codegen, "write", boom)
+    monkeypatch.setattr(cli.codegen, "is_current", boom)
+    assert cli.main(argv) == 1
+    assert "read-only checkout" in capsys.readouterr().err

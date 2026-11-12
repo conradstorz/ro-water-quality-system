@@ -181,3 +181,8 @@ def test_controller_status_is_keyword_only():
 
 def test_status_requires_sequence_progress_constant():
     assert reg.STATUS_REQUIRE_SEQUENCE_PROGRESS is True
+
+
+def test_empty_flag_table_can_represent_zero():
+    assert int(reg.ControllerFlags(0)) == 0
+    assert reg.ControllerFlags.NONE == 0

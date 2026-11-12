@@ -288,3 +288,12 @@ def test_malformed_enum_member_is_a_violation_not_a_crash(raw, enum_name, member
     with pytest.raises(schema.SchemaError) as exc:
         schema.parse(broken)
     assert any(enum_name in v for v in exc.value.violations)
+
+
+@pytest.mark.parametrize("value", ["false", "true", 0, 1, None, [True]])
+def test_state_dependent_must_be_a_boolean(raw, value):
+    broken = copy.deepcopy(raw)
+    broken["fault_codes"][1]["state_dependent"] = value
+    with pytest.raises(schema.SchemaError) as exc:
+        schema.parse(broken)
+    assert any("state_dependent" in v for v in exc.value.violations)

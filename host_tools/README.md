@@ -54,3 +54,7 @@ All values served by the simulator are simulated. They are not equipment limits 
 ## Not implemented here
 
 Snapshot acceptance, freshness expiry and fault prioritisation are deliberately not implemented. `read` displays register contents only; it makes no accept/reject decision and no claim that the system or water is safe.
+
+## Known limitation: run from a repository checkout
+
+`ro-tools` reads `protocol/register_map.yaml` from the repository, relative to the source tree. Use the default editable install (`uv sync`). A non-editable install or a built wheel does not contain the register map, so `validate`, `generate` and `read` will report a missing map.

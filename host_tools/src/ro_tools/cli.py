@@ -59,8 +59,8 @@ def _positive_float(text: str) -> float:
         value = float(text)
     except ValueError:
         raise argparse.ArgumentTypeError(f"not a number: {text!r}") from None
-    if not value > 0:
-        raise argparse.ArgumentTypeError(f"must be greater than 0, got {text!r}")
+    if not value > 0 or value == float("inf"):
+        raise argparse.ArgumentTypeError(f"must be a finite number greater than 0, got {text!r}")
     return value
 
 
@@ -162,7 +162,7 @@ def _cmd_generate(args: argparse.Namespace) -> int:
             )
             return EXIT_FAIL
         codegen.write(m)
-    except ValueError as exc:
+    except (ValueError, OSError) as exc:
         print(f"cannot generate registers.py: {exc}", file=sys.stderr)
         return EXIT_FAIL
     print("wrote generated/registers.py")

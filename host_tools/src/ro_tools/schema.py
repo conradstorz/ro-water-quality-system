@@ -413,13 +413,17 @@ def _parse_faults(raw: dict, severities: dict[int, str], bad: list[str]) -> tupl
         if not isinstance(severity, str) or severity not in names:
             bad.append(f"{where}: default_severity {severity!r} not in fault_severity enum")
             ok = False
+        state_dependent = entry.get("state_dependent", False)
+        if not isinstance(state_dependent, bool):
+            bad.append(f"{where}: state_dependent {state_dependent!r} must be a boolean")
+            ok = False
         if ok:
             out[code] = FaultCode(
                 code=code,
                 source=source,
                 default_severity=severity,
                 description=str(entry.get("description", "")),
-                state_dependent=bool(entry.get("state_dependent", False)),
+                state_dependent=state_dependent,
             )
     if 0 not in out and not any(isinstance(e, dict) and e.get("code") == 0 for e in src):
         bad.append("fault_codes: code 0 (no active fault) is required")

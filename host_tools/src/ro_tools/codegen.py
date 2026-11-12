@@ -164,10 +164,12 @@ def _emit_flag(cls: str, doc: str, bits: dict[int, str]) -> list[str]:
     :param bits: Mapping of bit index to member name.
     :returns: Source lines.
     """
-    lines = [f"class {cls}(IntFlag):", f'    """{doc}"""']
+    lines = [f"class {cls}(IntFlag):", f'    """{doc}"""', ""]
     if bits:
-        lines.append("")
         lines += [f"    {bits[b].upper()} = 1 << {b}" for b in sorted(bits)]
+    else:
+        # A memberless IntFlag cannot be instantiated, even with 0.
+        lines.append("    NONE = 0")
     return lines
 
 
