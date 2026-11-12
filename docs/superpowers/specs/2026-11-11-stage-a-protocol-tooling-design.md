@@ -14,6 +14,7 @@ Deliver Stage A of `docs/CLAUDE_IMPLEMENTATION_BRIEF.md`: validate the normative
 | YAML → code | Generated source file, committed to the repo, with a test that regenerates and fails on drift. |
 | Test transport | Modbus TCP on localhost (ephemeral port) for automated tests. The same server and client can run RTU over a real serial port from the CLI. |
 | Enums and fault codes | Added to `register_map.yaml` as additive metadata. Protocol version stays 1.1; no address, scale, signedness, or access change. |
+| Server implementation | Hand-written Modbus responder and framing; pymodbus is used only by the client. pymodbus 3.16's server datastore API is deprecated pending v4 and cannot express the required exception codes, silent drops, or wrong-unit silence. The pymodbus client therefore cross-checks the server as an independent implementation. |
 | Stage boundary | Protocol-complete simulator with fault injection. No acceptance policy, no freshness expiry, no fault prioritisation. |
 | FC03 on 220–227 | Readable: returns the last accepted status block, zeros before the first valid write. |
 | Status cross-field check | A block is rejected unless `controller_fault_code == 0`, `controller_fault_severity == 0`, and `controller_fault_count == 0` are either all true or all false. |
@@ -39,8 +40,10 @@ host_tools/
       registers.py         GENERATED, committed
     sim/
       __init__.py
-      register_bank.py     pure state, no I/O
-      server.py            pymodbus adapter (TCP or serial RTU)
+      register_bank.py     pure state and PDU handling, no I/O
+      frames.py            RTU CRC/framing and MBAP framing
+      server.py            responder plus TCP and serial RTU transports
+      presets.py           named simulator scenarios
     client.py              read/decode, publish status
     cli.py                 command-line entry point
   tests/
@@ -51,8 +54,9 @@ Each unit has one job and a narrow interface:
 - **`schema`** depends only on PyYAML. Input: a path. Output: a `RegisterMap` model or a `SchemaError` listing every violation found.
 - **`codegen`** depends only on the model. Input: `RegisterMap`. Output: source text. Deterministic: same model, byte-identical output.
 - **`generated.registers`** depends on the standard library only. No YAML is read at runtime.
-- **`sim.register_bank`** depends on `generated.registers` and an injected monotonic clock. No sockets, no threads of its own, no pymodbus imports.
-- **`sim.server`** adapts the bank to pymodbus. It contains transport and exception-code mapping only.
+- **`sim.register_bank`** depends on `generated.registers` and an injected monotonic clock. It maps a request PDU to a response PDU. No sockets, no threads of its own.
+- **`sim.frames`** is pure byte framing: Modbus CRC-16, RTU frames, MBAP headers.
+- **`sim.server`** carries PDUs between a transport and the bank. Nothing under `sim/` imports pymodbus.
 - **`client`** depends on pymodbus and `generated.registers`.
 - **`cli`** wires the above together and configures Loguru.
 
@@ -169,7 +173,7 @@ A default bank starts with simulated values clearly labelled as simulated in log
 
 ### 8.3 Adapter
 
-`sim.server` exposes `serve_tcp(bank, host, port)` and `serve_rtu(bank, port, baud, parity, stop_bits)` with serial defaults from the generated constants. Both use the same request handling. Unit ID other than `UNIT_ID` receives no reply.
+`sim.server` exposes a `Responder` (bank, unit ID, drop and delay controls), a `TcpSimServer` running in a background thread, and `serve_rtu` for a serial port with defaults from the generated constants. Both transports use the same responder. A unit ID other than `UNIT_ID` receives no reply. The serial transport delimits frames by idle gap and silently discards frames with a bad CRC.
 
 ## 9. Client
 
@@ -217,7 +221,7 @@ pytest and hypothesis, run with `uv run pytest` from `host_tools/`.
 
 ## 13. Dependencies
 
-`pyyaml`, `pymodbus` pinned to a single minor series (the 3.x API changes between minors; the exact series is chosen and verified at implementation time), `loguru`. Dev: `pytest`, `hypothesis`, `ruff`. A `[project.scripts]` entry adds `ro-tools`.
+`pyyaml`, `pymodbus[serial]~=3.16.0` (client only; the 3.x API changes between minors), `pyserial`, `loguru`. Dev: `pytest`, `hypothesis`, `ruff`. A `[project.scripts]` entry adds `ro-tools`.
 
 ## 14. Follow-on work enabled
 
