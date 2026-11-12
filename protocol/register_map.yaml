@@ -313,6 +313,7 @@ holding_registers:
   type: u16
   words: 1
   access: write_multiple_only
+  equals: 1
   note: Display-only controller status; atomic full-block FC16 write
 - address: 221
   name: status_sequence
@@ -325,12 +326,14 @@ holding_registers:
   type: u16
   words: 1
   access: write_multiple_only
+  enum: ro_state
   note: Display-only controller status; atomic full-block FC16 write
 - address: 223
   name: pump_commanded
   type: u16
   words: 1
   access: write_multiple_only
+  enum: pump_commanded
   note: Display-only controller status; atomic full-block FC16 write
 - address: 224
   name: controller_fault_code
@@ -343,6 +346,7 @@ holding_registers:
   type: u16
   words: 1
   access: write_multiple_only
+  enum: fault_severity
   note: Display-only controller status; atomic full-block FC16 write
 - address: 226
   name: controller_fault_count
@@ -365,3 +369,37 @@ controller_status_extension:
   status_schema_major: 1
   display_only: true
   require_sequence_progress: true
+enums:
+  ro_state:
+    0: unknown
+    1: standby
+    2: startup_flush
+    3: divert
+    4: production
+    5: shutdown_flush
+    6: fault
+    7: maintenance
+  pump_commanded:
+    0: "off"
+    1: "on"
+    2: unknown
+  fault_severity:
+    0: none
+    1: advisory
+    2: warning
+    3: critical
+controller_flags_bits: {}
+fault_codes:
+- {code: 0, source: controller, default_severity: none, description: No active fault}
+- {code: 1001, source: controller, default_severity: critical, description: High RO feed pressure interlock}
+- {code: 1002, source: controller, default_severity: critical, description: Concentrate flow below configured limit during production}
+- {code: 1003, source: controller, default_severity: critical, description: Critical sensor data unavailable during production}
+- {code: 1004, source: controller, default_severity: critical, description: High-high storage level / overflow interlock}
+- {code: 1005, source: controller, default_severity: critical, description: RS485 sensor-node communications timeout during production}
+- {code: 2001, source: controller, default_severity: warning, description: Membrane rejection below configured warning limit}
+- {code: 2002, source: controller, default_severity: warning, description: Abnormal RO pressure trend}
+- {code: 3001, source: controller, default_severity: advisory, description: Maintenance or calibration due}
+- {code: 4001, source: sensor, default_severity: critical, state_dependent: true, description: Critical local measurement invalid or stale}
+- {code: 4002, source: sensor, default_severity: warning, description: Sensor degraded / inconsistent readings}
+- {code: 4003, source: sensor, default_severity: advisory, description: Controller status unavailable}
+- {code: 4004, source: sensor, default_severity: advisory, description: LCD communication failure (log only when display absent)}
