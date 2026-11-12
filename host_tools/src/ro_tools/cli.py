@@ -21,7 +21,7 @@ from ro_tools.client import CommsError, ModbusExceptionError, SensorNodeClient
 from ro_tools.generated import registers as reg
 from ro_tools.sim.presets import PRESETS, apply_preset
 from ro_tools.sim.register_bank import RegisterBank
-from ro_tools.sim.server import Responder, TcpSimServer, serve_rtu_on
+from ro_tools.sim.server import Responder, TcpSimServer, open_serial_port, serve_rtu_on
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -70,6 +70,9 @@ def build_parser() -> argparse.ArgumentParser:
     :returns: Parser with the five sub-commands.
     """
     parser = argparse.ArgumentParser(prog="ro-tools", description="RO protocol host tools")
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="log at DEBUG level (default INFO)"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("validate", help="validate the register map")
@@ -85,7 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("read", help="read and print one snapshot")
     _endpoint(p)
-    p.add_argument("--timeout", type=float, default=1.0, metavar="S")
+    p.add_argument("--timeout", type=_positive_float, default=1.0, metavar="S")
 
     p = sub.add_parser("publish-status", help="write one display-only controller status block")
     _endpoint(p)
@@ -95,7 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--severity", choices=_names(reg.FaultSeverity), default="none")
     p.add_argument("--fault-count", type=int, default=0)
     p.add_argument("--sequence", type=int, default=0)
-    p.add_argument("--timeout", type=float, default=1.0, metavar="S")
+    p.add_argument("--timeout", type=_positive_float, default=1.0, metavar="S")
     return parser
 
 
@@ -104,11 +107,13 @@ def _parse_tcp(parser: argparse.ArgumentParser, text: str) -> tuple[str, int]:
 
     :param parser: Parser used to report usage errors (raises ``SystemExit``).
     :param text: Endpoint text.
-    :returns: ``(host, port)``.
+    :returns: ``(host, port)`` with ``port`` in 0..65535.
     """
     host, sep, port = text.rpartition(":")
-    if not sep or not host or not port.isdecimal():
+    if not sep or not host or not port.isascii() or not port.isdecimal():
         parser.error(f"--tcp expects HOST:PORT, got {text!r}")
+    if int(port) > 65535:
+        parser.error(f"--tcp port must be 0..65535, got {port}")
     return host, int(port)
 
 
@@ -146,16 +151,20 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     except (OSError, yaml.YAMLError) as exc:
         print(f"cannot load register map: {exc}", file=sys.stderr)
         return EXIT_FAIL
-    if args.check:
-        if codegen.is_current(m):
-            print("generated/registers.py is current")
-            return EXIT_OK
-        print(
-            "generated/registers.py differs from register_map.yaml; run `ro-tools generate`",
-            file=sys.stderr,
-        )
+    try:
+        if args.check:
+            if codegen.is_current(m):
+                print("generated/registers.py is current")
+                return EXIT_OK
+            print(
+                "generated/registers.py differs from register_map.yaml; run `ro-tools generate`",
+                file=sys.stderr,
+            )
+            return EXIT_FAIL
+        codegen.write(m)
+    except ValueError as exc:
+        print(f"cannot generate registers.py: {exc}", file=sys.stderr)
         return EXIT_FAIL
-    codegen.write(m)
     print("wrote generated/registers.py")
     return EXIT_OK
 
@@ -206,14 +215,7 @@ def _cmd_sim(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     import serial
 
     try:
-        port = serial.Serial(
-            args.serial,
-            baudrate=reg.SERIAL_BAUD,
-            bytesize=8,
-            parity=reg.SERIAL_PARITY,
-            stopbits=reg.SERIAL_STOP_BITS,
-            timeout=0.02,
-        )
+        port = open_serial_port(args.serial)
     except (serial.SerialException, OSError) as exc:
         print(f"cannot open serial port {args.serial}: {exc}", file=sys.stderr)
         return EXIT_FAIL
@@ -304,20 +306,26 @@ def _cmd_publish_status(parser: argparse.ArgumentParser, args: argparse.Namespac
     :returns: Exit status.
     """
     status = reg.ControllerStatus(
+        status_schema_major=reg.STATUS_SCHEMA_MAJOR,
         status_sequence=args.sequence,
         ro_state=reg.RoState[args.state.upper()],
         pump_commanded=reg.PumpCommanded[args.pump.upper()],
         controller_fault_code=args.fault_code,
         controller_fault_severity=reg.FaultSeverity[args.severity.upper()],
         controller_fault_count=args.fault_count,
+        controller_flags=0,
     )
+    try:
+        # Range check only: validate_status is deliberately not run here, so an
+        # inconsistent block still reaches the node and its own rejection.
+        reg.encode_status(status)
+    except ValueError as exc:
+        print(f"invalid status, nothing sent: {exc}", file=sys.stderr)
+        return EXIT_FAIL
     client = _open_client(parser, args)
     try:
         with client:
             client.publish_status(status)
-    except ValueError as exc:
-        print(f"invalid status, nothing sent: {exc}", file=sys.stderr)
-        return EXIT_FAIL
     except CommsError as exc:
         print(f"communication failure: {exc}", file=sys.stderr)
         return EXIT_COMMS
@@ -337,7 +345,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     logger.remove()
-    logger.add(sys.stderr, level="INFO")
+    logger.add(sys.stderr, level="DEBUG" if args.verbose else "INFO")
     try:
         if args.command == "validate":
             return _cmd_validate(args)

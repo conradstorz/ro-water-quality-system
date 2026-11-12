@@ -29,6 +29,11 @@ def test_real_map_loads():
     assert [r.address for r in m.input_registers] == sorted(r.address for r in m.input_registers)
 
 
+def test_status_extension_flags_modelled():
+    m = schema.load()
+    assert m.status_require_sequence_progress is True
+
+
 def test_register_defaults_and_flags():
     m = schema.load()
     by_name = {r.name: r for r in m.input_registers + m.holding_registers}
@@ -84,6 +89,29 @@ def _mutations():
 
     def ext_count(r):
         r["controller_status_extension"]["count"] = 7
+
+    def seq_progress_not_bool(r):
+        r["controller_status_extension"]["require_sequence_progress"] = "yes"
+
+    def seq_progress_missing(r):
+        del r["controller_status_extension"]["require_sequence_progress"]
+
+    def status_write_fc(r):
+        r["controller_status_extension"]["function_code_write"] = 6
+
+    def status_write_mode(r):
+        r["controller_status_extension"]["write_mode"] = "partial_ok"
+
+    def status_not_display_only(r):
+        r["controller_status_extension"]["display_only"] = False
+
+    def status_schema_major_mismatch(r):
+        r["controller_status_extension"]["status_schema_major"] = 2
+
+    def status_schema_register_missing(r):
+        r["holding_registers"] = [
+            x for x in r["holding_registers"] if x["name"] != "status_schema_major"
+        ]
 
     def bad_access(r):
         _reg(r, "holding_registers", "device_id")["access"] = "read_write"

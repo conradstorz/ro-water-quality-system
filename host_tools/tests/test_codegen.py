@@ -27,3 +27,13 @@ def test_write_then_is_current(tmp_path):
     codegen.write(m, out)
     assert codegen.is_current(m, out)
     assert b"\r\n" not in out.read_bytes()
+
+
+def test_is_current_detects_a_single_changed_byte(tmp_path):
+    m = schema.load()
+    out = tmp_path / "registers.py"
+    codegen.write(m, out)
+    data = bytearray(out.read_bytes())
+    data[len(data) // 2] ^= 0x01
+    out.write_bytes(bytes(data))
+    assert codegen.is_current(m, out) is False

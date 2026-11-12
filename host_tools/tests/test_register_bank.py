@@ -276,3 +276,101 @@ def test_reader_never_sees_mixed_snapshot(bank):
     finally:
         stop.set()
         t.join()
+
+
+def _good_with_sequence(seq: int) -> list[int]:
+    return [1, seq, 4, 1, 0, 0, 0, 0]
+
+
+def test_sequence_progress_is_none_before_any_write(bank):
+    assert bank.last_status_sequence_progress_ms is None
+
+
+def test_sequence_progress_set_on_first_valid_write(bank, clock):
+    clock.t = 200.0
+    bank.handle_pdu(write16(220, _good_with_sequence(5)))
+    assert bank.last_status_sequence_progress_ms == 200000
+    assert bank.last_valid_status_received_ms == 200000
+
+
+def test_same_sequence_advances_received_but_not_progress(bank, clock):
+    clock.t = 200.0
+    bank.handle_pdu(write16(220, _good_with_sequence(5)))
+    clock.t = 201.5
+    bank.handle_pdu(write16(220, _good_with_sequence(5)))
+    assert bank.last_valid_status_received_ms == 201500
+    assert bank.last_status_sequence_progress_ms == 200000
+
+
+def test_changed_sequence_advances_both(bank, clock):
+    clock.t = 200.0
+    bank.handle_pdu(write16(220, _good_with_sequence(5)))
+    clock.t = 202.0
+    bank.handle_pdu(write16(220, _good_with_sequence(6)))
+    assert bank.last_valid_status_received_ms == 202000
+    assert bank.last_status_sequence_progress_ms == 202000
+
+
+def test_rejected_write_changes_neither_timestamp(bank, clock):
+    clock.t = 200.0
+    bank.handle_pdu(write16(220, _good_with_sequence(5)))
+    clock.t = 205.0
+    bad = _good_with_sequence(9)
+    bad[2] = 99
+    assert bank.handle_pdu(write16(220, bad)) == exc(16, EXC_ILLEGAL_VALUE)
+    assert bank.last_valid_status_received_ms == 200000
+    assert bank.last_status_sequence_progress_ms == 200000
+
+
+def test_reboot_clears_sequence_progress_and_next_write_counts_as_progress(bank, clock):
+    clock.t = 200.0
+    bank.handle_pdu(write16(220, _good_with_sequence(5)))
+    bank.reboot()
+    assert bank.last_status_sequence_progress_ms is None
+    clock.t = 210.0
+    bank.handle_pdu(write16(220, _good_with_sequence(5)))
+    assert bank.last_status_sequence_progress_ms == 210000
+
+
+def test_last_rejection_none_initially(bank):
+    assert bank.last_rejection is None
+
+
+def test_last_rejection_names_bad_enum_on_fc16(bank):
+    bad = list(GOOD)
+    bad[2] = 99
+    assert bank.handle_pdu(write16(220, bad)) == exc(16, EXC_ILLEGAL_VALUE)
+    assert bank.last_rejection is not None
+    assert "ro_state" in bank.last_rejection and "99" in bank.last_rejection
+
+
+def test_last_rejection_after_out_of_range_read(bank):
+    assert bank.handle_pdu(read(4, 100, 41)) == exc(4, EXC_ILLEGAL_ADDRESS)
+    assert bank.last_rejection and "100" in bank.last_rejection
+
+
+def test_last_rejection_for_unsupported_function(bank):
+    bank.handle_pdu(bytes([6, 0, 0, 0, 1]))
+    assert bank.last_rejection and "6" in bank.last_rejection
+
+
+def test_last_rejection_cleared_by_good_request(bank):
+    bank.handle_pdu(read(4, 100, 41))
+    assert bank.last_rejection is not None
+    bank.handle_pdu(read(4, 100, 40))
+    assert bank.last_rejection is None
+
+
+def test_reboot_at_max_boot_counter_saturates_and_flags(bank):
+    bank.set_field("boot_counter", 0xFFFFFFFF)
+    bank.reboot()
+    s = reg.decode_snapshot(words_of(bank.handle_pdu(read(4, 100, 40))))
+    assert s.boot_counter == 0xFFFFFFFF
+    assert s.module_status & reg.StatusBits.OVERFLOW_OR_SATURATION
+    assert s.module_status & reg.StatusBits.WATCHDOG_RESET_SEEN
+
+
+def test_reboot_below_max_does_not_flag_overflow(bank):
+    bank.reboot()
+    assert not bank.published().module_status & reg.StatusBits.OVERFLOW_OR_SATURATION
+    assert bank.published().boot_counter == 1

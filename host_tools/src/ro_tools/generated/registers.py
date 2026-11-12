@@ -27,6 +27,7 @@ STATUS_START = 220
 STATUS_COUNT = 8
 STATUS_TIMEOUT_MS = 3000
 STATUS_SCHEMA_MAJOR = 1
+STATUS_REQUIRE_SEQUENCE_PROGRESS = True
 
 METADATA_START = 200
 METADATA_COUNT = 3
@@ -317,18 +318,22 @@ class Snapshot:
         return self.feed_temp_c_x100 / 100
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class ControllerStatus:
-    """Display-only controller status block written to the sensor node."""
+    """Display-only controller status block written to the sensor node.
 
-    status_schema_major: int = 1
-    status_sequence: int = 0
-    ro_state: int = 0
-    pump_commanded: int = 0
-    controller_fault_code: int = 0
-    controller_fault_severity: int = 0
-    controller_fault_count: int = 0
-    controller_flags: int = 0
+    Every field is required: there is no default that could be mistaken for
+    a deliberate value (a zero pump_commanded would read as "off").
+    """
+
+    status_schema_major: int
+    status_sequence: int
+    ro_state: int
+    pump_commanded: int
+    controller_fault_code: int
+    controller_fault_severity: int
+    controller_fault_count: int
+    controller_flags: int
 
 
 class StatusValidationError(ValueError):

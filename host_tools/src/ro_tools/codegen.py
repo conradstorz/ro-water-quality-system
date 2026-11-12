@@ -157,14 +157,13 @@ def _emit_flag(cls: str, doc: str, bits: dict[int, str]) -> list[str]:
     return lines
 
 
-def _emit_dataclass_fields(regs: list[Register], defaults: dict[str, int]) -> list[str]:
-    """Emit dataclass field lines, one integer field per register.
+def _emit_dataclass_fields(regs: list[Register]) -> list[str]:
+    """Emit dataclass field lines with a zero default, one integer per register.
 
     :param regs: Non-reserved registers in order.
-    :param defaults: Per-register default overrides.
     :returns: Source lines.
     """
-    return [f"    {r.name}: int = {defaults.get(r.name, 0)}" for r in regs]
+    return [f"    {r.name}: int = 0" for r in regs]
 
 
 def _status_allowed(status: list[Register], m: RegisterMap) -> list[str]:
@@ -240,6 +239,7 @@ def render(m: RegisterMap) -> str:
         f"STATUS_COUNT = {m.status_count}",
         f"STATUS_TIMEOUT_MS = {m.status_timeout_ms}",
         f"STATUS_SCHEMA_MAJOR = {m.status_schema_major}",
+        f"STATUS_REQUIRE_SEQUENCE_PROGRESS = {m.status_require_sequence_progress!r}",
         "",
         f"METADATA_START = {min(r.address for r in meta)}",
         f"METADATA_COUNT = {len(meta)}",
@@ -305,7 +305,7 @@ def render(m: RegisterMap) -> str:
         '    """One decoded input-register snapshot; reserved registers are omitted."""',
         "",
     ]
-    out += _emit_dataclass_fields(snap_regs, {})
+    out += _emit_dataclass_fields(snap_regs)
     for r in snap_regs:
         if r.scale_divisor > 1:
             base = r.name.rsplit("_x", 1)[0]
@@ -319,14 +319,16 @@ def render(m: RegisterMap) -> str:
     out += ["", ""]
 
     out += [
-        "@dataclass(frozen=True)",
+        "@dataclass(frozen=True, kw_only=True)",
         "class ControllerStatus:",
-        '    """Display-only controller status block written to the sensor node."""',
+        '    """Display-only controller status block written to the sensor node.',
+        "",
+        "    Every field is required: there is no default that could be mistaken for",
+        '    a deliberate value (a zero pump_commanded would read as "off").',
+        '    """',
         "",
     ]
-    out += _emit_dataclass_fields(
-        status, {r.name: r.equals for r in status if r.equals is not None}
-    )
+    out += [f"    {r.name}: int" for r in status]
     out += ["", ""]
     out += [
         "class StatusValidationError(ValueError):",

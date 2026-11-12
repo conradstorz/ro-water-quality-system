@@ -157,3 +157,27 @@ def test_status_accepts_unknown_fault_code():
 def test_status_rejects(words):
     with pytest.raises(reg.StatusValidationError):
         reg.validate_status(words)
+
+
+def test_controller_status_has_no_defaults():
+    with pytest.raises(TypeError):
+        reg.ControllerStatus()  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        reg.ControllerStatus(  # type: ignore[call-arg]
+            status_schema_major=1,
+            status_sequence=0,
+            ro_state=1,
+            controller_fault_code=0,
+            controller_fault_severity=0,
+            controller_fault_count=0,
+            controller_flags=0,
+        )
+
+
+def test_controller_status_is_keyword_only():
+    with pytest.raises(TypeError):
+        reg.ControllerStatus(1, 0, 1, 0, 0, 0, 0, 0)  # type: ignore[misc]
+
+
+def test_status_requires_sequence_progress_constant():
+    assert reg.STATUS_REQUIRE_SEQUENCE_PROGRESS is True

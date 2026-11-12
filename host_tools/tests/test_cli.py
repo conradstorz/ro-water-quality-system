@@ -248,3 +248,77 @@ def test_sim_serial_server_thread_death_exits_1(monkeypatch, capsys):
     assert cli.main(["sim", "--serial", "COM99", "--period", "0.05"]) == 1
     assert "stopped unexpectedly" in capsys.readouterr().err
     assert closed
+
+
+def test_verbose_flag_parses():
+    parser = cli.build_parser()
+    assert parser.parse_args(["validate"]).verbose is False
+    assert parser.parse_args(["-v", "validate"]).verbose is True
+    assert parser.parse_args(["--verbose", "validate"]).verbose is True
+
+
+@pytest.mark.parametrize(("argv", "level"), [(["validate"], "INFO"), (["-v", "validate"], "DEBUG")])
+def test_verbose_sets_loguru_level(monkeypatch, argv, level):
+    levels = []
+    monkeypatch.setattr(cli.logger, "add", lambda sink, **kw: levels.append(kw["level"]))
+    assert cli.main(argv) == 0
+    assert levels == [level]
+
+
+@pytest.mark.parametrize("endpoint", ["127.0.0.1:70000", "127.0.0.1:65536"])
+def test_tcp_port_out_of_range_is_usage_error(endpoint, capsys):
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["read", "--tcp", endpoint])
+    assert exc.value.code == 2
+    assert "port" in capsys.readouterr().err
+
+
+def test_tcp_port_boundaries_are_accepted():
+    parser = cli.build_parser()
+    assert cli._parse_tcp(parser, "h:0") == ("h", 0)
+    assert cli._parse_tcp(parser, "h:65535") == ("h", 65535)
+
+
+def test_sim_tcp_port_out_of_range_is_usage_error():
+    with pytest.raises(SystemExit):
+        cli.main(["sim", "--tcp", "127.0.0.1:70000"])
+
+
+@pytest.mark.parametrize("cmd", [["read"], ["publish-status", "--state", "standby"]])
+@pytest.mark.parametrize("timeout", ["0", "-1", "abc"])
+def test_timeout_must_be_positive(cmd, timeout):
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args([*cmd, "--tcp", "a:1", "--timeout", timeout])
+
+
+@pytest.mark.parametrize(
+    "extra", [["--fault-code", "70000"], ["--sequence", "-1"], ["--fault-count", "70000"]]
+)
+def test_publish_status_range_error_exits_before_connecting(monkeypatch, capsys, extra):
+    def no_connect(*args, **kwargs):
+        raise AssertionError("must not create a client")
+
+    monkeypatch.setattr(cli.SensorNodeClient, "tcp", no_connect)
+    rc = cli.main(["publish-status", "--tcp", "127.0.0.1:9", "--state", "standby", *extra])
+    assert rc == 1
+    assert "nothing sent" in capsys.readouterr().err
+
+
+def test_publish_status_inconsistent_block_is_still_sent(server):
+    """Only range errors are caught client-side; the node's rejection must stay testable."""
+    rc = cli.main(
+        ["publish-status", "--tcp", _tcp(server), "--state", "fault", "--fault-code", "1001"]
+    )
+    assert rc == 3
+
+
+@pytest.mark.parametrize("argv", [["generate"], ["generate", "--check"]])
+def test_generate_value_error_exits_1(monkeypatch, capsys, argv):
+    def boom(*args, **kwargs):
+        raise ValueError("cannot render")
+
+    monkeypatch.setattr(cli.codegen, "render", boom)
+    monkeypatch.setattr(cli.codegen, "write", boom)
+    monkeypatch.setattr(cli.codegen, "is_current", boom)
+    assert cli.main(argv) == 1
+    assert "cannot render" in capsys.readouterr().err

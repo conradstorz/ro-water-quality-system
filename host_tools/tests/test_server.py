@@ -6,12 +6,13 @@ import threading
 import time
 
 import pytest
+from loguru import logger
 
 from ro_tools.generated import registers as reg
 from ro_tools.sim import frames
 from ro_tools.sim.presets import PRESETS, apply_preset
 from ro_tools.sim.register_bank import RegisterBank
-from ro_tools.sim.server import Responder, TcpSimServer, serve_rtu_on
+from ro_tools.sim.server import Responder, TcpSimServer, open_serial_port, serve_rtu_on
 
 READ_BLOCK = struct.pack(">BHH", 4, 100, 40)
 
@@ -43,6 +44,39 @@ def test_responder_delay(responder):
     t0 = time.monotonic()
     assert responder.respond(reg.UNIT_ID, READ_BLOCK) is not None
     assert time.monotonic() - t0 >= 0.05
+
+
+@pytest.fixture()
+def log_lines():
+    """Collect Loguru messages (all levels) emitted during a test."""
+    lines: list[tuple[str, str]] = []
+    handler = logger.add(
+        lambda m: lines.append((m.record["level"].name, m.record["message"])), level="DEBUG"
+    )
+    yield lines
+    logger.remove(handler)
+
+
+@pytest.mark.parametrize("fc", [0x84, 0x90, 0x80, 0xFF])
+def test_responder_ignores_request_with_exception_bit(responder, fc, log_lines):
+    assert responder.respond(reg.UNIT_ID, bytes([fc, 2])) is None
+    assert any(level == "DEBUG" for level, _ in log_lines)
+    assert not any(level == "WARNING" for level, _ in log_lines)
+
+
+def test_responder_logs_warning_for_exception_response(responder, log_lines):
+    bad = struct.pack(">BHH", 4, 100, 41)
+    resp = responder.respond(reg.UNIT_ID, bad)
+    assert resp == bytes([0x84, 2])
+    warnings = [m for level, m in log_lines if level == "WARNING"]
+    assert len(warnings) == 1
+    assert "4" in warnings[0] and "exception 2" in warnings[0]
+    assert "100..140" in warnings[0], "bank.last_rejection text must be included"
+
+
+def test_responder_does_not_warn_for_normal_response(responder, log_lines):
+    assert responder.respond(reg.UNIT_ID, READ_BLOCK) is not None
+    assert not any(level == "WARNING" for level, _ in log_lines)
 
 
 def _recv_exact(sock: socket.socket, size: int) -> bytes:
@@ -266,3 +300,38 @@ def test_stop_closes_accepted_connections_and_is_idempotent(responder, capfd):
     assert data == b""
     time.sleep(0.1)
     assert "Traceback" not in capfd.readouterr().err
+
+
+def test_open_serial_port_uses_protocol_settings(monkeypatch):
+    import serial
+
+    calls = []
+
+    class FakePort:
+        def __init__(self, *args, **kwargs):
+            calls.append((args, kwargs))
+
+    monkeypatch.setattr(serial, "Serial", FakePort)
+    port = open_serial_port("COM7")
+    assert isinstance(port, FakePort)
+    assert calls == [
+        (
+            ("COM7",),
+            {
+                "baudrate": reg.SERIAL_BAUD,
+                "bytesize": 8,
+                "parity": reg.SERIAL_PARITY,
+                "stopbits": reg.SERIAL_STOP_BITS,
+                "timeout": 0.02,
+            },
+        )
+    ]
+
+
+def test_open_serial_port_overrides(monkeypatch):
+    import serial
+
+    calls = []
+    monkeypatch.setattr(serial, "Serial", lambda *a, **k: calls.append(k))
+    open_serial_port("COM7", baud=9600, parity="N", stop_bits=2)
+    assert (calls[0]["baudrate"], calls[0]["parity"], calls[0]["stopbits"]) == (9600, "N", 2)

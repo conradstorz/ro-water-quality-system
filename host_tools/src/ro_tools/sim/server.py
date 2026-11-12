@@ -6,13 +6,16 @@ import socket
 import socketserver
 import threading
 import time
-from typing import Protocol, Self
+from typing import TYPE_CHECKING, Protocol, Self
 
 from loguru import logger
 
 from ro_tools.generated.registers import SERIAL_BAUD, SERIAL_PARITY, SERIAL_STOP_BITS, UNIT_ID
 from ro_tools.sim.frames import FrameError, build_mbap, build_rtu, parse_mbap_header, parse_rtu
 from ro_tools.sim.register_bank import RegisterBank
+
+if TYPE_CHECKING:
+    import serial
 
 
 class Responder:
@@ -37,9 +40,15 @@ class Responder:
         :param unit: Unit id from the frame.
         :param pdu: Request PDU.
         :returns: Response PDU, or None when nothing must be sent (other unit,
-            or responses are being dropped).
+            a request whose function code has the 0x80 bit set, or responses
+            are being dropped).
         """
         if unit != self.unit_id:
+            return None
+        if pdu and pdu[0] & 0x80:
+            # On a 2-wire serial adapter the simulator hears its own exception
+            # responses echoed back; answering them would loop.
+            logger.debug("ignoring function code 0x{:02X} (exception bit set)", pdu[0])
             return None
         with self._count_lock:
             self.request_count += 1
@@ -49,7 +58,15 @@ class Responder:
             return None
         if self.delay_s > 0:
             time.sleep(self.delay_s)
-        return self.bank.handle_pdu(pdu)
+        resp = self.bank.handle_pdu(pdu)
+        if resp[0] & 0x80:
+            logger.warning(
+                "request function {} answered with exception {}: {}",
+                pdu[0] if pdu else "none",
+                resp[1],
+                self.bank.last_rejection,
+            )
+        return resp
 
 
 def _read_exact(rfile, size: int) -> bytes | None:
@@ -204,30 +221,27 @@ def serve_rtu_on(responder: Responder, port: SerialLike, stop: threading.Event) 
             port.write(build_rtu(unit, resp))
 
 
-def serve_rtu(
-    responder: Responder,
+def open_serial_port(
     device: str,
-    stop: threading.Event,
     *,
     baud: int = SERIAL_BAUD,
     parity: str = SERIAL_PARITY,
     stop_bits: int = SERIAL_STOP_BITS,
-) -> None:
-    """Open a serial device and run the RTU loop until ``stop`` is set.
+) -> serial.Serial:
+    """Open a serial device for :func:`serve_rtu_on` (8 data bits).
 
     The 20 ms read timeout is the idle-gap detector: longer than the 3.5
     character gap at 19200 baud, far shorter than the 1 s poll period.
 
-    :param responder: Responder that answers requests.
     :param device: Serial device name, e.g. ``COM5``.
-    :param stop: Set to end the loop.
     :param baud: Baud rate.
     :param parity: Parity letter.
     :param stop_bits: Stop bits.
+    :returns: The open port; the caller closes it.
+    :raises serial.SerialException: If the device cannot be opened.
     """
     import serial
 
-    with serial.Serial(
+    return serial.Serial(
         device, baudrate=baud, bytesize=8, parity=parity, stopbits=stop_bits, timeout=0.02
-    ) as port:
-        serve_rtu_on(responder, port, stop)
+    )

@@ -4,6 +4,7 @@ import socket
 import struct
 import threading
 import time
+from typing import Self
 
 import pytest
 
@@ -181,7 +182,7 @@ class ScriptedServer:
             data += chunk
         return data
 
-    def __enter__(self) -> "ScriptedServer":
+    def __enter__(self) -> Self:
         self._thread.start()
         return self
 

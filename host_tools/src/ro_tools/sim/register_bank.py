@@ -41,6 +41,9 @@ def _exception(fc: int, code: int) -> bytes:
     return bytes([fc | 0x80, code])
 
 
+_U32_MAX: int = TYPE_RANGES["u32"][1]
+
+
 class RegisterBank:
     """Double-buffered snapshot plus controller-status mailbox.
 
@@ -71,6 +74,8 @@ class RegisterBank:
         self._status_words = [0] * STATUS_COUNT
         self._status: ControllerStatus | None = None
         self._status_rx_ms: int | None = None
+        self._status_progress_ms: int | None = None
+        self._last_rejection: str | None = None
 
     def set_field(self, name: str, raw: int) -> None:
         """Set a pending snapshot field.
@@ -151,9 +156,17 @@ class RegisterBank:
             self._published = Snapshot(**self._pending)
 
     def reboot(self) -> None:
-        """Simulate a node reboot: bump boot counter, reset sequence and status mailbox."""
+        """Simulate a node reboot: bump boot counter, reset sequence and status mailbox.
+
+        The boot counter saturates at its u32 maximum instead of wrapping, and
+        ``OVERFLOW_OR_SATURATION`` is then flagged in the module status.
+        """
         with self._lock:
-            self._pending["boot_counter"] += 1
+            if self._pending["boot_counter"] >= _U32_MAX:
+                self._pending["boot_counter"] = _U32_MAX
+                self._pending["module_status"] |= int(StatusBits.OVERFLOW_OR_SATURATION)
+            else:
+                self._pending["boot_counter"] += 1
             self._boot_time = self._clock()
             self._pending["uptime_seconds"] = 0
             self._pending["snapshot_sequence"] = 0
@@ -161,6 +174,7 @@ class RegisterBank:
             self._status_words = [0] * STATUS_COUNT
             self._status = None
             self._status_rx_ms = None
+            self._status_progress_ms = None
             self._published = Snapshot(**self._pending)
 
     def published(self) -> Snapshot:
@@ -180,53 +194,118 @@ class RegisterBank:
         with self._lock:
             return self._status_rx_ms
 
+    @property
+    def last_status_sequence_progress_ms(self) -> int | None:
+        """Clock time in ms at which the accepted ``status_sequence`` last changed.
+
+        Set by the first valid status write after construction or
+        :meth:`reboot`, and afterwards only by a valid write whose
+        ``status_sequence`` differs from the previously accepted one. A
+        publisher that keeps rewriting the same block therefore advances
+        :attr:`last_valid_status_received_ms` but not this value. The bank
+        applies no expiry; the consumer decides what is too old.
+        """
+        with self._lock:
+            return self._status_progress_ms
+
+    @property
+    def last_rejection(self) -> str | None:
+        """Short reason for the latest exception response, or None.
+
+        Reflects only the most recent :meth:`handle_pdu` call: a call that
+        returned a normal response resets it to None.
+        """
+        with self._lock:
+            return self._last_rejection
+
     def handle_pdu(self, pdu: bytes) -> bytes:
         """Process one request PDU.
 
         :param pdu: Request PDU (function code onward, no unit id or CRC).
         :returns: Normal or exception response PDU.
         """
-        if not pdu:
-            return bytes([0x80, EXC_ILLEGAL_FUNCTION])
         with self._lock:
+            self._last_rejection = None
+            if not pdu:
+                return self._reject(0, EXC_ILLEGAL_FUNCTION, "empty PDU")
             return self._dispatch(pdu)
+
+    def _reject(self, fc: int, code: int, reason: str) -> bytes:
+        """Record ``reason`` and build the exception response (lock held).
+
+        :param fc: Request function code.
+        :param code: Modbus exception code.
+        :param reason: Short human-readable cause.
+        :returns: Exception response PDU.
+        """
+        self._last_rejection = reason
+        return _exception(fc, code)
 
     def _dispatch(self, pdu: bytes) -> bytes:
         fc = pdu[0]
         if fc not in (3, 4, 16):
-            return _exception(fc, EXC_ILLEGAL_FUNCTION)
+            return self._reject(fc, EXC_ILLEGAL_FUNCTION, f"function code {fc} not supported")
         if fc in (3, 4):
             if len(pdu) != 5:
-                return _exception(fc, EXC_ILLEGAL_VALUE)
+                return self._reject(
+                    fc, EXC_ILLEGAL_VALUE, f"FC{fc} request length {len(pdu)}, expected 5"
+                )
             addr, count = struct.unpack(">HH", pdu[1:])
             if not 1 <= count <= 125:
-                return _exception(fc, EXC_ILLEGAL_VALUE)
+                return self._reject(
+                    fc, EXC_ILLEGAL_VALUE, f"FC{fc} quantity {count} outside 1..125"
+                )
             end = addr + count
+            span = f"FC{fc} range {addr}..{end - 1}"
             if fc == 4:
                 if addr < INPUT_START or end > INPUT_START + INPUT_COUNT:
-                    return _exception(fc, EXC_ILLEGAL_ADDRESS)
+                    return self._reject(
+                        fc,
+                        EXC_ILLEGAL_ADDRESS,
+                        f"{span} outside input block "
+                        f"{INPUT_START}..{INPUT_START + INPUT_COUNT - 1}",
+                    )
                 words = encode_snapshot(self._published)[addr - INPUT_START : end - INPUT_START]
             elif METADATA_START <= addr and end <= METADATA_START + METADATA_COUNT:
                 words = self._metadata[addr - METADATA_START : end - METADATA_START]
             elif STATUS_START <= addr and end <= STATUS_START + STATUS_COUNT:
                 words = self._status_words[addr - STATUS_START : end - STATUS_START]
             else:
-                return _exception(fc, EXC_ILLEGAL_ADDRESS)
+                return self._reject(
+                    fc,
+                    EXC_ILLEGAL_ADDRESS,
+                    f"{span} not within metadata block "
+                    f"{METADATA_START}..{METADATA_START + METADATA_COUNT - 1} or status block "
+                    f"{STATUS_START}..{STATUS_START + STATUS_COUNT - 1}",
+                )
             return bytes([fc, 2 * len(words)]) + struct.pack(f">{len(words)}H", *words)
         # fc == 16
         if len(pdu) < 6:
-            return _exception(fc, EXC_ILLEGAL_VALUE)
+            return self._reject(fc, EXC_ILLEGAL_VALUE, f"FC16 request length {len(pdu)} too short")
         addr, count, byte_count = struct.unpack(">HHB", pdu[1:6])
         if not 1 <= count <= 123 or byte_count != 2 * count or len(pdu) != 6 + byte_count:
-            return _exception(fc, EXC_ILLEGAL_VALUE)
+            return self._reject(
+                fc,
+                EXC_ILLEGAL_VALUE,
+                f"FC16 inconsistent quantity {count}, byte count {byte_count}, length {len(pdu)}",
+            )
         if (addr, count) != (STATUS_START, STATUS_COUNT):
-            return _exception(fc, EXC_ILLEGAL_ADDRESS)
+            return self._reject(
+                fc,
+                EXC_ILLEGAL_ADDRESS,
+                f"FC16 write {addr}+{count} is not the full status block "
+                f"{STATUS_START}+{STATUS_COUNT}",
+            )
         values = list(struct.unpack(f">{count}H", pdu[6:]))
         try:
             validate_status(values)
-        except StatusValidationError:
-            return _exception(fc, EXC_ILLEGAL_VALUE)
+        except StatusValidationError as exc:
+            return self._reject(fc, EXC_ILLEGAL_VALUE, f"status block rejected: {exc}")
+        now_ms = int(self._clock() * 1000)
+        previous = self._status
         self._status_words = values
         self._status = decode_status(values)
-        self._status_rx_ms = int(self._clock() * 1000)
+        self._status_rx_ms = now_ms
+        if previous is None or previous.status_sequence != self._status.status_sequence:
+            self._status_progress_ms = now_ms
         return struct.pack(">BHH", 16, addr, count)

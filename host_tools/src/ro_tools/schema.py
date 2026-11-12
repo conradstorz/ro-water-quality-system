@@ -121,6 +121,7 @@ class RegisterMap:
     status_count: int
     status_timeout_ms: int
     status_schema_major: int
+    status_require_sequence_progress: bool
     enums: dict[str, dict[int, str]]
     fault_codes: tuple[FaultCode, ...]
 
@@ -357,6 +358,38 @@ def _parse_faults(raw: dict, severities: dict[int, str], bad: list[str]) -> tupl
     return tuple(out[c] for c in sorted(out))
 
 
+def _check_status_extension(ext: dict, holding: list[Register], bad: list[str]) -> bool:
+    """Validate the fixed properties of the controller status extension.
+
+    :param ext: The ``controller_status_extension`` section.
+    :param holding: Parsed holding registers.
+    :param bad: Violation list to append to.
+    :returns: The value of ``require_sequence_progress`` (False when invalid).
+    """
+    where = "controller_status_extension"
+    for key, expected in (
+        ("function_code_write", 16),
+        ("write_mode", "atomic_full_block_only"),
+    ):
+        if key in ext and (ext[key] != expected or isinstance(ext[key], bool)):
+            bad.append(f"{where}.{key}: must be {expected!r}, got {ext[key]!r}")
+    if "display_only" in ext and ext["display_only"] is not True:
+        bad.append(f"{where}.display_only: must be true, got {ext['display_only']!r}")
+    progress = ext.get("require_sequence_progress")
+    if "require_sequence_progress" in ext and not isinstance(progress, bool):
+        bad.append(f"{where}.require_sequence_progress: must be a boolean, got {progress!r}")
+    schema_reg = next((r for r in holding if r.name == "status_schema_major"), None)
+    declared = ext.get("status_schema_major")
+    if schema_reg is None:
+        bad.append("holding_registers: status_schema_major register is required")
+    elif _is_int(declared) and schema_reg.equals != declared:
+        bad.append(
+            f"holding_registers.status_schema_major: equals {schema_reg.equals!r} "
+            f"must match {where}.status_schema_major {declared!r}"
+        )
+    return progress is True
+
+
 def parse(raw: dict) -> RegisterMap:
     """Validate a parsed register-map document and build the model.
 
@@ -396,7 +429,16 @@ def parse(raw: dict) -> RegisterMap:
     ext = _section(
         raw,
         "controller_status_extension",
-        ("start", "count", "timeout_ms", "status_schema_major"),
+        (
+            "start",
+            "count",
+            "timeout_ms",
+            "status_schema_major",
+            "function_code_write",
+            "write_mode",
+            "display_only",
+            "require_sequence_progress",
+        ),
         bad,
     )
     if not _is_int(raw["unit_id"]):
@@ -456,6 +498,8 @@ def parse(raw: dict) -> RegisterMap:
             f"controller_status_extension {status_start}..{status_start + status_count - 1}"
         )
 
+    require_progress = _check_status_extension(ext, tables["holding_registers"], bad)
+
     fault_codes = _parse_faults(raw, enums.get("fault_severity", {}), bad)
     if "fault_severity" not in enums:
         bad.append("enums.fault_severity: required")
@@ -491,6 +535,7 @@ def parse(raw: dict) -> RegisterMap:
         holding_registers=tuple(sorted(tables["holding_registers"], key=lambda r: r.address)),
         status_start=status_start,
         status_count=status_count,
+        status_require_sequence_progress=require_progress,
         enums=enums,
         fault_codes=fault_codes,
         **ints,
