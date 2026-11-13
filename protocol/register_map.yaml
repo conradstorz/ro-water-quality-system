@@ -1,7 +1,7 @@
 protocol: Modbus RTU
 version:
   major: 1
-  minor: 1
+  minor: 2
 unit_id: 1
 serial:
   baud: 19200
@@ -243,18 +243,19 @@ input_registers:
   unit: degC
   access: read_only
 - address: 133
-  name: reserved_133
+  name: node_type
   type: u16
   words: 1
   scale_divisor: 1
-  unit: reserved
+  unit: enum
   access: read_only
+  enum: node_type
 - address: 134
-  name: reserved_134
+  name: installed_mask
   type: u16
   words: 1
   scale_divisor: 1
-  unit: reserved
+  unit: bitmask
   access: read_only
 - address: 135
   name: reserved_135
@@ -370,6 +371,9 @@ controller_status_extension:
   display_only: true
   require_sequence_progress: true
 enums:
+  node_type:
+    0: ro_skid
+    1: tank
   ro_state:
     0: unknown
     1: standby

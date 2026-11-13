@@ -20,7 +20,7 @@ def _reg(raw: dict, table: str, name: str) -> dict:
 
 def test_real_map_loads():
     m = schema.load()
-    assert (m.version_major, m.version_minor) == (1, 1)
+    assert (m.version_major, m.version_minor) == (1, 2)
     assert (m.input_start, m.input_count) == (100, 40)
     assert (m.status_start, m.status_count) == (220, 8)
     assert m.critical_validity_bits == (0, 1, 2, 3, 7)
@@ -38,7 +38,7 @@ def test_register_defaults_and_flags():
     m = schema.load()
     by_name = {r.name: r for r in m.input_registers + m.holding_registers}
     assert by_name["device_id"].scale_divisor == 1
-    assert by_name["reserved_133"].reserved is True
+    assert by_name["reserved_135"].reserved is True
     assert by_name["feed_ec_us_cm_x10"].reserved is False
     assert by_name["ro_state"].enum == "ro_state"
     assert by_name["status_schema_major"].equals == 1
