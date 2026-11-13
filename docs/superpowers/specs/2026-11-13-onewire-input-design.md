@@ -16,7 +16,7 @@ Add a 1-Wire bus input to every sensor node (same carrier board, populated or no
 ## 3. Protocol 1.3 (additive)
 No existing address, scale, signedness or write permission changes (AGENTS.md rule 2). Version 1.2 to 1.3.
 
-A second input poll block, registers 140-199 (60 words), is polled with the existing 100-139 block. Reserved words 135-139 are unchanged.
+The polling window grows from 100-139 to 100-199 (100 words, within the 125-word Modbus read limit), still one read per period and one coherent snapshot. The schema requires occupied input addresses to equal the polling window, so a single window is simpler than a second block; a v1.2 reader that reads only 100-139 still works. Reserved words 135-139 are unchanged.
 
 | Address | Name | Type | Notes |
 |---|---|---|---|
@@ -44,7 +44,7 @@ Rules:
 - More than 8 devices: the 8 lowest ROM IDs are reported and `bus_status` bit 3 is set.
 - New fault bit 10 `onewire_bus_fault` (monitoring only).
 - 1-Wire bits are never added to `validity_mask` or `critical_validity_bits`.
-- Polling gains a second block: `input_start 140`, `input_count 60`.
+- Polling window: `input_start 100`, `input_count 100` (was 40).
 
 ## 4. Controller side
 The controller's own config binds ROM IDs to roles (e.g. "feed temperature"); a node's self-report never defines a role. Unbound devices are logged and displayed only. `monitor.py` gains `OneWireHealth` and `evaluate_onewire`, which are kept separate from `evaluate` and `production_permitted`: `production_permitted` results are identical with and without 1-Wire faults.
