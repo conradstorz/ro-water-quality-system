@@ -7,51 +7,55 @@ Scope: Waveshare `ESP32-S3-ETH-8DI-8RO` main controller. Power input, RS485 to t
 ## 1. Overview
 
 ```
-                 12 VDC SUPPLY (fused per branch)
-                          |
-      +-------------------+------------------------+-------------------+
-      |                   |                        |                   |
-   F1 (board)       F2 (K2 / K3 valves)      F3 (K1 contactor     F4 (sensor node
-      |                   |                   coil + safety loop)   12 V input)
-      v                   |                        |                   |
-+--------------------------------------+            |                   v
-| MAIN CONTROLLER (ESP32-S3-ETH-8DI-8RO)|            |            +--------------+
-|                                      |            |            | SENSOR NODE  |
-|  PWR IN [T] 7-36 V +/-               |            |            | ESP32-S3     |
-|                                      |            |            |              |
-|  RS485 [T] A  B  GND  ---------------+------------+----------->| RS485 A B REF|
-|                                      |   2-wire twisted pair   +--------------+
-|  K1 [T] COM / NO  ------------------ +--> safety loop -> contactor coil
+   24 VDC SUPPLY (one supply)            12 VDC RAIL (valves / contactor coil only;
+   (fused per branch)                     final voltage and supply TBD)
+          |                                        |
+   +------+--------------+                 +-------+----------------+
+   |                     |                 |                        |
+F1 (board)        F4 (24 V trunk,     F2 (K2 / K3 valves)   F3 (K1 contactor
+   |               fuse per node)             |              coil + safety loop)
+   v                     |                    |                        |
++--------------------------------------+      |                        |
+| MAIN CONTROLLER (ESP32-S3-ETH-8DI-8RO)|      |                        |
+|                                      |      |                        |
+|  PWR IN [T] 7-36 V +/- (24 V)        |      |                        |
+|                                      |      |                        |
+|  RS485 [T] A  B  GND ----> RJ45 trunk jack (A pin 4, B pin 5, GND 7/8)
+|                                      |      |                        |
+|  K1 [T] COM / NO  ------------------ +------+------> safety loop -> contactor coil
 |  K2 [T] COM / NO or NC ------------- +--> concentrate bypass valve
 |  K3 [T] COM / NO  ------------------ +--> permeate dump valve (NC type)
 +--------------------------------------+
+
+RJ45 trunk (24 V + GND + RS485, daisy chain): controller -> node 1 (RO skid) -> node 2 (tank) -> ...
+Each sensor node takes 24 V from the trunk; it has its own regulation (sensor-node/HARDWARE_SPEC.md).
 ```
 
 ## 2. Power input
 
 | From | To | Notes |
 |---|---|---|
-| 12 VDC supply (+) via F1 | Controller PWR IN (+) `[T]` | 7-36 V input. Size F1 for board plus any coil current that rides on it, TBD. |
-| 12 VDC supply (-) | Controller PWR IN (-) `[T]` | Common return with the valve and coil supplies; keep it separate from mains earth. |
-| 12 VDC via F4 | Sensor node 12 V input | Sensor node has its own 5 V buck and 3.3 V regulation (`sensor-node/HARDWARE_SPEC.md`). |
+| 24 VDC supply (+) via F1 | Controller PWR IN (+) `[T]` | 7-36 V input; the controller runs from the same 24 V supply as the trunk (interconnect spec). Size F1 for the board, TBD. |
+| 24 VDC supply (-) | Controller PWR IN (-) `[T]` | Common return with the trunk GND (pins 7/8). The 12 V valve/coil rail return relationship is TBD; keep all of it separate from mains earth. |
+| 24 VDC via F4 | RJ45 trunk +24V (pins 1, 2) | F4 is the 24 V trunk fuse (fuse per node, values TBD). Sensor nodes take power from the trunk and have their own regulation (`sensor-node/HARDWARE_SPEC.md`). The 12 V rail (valves, contactor coil) is separate, final supply TBD (`hardware/power/POWER_AND_WIRING.md`). |
 
 Do not power the board from USB-C and the 7-36 V terminal at the same time until the manual confirms it is safe (open item in `reference/README.md`). Use USB-C only for programming with loads disconnected.
 
-## 3. RS485 to the sensor node
+## 3. RS485 to the sensor nodes
 
-Link parameters (from `docs/specs/SENSOR_NODE_MODBUS_RS485_SPEC.md`): 19200 8E1, unit 1, controller = master, sensor node = server.
+Link parameters (from `docs/specs/SENSOR_NODE_MODBUS_RS485_SPEC.md`): 19200 8E1, controller = master polling unit ids 1..15 (start with 1 = RO skid, 2 = tank), sensor nodes = servers. Node id comes from each node's DIP switch.
 
-| Main controller `[T]` | Sensor node | Notes |
+| Main controller `[T]` | Sensor nodes (trunk pins) | Notes |
 |---|---|---|
-| RS485 A (D+) | RS485 A (D+) | Same polarity both ends; vendor label convention may differ from the transceiver chip, confirm with a meter and a scope or by trying the swap on the bench with no loads connected. |
-| RS485 B (D-) | RS485 B (D-) | Twisted pair. |
-| RS485 GND / reference `[T]` | Transceiver reference | Third conductor of the pair cable, no earth bond at both ends. Main-controller RS485 is isolated; the sensor node transceiver should be isolated or share the reference deliberately (TBD). |
+| RS485 A (D+) | RS485 A (D+), pin 4 | Same polarity both ends; vendor label convention may differ from the transceiver chip, confirm with a meter and a scope or by trying the swap on the bench with no loads connected. |
+| RS485 B (D-) | RS485 B (D-), pin 5 | Twisted pair. |
+| RS485 GND / reference `[T]` | Trunk GND, pins 7 and 8 | GND rides the trunk with the 24 V supply return; no earth bond. Sensor nodes use non-isolated RS485 because the trunk carries common GND (isolated-transceiver footprint is an option; scheme unverified until Stage D). The vendor wiki lists the controller RS485 as isolated (`reference/README.md`); this is a vendor claim, unverified on the bench, and the reference-ground scheme is TBD. |
 
-- **Multi-node trunk:** the RS485 A/B/GND terminals feed an RJ45 trunk jack wired per `hardware/interconnect/pinout.yaml` (A pin 4, B pin 5, GND pins 7 and 8). The bus now serves multiple nodes (unit 1 RO skid, unit 2 tank) in a daisy chain, not a single point-to-point link; the single-node notes in this section apply per the interconnect doc (`hardware/interconnect/NODE_BUS_INTERCONNECT.md`). All `[T]` terminal names remain unverified. Never plug the trunk into the controller's Ethernet port.
-- **Termination:** controller end has a 120 ohm termination jumper cap (enabled by default per the wiki). Fit a 120 ohm resistor at the sensor node end only. No other terminations.
-- **Bias:** open item. The wiki does not say whether the board biases the bus. Add fail-safe bias at one point only if the bench shows an undriven bus floating.
+- **Multi-node trunk:** the RS485 A/B/GND terminals feed an RJ45 trunk jack wired per `hardware/interconnect/pinout.yaml` (A pin 4, B pin 5, GND pins 7 and 8) and a daisy chain of nodes (`hardware/interconnect/NODE_BUS_INTERCONNECT.md`). This supersedes the earlier single point-to-point, "unit 1", "sensor node end" and pair-cable GND wording in this section. All `[T]` terminal names remain unverified. Never plug the trunk into the controller's Ethernet port.
+- **Termination:** controller has a 120 ohm termination jumper cap (enabled by default per the wiki). Switchable 120 ohm termination is at the two end nodes of the chain only; any other device leaves it off. Rules and TBDs (resistor values, whether the controller cap sits at a chain end): interconnect doc, "Termination and bias".
+- **Bias:** at the controller only (one point); resistor values TBD (interconnect doc). The wiki does not say whether the board already biases the bus; confirm on the bench with an idle bus before adding any.
 - **Direction control:** the pin map lists only TX GPIO17 and RX GPIO18, which suggests automatic direction control. Unverified; confirm on the bench.
-- **Cabling:** twisted pair, keep away from AC motor conductors, shield terminated at one end (the sensor-node documentation covers the scheme).
+- **Cabling:** shielded Cat5e/Cat6 trunk with RS485 on the twisted pair, keep away from AC motor conductors, shield bonded at the controller end only (interconnect doc, "Shield").
 - Do not connect the bus while vendor firmware is loaded, because it transmits Modbus-style relay frames at 9600 8N1 as a master.
 
 ## 4. Relay outputs
@@ -107,8 +111,8 @@ Each board relay is 1 NO + 1 NC, rated 10 A 250 VAC / 30 VDC on a resistive load
 
 ## 5. Protective earth, separation and fusing
 
-- Keep mains (pump contactor main contacts) and 12 V low voltage physically separated; the board relay contacts only see 12 V.
-- Each branch fused (F1-F4); values TBD until the loads are identified.
+- Keep mains (pump contactor main contacts) and the low-voltage rails (24 V, 12 V) physically separated; the board relay contacts only see the valve/coil rail (12 V, final voltage TBD).
+- Each branch fused (F1-F4; F4 is the 24 V trunk fuse, fuse per node); values TBD until the loads are identified.
 - DC coils get flyback diodes; AC coils would need RC snubbers or varistors instead. The wiki recommends snubbers on inductive loads.
 
 ## 6. Open items before bench power-up
@@ -118,4 +122,4 @@ Each board relay is 1 NO + 1 NC, rated 10 A 250 VAC / 30 VDC on a resistive load
 3. Confirm RS485 A/B polarity, direction control, and bias.
 4. Choose the K2 actuator and confirm the fail-open wiring.
 5. Select the NC dump valve and fuse values.
-6. Decide the sensor-node RS485 isolation and the reference-ground scheme.
+6. Decide the sensor-node RS485 isolation and the reference-ground scheme (non-isolated planned; verify in Stage D).

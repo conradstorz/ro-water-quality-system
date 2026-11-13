@@ -55,14 +55,18 @@ def test_doc_table_matches_yaml():
         "RS485_B": "RS485 B",
         "RESERVED": "Reserved",
     }
-    expected = {pin: names[signal] for pin, signal in load()["pins"].items()}
-    found: dict[int, str] = {}
+    data = load()
+    expected: dict[int | str, str] = {pin: names[signal] for pin, signal in data["pins"].items()}
+    expected["Shell"] = {"SHIELD": "Shield"}[data["shell"]]
+    found: dict[int | str, str] = {}
     for line in DOC.read_text(encoding="utf-8").splitlines():
         if not line.startswith("|"):
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        pins = [p.strip() for p in cells[0].split(",")]
-        if all(p.isdigit() for p in pins):
-            for pin in pins:
-                found[int(pin)] = cells[1]
+        keys = [p.strip() for p in cells[0].split(",")]
+        if all(p.isdigit() for p in keys) or keys == ["Shell"]:
+            for key in keys:
+                k: int | str = int(key) if key.isdigit() else key
+                assert k not in found, f"duplicate row for {k}"
+                found[k] = cells[1]
     assert found == expected

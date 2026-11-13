@@ -41,7 +41,7 @@ Shell and shield wire bonded to chassis at the controller end only. At nodes the
 
 ## Ethernet hazard
 This is a plain RJ45 and the controller has a genuine Ethernet RJ45. Plugging 24 V into Ethernet equipment can damage it. Mitigations (the owner chose RJ45 over M12, ADR-0008):
-- Distinct color: red cable and red jacks. No other cable on the project is red.
+- Distinct color: red cable and red jacks. Reserve red cable and jacks for this bus only.
 - Label every port and cable end "RO BUS - 24V".
 - Never terminate this cable in a switch or patch panel.
 - Never plug it into the controller's Ethernet port.
