@@ -5,6 +5,8 @@ No sockets and no Modbus library: it turns request PDUs into response PDUs.
 
 from __future__ import annotations
 
+import functools
+import operator
 import struct
 import threading
 import time
@@ -45,7 +47,7 @@ def _exception(fc: int, code: int) -> bytes:
 
 _U32_MAX: int = TYPE_RANGES["u32"][1]
 
-ALL_SENSORS: int = sum(int(bit) for bit in ValidityBits)
+ALL_SENSORS: int = functools.reduce(operator.or_, (int(bit) for bit in ValidityBits), 0)
 
 
 def _check_identity(node_type: int, installed_mask: int) -> None:
@@ -184,14 +186,29 @@ class RegisterBank:
             self._pending[name] = hi
             self._pending["module_status"] |= int(StatusBits.OVERFLOW_OR_SATURATION)
 
+    def _require_validity_installed(self) -> None:
+        """Check that every pending validity bit is a fitted sensor (lock held).
+
+        :raises ValueError: If a validity bit is set for a sensor that is not installed.
+        """
+        unfitted = self._pending["validity_mask"] & ~self._pending["installed_mask"]
+        if unfitted:
+            raise ValueError(
+                f"validity bits {unfitted:#06x} set for sensors that are not installed"
+            )
+
     def commit(self) -> None:
-        """Publish the pending snapshot, advancing sequence unless frozen."""
+        """Publish the pending snapshot, advancing sequence unless frozen.
+
+        A commit is rejected, and the published snapshot is left as it was, if the
+        pending validity mask sets a bit for a sensor that is not installed. The bad
+        pending value stays pending: the caller must correct it (``set_validity``
+        or ``configure_node``) before a later commit or reboot can succeed.
+
+        :raises ValueError: If a pending validity bit is set for an uninstalled sensor.
+        """
         with self._lock:
-            unfitted = self._pending["validity_mask"] & ~self._pending["installed_mask"]
-            if unfitted:
-                raise ValueError(
-                    f"validity bits {unfitted:#06x} set for sensors that are not installed"
-                )
+            self._require_validity_installed()
             if not self._frozen:
                 self._pending["snapshot_sequence"] = (
                     self._pending["snapshot_sequence"] + 1
@@ -204,8 +221,12 @@ class RegisterBank:
 
         The boot counter saturates at its u32 maximum instead of wrapping, and
         ``OVERFLOW_OR_SATURATION`` is then flagged in the module status.
+
+        :raises ValueError: If the pending validity mask sets a bit for an uninstalled
+            sensor. Checked before any state change, so a rejected reboot changes nothing.
         """
         with self._lock:
+            self._require_validity_installed()
             if self._pending["boot_counter"] >= _U32_MAX:
                 self._pending["boot_counter"] = _U32_MAX
                 self._pending["module_status"] |= int(StatusBits.OVERFLOW_OR_SATURATION)

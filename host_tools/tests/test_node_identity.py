@@ -73,3 +73,71 @@ def test_identity_readable_over_fc04():
     bank.commit()
     resp = bank.handle_pdu(struct.pack(">BHH", 4, reg.ADDR_NODE_TYPE, 2))
     assert resp == bytes([4, 4]) + struct.pack(">HH", int(reg.NodeType.TANK), TANK_MASK)
+
+
+def test_failed_commit_then_reboot_raises_and_publishes_nothing():
+    bank = tank_bank()
+    bank.set_validity(TANK_MASK)
+    bank.commit()
+    before = bank.published()
+    bank.set_validity(TANK_MASK | int(V.FEED_EC))
+    with pytest.raises(ValueError, match="not installed"):
+        bank.commit()
+    with pytest.raises(ValueError, match="not installed"):
+        bank.reboot()
+    assert bank.published() == before
+    # The rejected reboot must not have touched boot counter or sequence:
+    # correct the pending validity and commit once more.
+    bank.set_validity(TANK_MASK)
+    bank.commit()
+    after = bank.published()
+    assert after.boot_counter == before.boot_counter
+    assert after.snapshot_sequence == before.snapshot_sequence + 1
+
+
+def test_configure_node_rejects_bad_node_type():
+    bank = RegisterBank()
+    with pytest.raises(ValueError, match="node_type"):
+        bank.configure_node(2, ALL_SENSORS)
+    # Pending identity is untouched by the rejected call.
+    bank.commit()
+    assert bank.published().node_type == int(reg.NodeType.RO_SKID)
+
+
+def test_configure_node_rejects_bad_installed_mask():
+    bank = RegisterBank()
+    with pytest.raises(ValueError, match="installed_mask"):
+        bank.configure_node(int(reg.NodeType.TANK), 0x8000)
+    bank.commit()
+    assert bank.published().installed_mask == ALL_SENSORS
+
+
+def test_configure_node_may_shrink_mask_below_pending_validity():
+    bank = RegisterBank()
+    bank.set_validity(ALL_SENSORS)
+    bank.commit()
+    before = bank.published()
+    # Allowed at configure time (presets rely on configure before set_validity).
+    bank.configure_node(int(reg.NodeType.TANK), TANK_MASK)
+    with pytest.raises(ValueError, match="not installed"):
+        bank.commit()
+    with pytest.raises(ValueError, match="not installed"):
+        bank.reboot()
+    assert bank.published() == before
+
+
+def test_commit_and_reboot_succeed_after_correcting_validity():
+    bank = RegisterBank()
+    bank.set_validity(ALL_SENSORS)
+    bank.commit()
+    bank.configure_node(int(reg.NodeType.TANK), TANK_MASK)
+    with pytest.raises(ValueError):
+        bank.commit()
+    bank.set_validity(TANK_MASK)
+    bank.commit()
+    assert bank.published().validity_mask == TANK_MASK
+    bank.reboot()
+    snap = bank.published()
+    assert snap.boot_counter == 1
+    assert snap.snapshot_sequence == 0
+    assert snap.validity_mask == TANK_MASK

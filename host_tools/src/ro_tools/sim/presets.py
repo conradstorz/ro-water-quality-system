@@ -75,7 +75,7 @@ FULL_PROFILE = NodeProfile(
     node_type=int(NodeType.RO_SKID),
     installed=ALL_SENSORS,
     validity=_HEALTHY_VALIDITY,
-    fields=_HEALTHY_FIELDS,
+    fields=dict(_HEALTHY_FIELDS),
     victim=ValidityBits.PERMEATE_EC,
     victim_fault=FaultBits.EC_PERMEATE_FAULT,
 )
