@@ -32,12 +32,13 @@ ROM_B = make_rom(FAMILY_DS2438, 0x1002)
 ROM_C = make_rom(FAMILY_DS18B20, 0x1003)
 BIND_A = OneWireBinding("tank_temp", ROM_A)
 BIND_B = OneWireBinding("feed_temp", ROM_B)
+MAX_AGE = 1000  # test-local value; the real limit is controller config (TBD)
 
 
 def with_bus(devices, bus_status=NO_BUS_STATUS, **changes):
     base = snap(FULL_PROFILE)
-    fields = encode_onewire(devices, bus_status)
-    return dataclasses.replace(base, **fields, **changes)
+    fields = encode_onewire(devices, bus_status) | changes
+    return dataclasses.replace(base, **fields)
 
 
 def dev(rom, **kw):
@@ -45,7 +46,7 @@ def dev(rom, **kw):
 
 
 def test_healthy_bound_devices_ok():
-    h = evaluate_onewire(with_bus([dev(ROM_A), dev(ROM_B)]), [BIND_A, BIND_B])
+    h = evaluate_onewire(with_bus([dev(ROM_A), dev(ROM_B)]), [BIND_A, BIND_B], max_age_ms=MAX_AGE)
     assert isinstance(h, OneWireHealth)
     assert h.state is OneWireState.OK
     assert set(h.values) == {"tank_temp", "feed_temp"}
@@ -54,13 +55,13 @@ def test_healthy_bound_devices_ok():
 
 
 def test_no_bindings_no_devices_ok():
-    h = evaluate_onewire(with_bus([]), [])
+    h = evaluate_onewire(with_bus([]), [], max_age_ms=MAX_AGE)
     assert h.state is OneWireState.OK
     assert not h.values and not h.reasons
 
 
 def test_bound_rom_without_slot_is_missing_and_degraded():
-    h = evaluate_onewire(with_bus([dev(ROM_A)]), [BIND_A, BIND_B])
+    h = evaluate_onewire(with_bus([dev(ROM_A)]), [BIND_A, BIND_B], max_age_ms=MAX_AGE)
     assert h.state is OneWireState.DEGRADED
     assert h.missing_roles == ("feed_temp",)
     assert "feed_temp" not in h.values
@@ -72,7 +73,9 @@ def test_bound_rom_without_slot_is_missing_and_degraded():
     [{"stale": True}, {"crc_error": True}, {"valid": False}, {"present": False, "missing": True}],
 )
 def test_unusable_slot_is_missing_with_no_value(kw):
-    h = evaluate_onewire(with_bus([dev(ROM_A, **kw), dev(ROM_B)]), [BIND_A, BIND_B])
+    h = evaluate_onewire(
+        with_bus([dev(ROM_A, **kw), dev(ROM_B)]), [BIND_A, BIND_B], max_age_ms=MAX_AGE
+    )
     assert h.state is OneWireState.DEGRADED
     assert h.missing_roles == ("tank_temp",)
     assert "tank_temp" not in h.values
@@ -82,35 +85,35 @@ def test_unusable_slot_is_missing_with_no_value(kw):
 
 def test_unsupported_family_bound_is_missing():
     rom = make_rom(0x10, 0x55)
-    h = evaluate_onewire(with_bus([dev(rom)]), [OneWireBinding("odd", rom)])
+    h = evaluate_onewire(with_bus([dev(rom)]), [OneWireBinding("odd", rom)], max_age_ms=MAX_AGE)
     assert h.state is OneWireState.DEGRADED
     assert h.missing_roles == ("odd",)
     assert not h.values
 
 
 def test_unbound_roms_informational_state_unaffected():
-    h = evaluate_onewire(with_bus([dev(ROM_A), dev(ROM_C)]), [BIND_A])
+    h = evaluate_onewire(with_bus([dev(ROM_A), dev(ROM_C)]), [BIND_A], max_age_ms=MAX_AGE)
     assert h.state is OneWireState.OK
     assert h.unbound_roms == (ROM_C,)
     assert h.reasons == ()
 
 
 def test_no_bindings_with_devices_ok_and_unbound():
-    h = evaluate_onewire(with_bus([dev(ROM_A)]), [])
+    h = evaluate_onewire(with_bus([dev(ROM_A)]), [], max_age_ms=MAX_AGE)
     assert h.state is OneWireState.OK
     assert h.unbound_roms == (ROM_A,)
 
 
 @pytest.mark.parametrize("bit", [BusStatus.CRC_ERRORS, BusStatus.OVERFLOW])
 def test_soft_bus_bits_degrade(bit):
-    h = evaluate_onewire(with_bus([dev(ROM_A)], bit), [BIND_A])
+    h = evaluate_onewire(with_bus([dev(ROM_A)], bit), [BIND_A], max_age_ms=MAX_AGE)
     assert h.state is OneWireState.DEGRADED
     assert h.reasons
 
 
 @pytest.mark.parametrize("bit", [BusStatus.BUS_SHORT, BusStatus.NO_PRESENCE])
 def test_hard_bus_bits_with_bindings_are_unavailable(bit):
-    h = evaluate_onewire(with_bus([dev(ROM_A)], bit), [BIND_A])
+    h = evaluate_onewire(with_bus([dev(ROM_A)], bit), [BIND_A], max_age_ms=MAX_AGE)
     assert h.state is OneWireState.UNAVAILABLE
     assert not h.values
     assert h.missing_roles == ("tank_temp",)
@@ -118,29 +121,31 @@ def test_hard_bus_bits_with_bindings_are_unavailable(bit):
 
 @pytest.mark.parametrize("bit", [BusStatus.BUS_SHORT, BusStatus.NO_PRESENCE])
 def test_hard_bus_bits_without_bindings_degrade_only(bit):
-    h = evaluate_onewire(with_bus([], bit), [])
+    h = evaluate_onewire(with_bus([], bit), [], max_age_ms=MAX_AGE)
     assert h.state is OneWireState.DEGRADED
 
 
 def test_fault_bit_10_degrades():
     fault = int(reg.FaultBits.ONEWIRE_BUS_FAULT)
     assert fault == 1 << 10
-    h = evaluate_onewire(with_bus([dev(ROM_A)], fault_mask=fault), [BIND_A])
+    h = evaluate_onewire(with_bus([dev(ROM_A)], fault_mask=fault), [BIND_A], max_age_ms=MAX_AGE)
     assert h.state is OneWireState.DEGRADED
     assert any("fault" in r.lower() for r in h.reasons)
 
 
 def test_duplicate_role_or_rom_raises():
     with pytest.raises(ValueError):
-        evaluate_onewire(with_bus([]), [BIND_A, OneWireBinding("tank_temp", ROM_B)])
+        evaluate_onewire(
+            with_bus([]), [BIND_A, OneWireBinding("tank_temp", ROM_B)], max_age_ms=MAX_AGE
+        )
     with pytest.raises(ValueError):
-        evaluate_onewire(with_bus([]), [BIND_A, OneWireBinding("other", ROM_A)])
+        evaluate_onewire(with_bus([]), [BIND_A, OneWireBinding("other", ROM_A)], max_age_ms=MAX_AGE)
 
 
 def test_garbage_words_never_yield_values():
     base = snap(FULL_PROFILE)
     fields = {k: 0xFFFF for k in encode_onewire([])}
-    h = evaluate_onewire(dataclasses.replace(base, **fields), [BIND_A])
+    h = evaluate_onewire(dataclasses.replace(base, **fields), [BIND_A], max_age_ms=MAX_AGE)
     assert h.state is OneWireState.UNAVAILABLE
     assert not h.values
 
@@ -152,9 +157,64 @@ def test_duplicate_rom_in_slots_is_not_trusted():
         fields[f"onewire_s1_rom{w}"] = fields[f"onewire_s0_rom{w}"]
     for f in ("primary", "secondary", "status"):
         fields[f"onewire_s1_{f}"] = fields[f"onewire_s0_{f}"]
-    h = evaluate_onewire(dataclasses.replace(base, **fields), [BIND_A])
+    h = evaluate_onewire(dataclasses.replace(base, **fields), [BIND_A], max_age_ms=MAX_AGE)
     assert h.state is OneWireState.DEGRADED
     assert "tank_temp" not in h.values
+
+
+def test_max_age_is_required_keyword_only():
+    with pytest.raises(TypeError):
+        evaluate_onewire(with_bus([]), [])  # type: ignore[call-arg]
+    with pytest.raises(TypeError):
+        evaluate_onewire(with_bus([]), [], MAX_AGE)  # type: ignore[misc]
+
+
+def test_age_at_limit_ok_over_limit_unavailable():
+    at = evaluate_onewire(
+        with_bus([dev(ROM_A)], onewire_age_ms=MAX_AGE), [BIND_A], max_age_ms=MAX_AGE
+    )
+    assert at.state is OneWireState.OK and "tank_temp" in at.values
+    over = evaluate_onewire(
+        with_bus([dev(ROM_A)], onewire_age_ms=MAX_AGE + 1), [BIND_A], max_age_ms=MAX_AGE
+    )
+    assert over.state is OneWireState.UNAVAILABLE
+    assert not over.values and over.missing_roles == ("tank_temp",)
+    assert any("stale" in r for r in over.reasons)
+
+
+def _assert_untrusted(h, reason_part):
+    assert h.state is OneWireState.DEGRADED
+    assert not h.values
+    assert h.missing_roles == ("tank_temp", "feed_temp")
+    assert any(reason_part in r for r in h.reasons)
+
+
+def test_device_count_mismatch_is_inconsistent():
+    s = with_bus([dev(ROM_A), dev(ROM_B)], onewire_device_count=1)
+    _assert_untrusted(evaluate_onewire(s, [BIND_A, BIND_B], max_age_ms=MAX_AGE), "device count")
+
+
+def test_unsorted_slots_are_inconsistent():
+    fields = encode_onewire([dev(ROM_A), dev(ROM_B)])
+    for f in ("rom0", "rom1", "rom2", "rom3", "primary", "secondary", "status"):
+        a, b = fields[f"onewire_s0_{f}"], fields[f"onewire_s1_{f}"]
+        fields[f"onewire_s0_{f}"], fields[f"onewire_s1_{f}"] = b, a
+    s = dataclasses.replace(snap(FULL_PROFILE), **fields)
+    _assert_untrusted(evaluate_onewire(s, [BIND_A, BIND_B], max_age_ms=MAX_AGE), "sorted")
+
+
+def test_rom_crc_failure_is_inconsistent():
+    fields = encode_onewire([dev(ROM_A), dev(ROM_B)])
+    fields["onewire_s0_rom0"] ^= 0x0100  # flip a CRC bit
+    s = dataclasses.replace(snap(FULL_PROFILE), **fields)
+    h = evaluate_onewire(s, [BIND_A, BIND_B], max_age_ms=MAX_AGE)
+    assert h.state is OneWireState.DEGRADED and not h.values
+    assert any("CRC" in r for r in h.reasons)
+
+
+def test_empty_slots_skip_crc_check():
+    h = evaluate_onewire(with_bus([dev(ROM_A)]), [BIND_A], max_age_ms=MAX_AGE)
+    assert h.state is OneWireState.OK
 
 
 def _words():

@@ -61,7 +61,8 @@ This connector is not for the RJ45 RO BUS. It is a separate, local sensor bus on
 - Keep 1-WIRE wiring away from the 24 V trunk and RS485 wiring.
 - Hazard: generic 3-pin automotive plugs mate with each other. Only the label and routing prevent a wrong mating.
 - Power: node 5 V rail, non-parasitic, through a polyfuse (rating TBD).
-- Shield, if used, is bonded at the node end only.
+- Shield, if used, is continuous along the chain and bonded at one point only; the bonding location is TBD.
+- ROM notation: the `ro-tools` CLI prints a ROM as a 16-hex-digit integer with the CRC byte first and the family byte last (the reverse of the usual 1-Wire byte-array notation, which lists family first). Controller bindings use that same integer form.
 - rating_voltage: TBD
 - rating_current: TBD
 - Pull-up value, GPIO, maximum cable length and device count: TBD (measure in Stage D).

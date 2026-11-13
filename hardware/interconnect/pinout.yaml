@@ -32,5 +32,7 @@ onewire:
   pull_up: TBD
   gpio: TBD
   max_length: TBD
-  shield: bonded at the node end only
+  shield: continuous along the chain, bonded at one point only; bonding location TBD
+  max_devices: TBD  # electrical limit; the protocol slot limit is 8 (not an electrical rating)
+  rescan_interval: TBD
   monitoring_only: true

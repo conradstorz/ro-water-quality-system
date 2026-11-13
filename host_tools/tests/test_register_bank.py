@@ -68,15 +68,21 @@ def test_fc04_full_block_decodes(bank):
     assert s.feed_ec_us_cm_x10 == 4257 and s.snapshot_sequence == 1
 
 
+def test_fc04_v12_reader_40_words_at_100_still_succeeds(bank):
+    bank.set_field("feed_ec_us_cm_x10", 4257)
+    bank.commit()
+    words = words_of(bank.handle_pdu(read(4, 100, 40)))
+    assert len(words) == 40
+    assert words == words_of(bank.handle_pdu(read(4, 100, reg.INPUT_COUNT)))[:40]
+
+
 def test_fc04_subrange(bank):
     bank.set_field("module_status", 0x0001)
     bank.commit()
     assert words_of(bank.handle_pdu(read(4, 103, 1))) == [1]
 
 
-@pytest.mark.parametrize(
-    ("addr", "count"), [(99, 1), (100, 101), (199, 2), (200, 1), (0, 1)]
-)
+@pytest.mark.parametrize(("addr", "count"), [(99, 1), (100, 101), (199, 2), (200, 1), (0, 1)])
 def test_fc04_outside_block_is_illegal_address(bank, addr, count):
     assert bank.handle_pdu(read(4, addr, count)) == exc(4, EXC_ILLEGAL_ADDRESS)
 

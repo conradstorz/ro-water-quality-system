@@ -22,7 +22,7 @@ One carrier board serves all node types; the firmware profile selects the front 
 - Monitoring only; never an interlock. See `hardware/interconnect/NODE_BUS_INTERCONNECT.md` and ADR-0009.
 - Connector: Nilight 3-pin waterproof male/female harness connector (inline, pigtail through a cable gland). Cavity numbering TBD; voltage and current rating TBD.
 - Power: node 5 V rail, non-parasitic, through a polyfuse. Rating TBD.
-- Bus driver: one ESP32 GPIO (TBD), series resistor, pull-up to 3.3 V (value TBD), ESD/TVS protection on DATA.
+- Bus driver: one ESP32 GPIO (TBD), series resistor (value TBD), pull-up to 3.3 V (value TBD), ESD/TVS protection on DATA.
 - Maximum cable length and device count TBD.
 ## Wiring
 Use terminal blocks, labeled signal/ground/supply, strain relief, sensor cable separation from AC motor conductors, and a documented shield/ground scheme. RS485 twisted pair plus suitable reference conductor. No unverified 5V signal into ESP32 3.3V GPIO.

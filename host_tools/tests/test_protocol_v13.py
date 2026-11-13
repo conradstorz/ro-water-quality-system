@@ -90,18 +90,24 @@ def test_validity_unchanged():
 
 def test_roundtrip_nonzero_slots():
     snap = reg.decode_snapshot([0] * reg.INPUT_COUNT)
-    values = {"onewire_device_count": 8, "onewire_bus_status": 0b1000,
-              "onewire_scan_generation": 7, "onewire_age_ms": 65535}
+    values = {
+        "onewire_device_count": 8,
+        "onewire_bus_status": 0b1000,
+        "onewire_scan_generation": 7,
+        "onewire_age_ms": 65535,
+    }
     for n in range(8):
-        values.update({
-            f"onewire_s{n}_rom0": 0x2800 + n,
-            f"onewire_s{n}_rom1": 0x1111,
-            f"onewire_s{n}_rom2": 0x2222,
-            f"onewire_s{n}_rom3": 0x3328,
-            f"onewire_s{n}_primary": -1234 + n,
-            f"onewire_s{n}_secondary": -(n + 1),
-            f"onewire_s{n}_status": 0b11 | (n << 2),
-        })
+        values.update(
+            {
+                f"onewire_s{n}_rom0": 0x2800 + n,
+                f"onewire_s{n}_rom1": 0x1111,
+                f"onewire_s{n}_rom2": 0x2222,
+                f"onewire_s{n}_rom3": 0x3328,
+                f"onewire_s{n}_primary": -1234 + n,
+                f"onewire_s{n}_secondary": -(n + 1),
+                f"onewire_s{n}_status": 0b11 | (n << 2),
+            }
+        )
     snap = dataclasses.replace(snap, **values)
     words = reg.encode_snapshot(snap)
     assert len(words) == reg.INPUT_COUNT

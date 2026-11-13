@@ -125,14 +125,18 @@ class SlotReading:
 
     @property
     def usable(self) -> bool:
-        """True only when VALID is set and no fault bit is set."""
+        """True only when PRESENT and VALID are set and no fault bit is set."""
         bad = (
             SlotStatus.STALE
             | SlotStatus.CRC_ERROR
             | SlotStatus.MISSING
             | SlotStatus.UNSUPPORTED_FAMILY
         )
-        return bool(self.status & SlotStatus.VALID) and not self.status & bad
+        return (
+            bool(self.status & SlotStatus.PRESENT)
+            and bool(self.status & SlotStatus.VALID)
+            and not self.status & bad
+        )
 
 
 def _slot_words(device: OneWireDevice) -> tuple[int, int, int]:

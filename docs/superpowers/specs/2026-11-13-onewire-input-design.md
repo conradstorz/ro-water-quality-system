@@ -11,7 +11,7 @@ Add a 1-Wire bus input to every sensor node (same carrier board, populated or no
 - **Connector ratings:** voltage and current rating **TBD** (confirm from the listing/datasheet).
 - **Power:** normal (non-parasitic) power from the node 5 V rail through a polyfuse. Fuse rating TBD.
 - **Bus driver:** ESP32 GPIO, series resistor, pull-up to 3.3 V (value TBD, depends on cable length), ESD/TVS protection on DATA. GPIO **TBD**.
-- **Topology:** linear daisy-chain or short stubs. Maximum cable length and device count **TBD** (measure in Stage D). Cable shield, if used, is bonded at the node end only.
+- **Topology:** linear daisy-chain or short stubs. Maximum cable length and device count **TBD** (measure in Stage D). Cable shield, if used, is continuous along the chain and bonded at one point only (location TBD).
 
 ## 3. Protocol 1.3 (additive)
 No existing address, scale, signedness or write permission changes (AGENTS.md rule 2). Version 1.2 to 1.3.
@@ -41,6 +41,7 @@ Rules:
 - Slots are sorted by ROM ID ascending. A device that disappears stays in its slot marked `missing` (present clear) so the controller can tell lost from never-present. An empty slot is all zero words.
 - Value meaning depends on family: DS18B20 (0x28) primary = degC x100. DS2438 (0x26) primary = degC x100, secondary = mV. Any other family: `unsupported_family`, ROM ID only, value words zero and `valid` clear. No value is ever guessed or substituted.
 - A value is meaningful only when `valid` is set and `stale`, `crc_error`, `missing` are clear.
+- When `bus_short` or `no_presence` is set, slot contents are undefined and consumers must treat all slots as unusable.
 - More than 8 devices: the 8 lowest ROM IDs are reported and `bus_status` bit 3 is set.
 - New fault bit 10 `onewire_bus_fault` (monitoring only).
 - 1-Wire bits are never added to `validity_mask` or `critical_validity_bits`.

@@ -13,6 +13,7 @@ from ro_tools.onewire import (
     SLOT_COUNT,
     BusStatus,
     OneWireDevice,
+    SlotReading,
     SlotStatus,
     dallas_crc8,
     decode_slots,
@@ -97,9 +98,7 @@ def test_crc_error_device() -> None:
 
 def test_missing_device() -> None:
     ok = OneWireDevice(make_rom(FAMILY_DS18B20, 1), primary=2000)
-    gone = OneWireDevice(
-        make_rom(FAMILY_DS18B20, 2), primary=2000, present=False, missing=True
-    )
+    gone = OneWireDevice(make_rom(FAMILY_DS18B20, 2), primary=2000, present=False, missing=True)
     snap = _snap(encode_onewire([ok, gone]))
     assert snap.onewire_device_count == 1
     slots = {s.rom: s for s in decode_slots(snap)}
@@ -206,3 +205,19 @@ def test_bank_set_onewire_atomic_on_error() -> None:
     bank.commit()
     (slot,) = decode_slots(bank.published())
     assert slot.primary == 100
+
+
+def test_usable_requires_present() -> None:
+    reading = SlotReading(make_rom(FAMILY_DS18B20, 1), 2000, 0, SlotStatus.VALID)
+    assert not reading.usable
+    assert SlotReading(reading.rom, 2000, 0, SlotStatus.VALID | SlotStatus.PRESENT).usable
+
+
+def test_rom_registers_carry_family_low_and_crc_high() -> None:
+    rom = make_rom(FAMILY_DS18B20, 0x1234)
+    fields = encode_onewire([OneWireDevice(rom, primary=1)])
+    assert fields["onewire_s0_rom3"] & 0xFF == FAMILY_DS18B20
+    assert fields["onewire_s0_rom0"] >> 8 == dallas_crc8(
+        (rom & ((1 << 56) - 1)).to_bytes(7, "little")
+    )
+    assert fields["onewire_s0_rom0"] >> 8 == rom >> 56

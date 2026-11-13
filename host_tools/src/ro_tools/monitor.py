@@ -18,7 +18,7 @@ from ro_tools.generated.registers import (
     Snapshot,
     StatusBits,
 )
-from ro_tools.onewire import BusStatus, SlotReading, SlotStatus, decode_slots
+from ro_tools.onewire import BusStatus, SlotReading, SlotStatus, decode_slots, rom_crc_ok
 
 #: Largest forward step of the u16 ``snapshot_sequence`` (modular) accepted as fresh.
 MAX_SEQUENCE_FORWARD_STEP = 0x7FFF
@@ -206,14 +206,39 @@ def _slot_unusable_cause(reading: SlotReading) -> str | None:
     return "slot status " + "|".join(names) if names else "slot not valid"
 
 
-def evaluate_onewire(snapshot: Snapshot, bindings: Sequence[OneWireBinding]) -> OneWireHealth:
+def _inconsistency(snapshot: Snapshot, readings: Sequence[SlotReading]) -> str | None:
+    """:returns: Why the 1-Wire block is internally inconsistent, or None."""
+    present = sum(1 for r in readings if r.status & SlotStatus.PRESENT)
+    if snapshot.onewire_device_count != present:
+        return f"device count {snapshot.onewire_device_count} != {present} present slots"
+    roms = [r.rom for r in readings]
+    if roms != sorted(roms):
+        return "slots not sorted by ROM ascending"
+    if any(not rom_crc_ok(r.rom) for r in readings):
+        return "slot ROM fails CRC"
+    return None
+
+
+def evaluate_onewire(
+    snapshot: Snapshot, bindings: Sequence[OneWireBinding], *, max_age_ms: int
+) -> OneWireHealth:
     """Judge the 1-Wire block of a snapshot against configured role bindings.
 
     Monitoring only: this must not be called from :func:`evaluate` or
     :func:`production_permitted`, and 1-Wire state never affects the production permit.
+    The caller must also require the node snapshot itself to be fresh and OK via
+    :func:`evaluate` before trusting any value returned here; this function does not
+    check node-level health, and is deliberately not wired to production decisions.
+
+    The block is untrusted (all bound roles missing, no values) when it is stale
+    (``onewire_age_ms > max_age_ms``, state UNAVAILABLE) or inconsistent (state DEGRADED):
+    ``onewire_device_count`` differs from the number of PRESENT slots, slots are not sorted
+    by ROM ascending, or a slot ROM fails its CRC.
 
     :param snapshot: Snapshot carrying the 1-Wire block.
     :param bindings: Role to ROM bindings.
+    :param max_age_ms: Largest acceptable ``onewire_age_ms`` (inclusive). Controller
+        configuration, TBD; there is deliberately no default.
     :returns: The 1-Wire health; an unusable role is listed missing, never defaulted.
     :raises ValueError: If a role or a ROM appears more than once in ``bindings``.
     """
@@ -233,6 +258,8 @@ def evaluate_onewire(snapshot: Snapshot, bindings: Sequence[OneWireBinding]) -> 
     reasons: list[str] = []
     state = OneWireState.OK
     hard = bool(bus & (BusStatus.BUS_SHORT | BusStatus.NO_PRESENCE))
+    stale = snapshot.onewire_age_ms > max_age_ms
+    inconsistent = _inconsistency(snapshot, readings)
     if bus:
         state = OneWireState.DEGRADED
         names = [b.name for b in BusStatus if bus & b and b.name]
@@ -242,15 +269,25 @@ def evaluate_onewire(snapshot: Snapshot, bindings: Sequence[OneWireBinding]) -> 
     if snapshot.fault_mask & int(FaultBits.ONEWIRE_BUS_FAULT):
         state = OneWireState.DEGRADED
         reasons.append("ONEWIRE_BUS_FAULT fault bit set")
+    if inconsistent:
+        state = OneWireState.DEGRADED
+        reasons.append(f"inconsistent 1-Wire block: {inconsistent}")
     if hard and bindings:
         state = OneWireState.UNAVAILABLE
+    if stale:
+        state = OneWireState.UNAVAILABLE
+        reasons.append(f"1-Wire data is stale: age {snapshot.onewire_age_ms} ms > {max_age_ms} ms")
 
     values: dict[str, SlotReading] = {}
     missing: list[str] = []
     for binding in bindings:
         found = by_rom.get(binding.rom, [])
-        if hard:
+        if stale:
+            cause = "data stale"
+        elif hard:
             cause = "bus unavailable"
+        elif inconsistent:
+            cause = "inconsistent block"
         elif not found:
             cause = "no slot for ROM"
         elif len(found) > 1:
