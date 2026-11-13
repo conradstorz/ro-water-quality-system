@@ -18,6 +18,7 @@ from ro_tools.generated.registers import (
     Snapshot,
     StatusBits,
 )
+from ro_tools.onewire import BusStatus, SlotReading, SlotStatus, decode_slots
 
 #: Largest forward step of the u16 ``snapshot_sequence`` (modular) accepted as fresh.
 MAX_SEQUENCE_FORWARD_STEP = 0x7FFF
@@ -149,3 +150,121 @@ def production_permitted(results: Mapping[int, NodeHealth], configs: Sequence[No
     if int(CRITICAL_VALIDITY) & ~covered:
         return False
     return all(results.get(c.unit_id, NodeHealth.MISSING) is NodeHealth.OK for c in critical)
+
+
+class OneWireState(Enum):
+    """Monitoring-only state of the 1-Wire bus; never an input to production permit."""
+
+    OK = "ok"
+    DEGRADED = "degraded"
+    UNAVAILABLE = "unavailable"
+
+
+@dataclass(frozen=True)
+class OneWireBinding:
+    """Binds a role name to the ROM of the device that fills it.
+
+    :ivar role: Role name, unique within a binding list.
+    :ivar rom: 64-bit ROM ID, unique within a binding list.
+    """
+
+    role: str
+    rom: int
+
+
+@dataclass(frozen=True)
+class OneWireHealth:
+    """Result of :func:`evaluate_onewire`.
+
+    :ivar state: Overall monitoring state.
+    :ivar values: Role to reading, only for usable readings.
+    :ivar missing_roles: Bound roles with no usable reading (never given a default).
+    :ivar unbound_roms: ROMs seen on the bus that no binding names (informational).
+    :ivar reasons: Human-readable causes.
+    """
+
+    state: OneWireState
+    values: Mapping[str, SlotReading]
+    missing_roles: tuple[str, ...]
+    unbound_roms: tuple[int, ...]
+    reasons: tuple[str, ...]
+
+
+_KNOWN_SLOT_BITS = sum(int(b) for b in SlotStatus)
+_KNOWN_BUS_BITS = sum(int(b) for b in BusStatus)
+
+
+def _slot_unusable_cause(reading: SlotReading) -> str | None:
+    """:returns: Why ``reading`` cannot be used, or None if it is usable."""
+    if reading.status & ~_KNOWN_SLOT_BITS:
+        return "unknown status bits"
+    if not reading.status & SlotStatus.PRESENT:
+        return "not present"
+    if reading.usable:
+        return None
+    names = [b.name for b in SlotStatus if reading.status & b and b.name]
+    return "slot status " + "|".join(names) if names else "slot not valid"
+
+
+def evaluate_onewire(snapshot: Snapshot, bindings: Sequence[OneWireBinding]) -> OneWireHealth:
+    """Judge the 1-Wire block of a snapshot against configured role bindings.
+
+    Monitoring only: this must not be called from :func:`evaluate` or
+    :func:`production_permitted`, and 1-Wire state never affects the production permit.
+
+    :param snapshot: Snapshot carrying the 1-Wire block.
+    :param bindings: Role to ROM bindings.
+    :returns: The 1-Wire health; an unusable role is listed missing, never defaulted.
+    :raises ValueError: If a role or a ROM appears more than once in ``bindings``.
+    """
+    roles = [b.role for b in bindings]
+    roms = [b.rom for b in bindings]
+    if len(set(roles)) != len(roles):
+        raise ValueError("duplicate role in bindings")
+    if len(set(roms)) != len(roms):
+        raise ValueError("duplicate rom in bindings")
+
+    readings = decode_slots(snapshot)
+    by_rom: dict[int, list[SlotReading]] = {}
+    for reading in readings:
+        by_rom.setdefault(reading.rom, []).append(reading)
+
+    bus = snapshot.onewire_bus_status
+    reasons: list[str] = []
+    state = OneWireState.OK
+    hard = bool(bus & (BusStatus.BUS_SHORT | BusStatus.NO_PRESENCE))
+    if bus:
+        state = OneWireState.DEGRADED
+        names = [b.name for b in BusStatus if bus & b and b.name]
+        if bus & ~_KNOWN_BUS_BITS:
+            names.append("unknown")
+        reasons.append("bus status " + "|".join(names))
+    if snapshot.fault_mask & int(FaultBits.ONEWIRE_BUS_FAULT):
+        state = OneWireState.DEGRADED
+        reasons.append("ONEWIRE_BUS_FAULT fault bit set")
+    if hard and bindings:
+        state = OneWireState.UNAVAILABLE
+
+    values: dict[str, SlotReading] = {}
+    missing: list[str] = []
+    for binding in bindings:
+        found = by_rom.get(binding.rom, [])
+        if hard:
+            cause = "bus unavailable"
+        elif not found:
+            cause = "no slot for ROM"
+        elif len(found) > 1:
+            cause = "ROM reported in more than one slot"
+        else:
+            cause = _slot_unusable_cause(found[0])
+        if cause is None:
+            values[binding.role] = found[0]
+            continue
+        missing.append(binding.role)
+        reasons.append(f"role {binding.role}: {cause}")
+    if missing and state is OneWireState.OK:
+        state = OneWireState.DEGRADED
+
+    bound = set(roms)
+    unbound = tuple(r.rom for r in readings if r.rom not in bound)
+    return OneWireHealth(state, values, tuple(missing), unbound, tuple(reasons))
