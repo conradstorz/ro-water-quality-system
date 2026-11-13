@@ -42,7 +42,7 @@ def test_v11_input_registers_unchanged():
         assert (r.address, r.type, r.scale_divisor, r.access) == (addr, typ, div, "read_only"), name
 
 
-def test_polling_window_unchanged():
+def test_polling_window_is_v13():
     m = schema.load()
     assert (m.input_start, m.input_count) == (100, 100)
 
