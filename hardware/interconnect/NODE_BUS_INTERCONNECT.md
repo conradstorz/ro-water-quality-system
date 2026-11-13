@@ -49,6 +49,23 @@ This is a plain RJ45 and the controller has a genuine Ethernet RJ45. Plugging 24
 ## Node ID
 4-position DIP switch read at boot, IDs 1-15. A duplicate or out-of-range ID leaves the node silent (it does not answer on the bus).
 
+## 1-Wire bus
+Design basis: `docs/superpowers/specs/2026-11-13-onewire-input-design.md`. Decision record: `docs/decisions/ADR-0009-onewire-monitoring-input.md`. Normative data: the `onewire` section of `hardware/interconnect/pinout.yaml`. **Monitoring only**: 1-Wire data never permits or inhibits RO production.
+
+This connector is not for the RJ45 RO BUS. It is a separate, local sensor bus on each node.
+
+- Connector: Nilight 3-pin waterproof male/female harness connector. Inline wire-to-wire, not panel mount.
+- Each node has a short pigtail through a cable gland, one male-end and one female-end, so the chain runs in one direction. Daisy-chain at plug/socket pairs.
+- Signals: +5V, DATA, GND. Cavity numbering is TBD until confirmed against the actual part.
+- Label every plug "1-WIRE".
+- Keep 1-WIRE wiring away from the 24 V trunk and RS485 wiring.
+- Hazard: generic 3-pin automotive plugs mate with each other. Only the label and routing prevent a wrong mating.
+- Power: node 5 V rail, non-parasitic, through a polyfuse (rating TBD).
+- Shield, if used, is bonded at the node end only.
+- rating_voltage: TBD
+- rating_current: TBD
+- Pull-up value, GPIO, maximum cable length and device count: TBD (measure in Stage D).
+
 ## Open TBDs
 - Termination and bias resistor values; transceiver part.
 - Maximum trunk length, voltage drop and per-node current (measure in Stage D).
@@ -56,3 +73,4 @@ This is a plain RJ45 and the controller has a genuine Ethernet RJ45. Plugging 24
 - Controller RS485 A/B polarity versus the vendor labels; whether the controller biases the bus.
 - Whether the controller's built-in 120 ohm termination is at a chain end.
 - ESP32-S3 board model and GPIO assignments (not defined here).
+- 1-Wire (all TBD): connector cavity numbering, connector voltage/current rating, polyfuse rating, pull-up value, GPIO, maximum cable length and device count.

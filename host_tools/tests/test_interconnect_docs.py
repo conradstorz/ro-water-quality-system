@@ -70,3 +70,54 @@ def test_doc_table_matches_yaml():
                 assert k not in found, f"duplicate row for {k}"
                 found[k] = cells[1]
     assert found == expected
+
+
+ADR9 = REPO / "docs" / "decisions" / "ADR-0009-onewire-monitoring-input.md"
+HARDWARE = REPO / "hardware"
+CONNECTOR_NAME = "Nilight 3-pin waterproof male/female harness connector"
+
+
+def test_onewire_section_names_connector_and_signals():
+    ow = load()["onewire"]
+    assert ow["connector"] == CONNECTOR_NAME
+    signals = ow["signals"]
+    assert set(signals) == {"+5V", "DATA", "GND"}
+    for name, entry in signals.items():
+        assert entry["cavity"] == "TBD", name
+
+
+def test_onewire_ratings_and_electrical_values_are_tbd():
+    ow = load()["onewire"]
+    for key in ("rating_voltage", "rating_current", "polyfuse", "pull_up", "gpio", "max_length"):
+        assert ow[key] == "TBD", key
+    assert ow["power"] == "node 5V rail, non-parasitic"
+
+
+def test_interconnect_doc_covers_onewire_and_is_not_rj45():
+    text = DOC.read_text(encoding="utf-8")
+    assert '"1-WIRE"' in text
+    assert "not for the RJ45 RO BUS" in text
+    assert "rating_voltage: TBD" in text and "rating_current: TBD" in text
+
+
+def test_adr_0009_is_proposed_and_monitoring_only():
+    text = ADR9.read_text(encoding="utf-8")
+    assert "**Status:** Proposed" in text
+    assert "monitoring only" in text.lower()
+    assert "100-199" in text
+    assert "second poll block" in text  # listed as a rejected alternative
+
+
+def test_no_hardware_file_assigns_onewire_gpio_or_pullup_value():
+    import re
+
+    pattern = re.compile(r"1-wire[^\n]*?\b(gpio|pull-?up)\b[^\n]*", re.IGNORECASE)
+    for path in HARDWARE.rglob("*"):
+        if path.suffix not in {".md", ".yaml"}:
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if pattern.search(line):
+                assert "TBD" in line, f"{path}: {line}"
+                assert not re.search(r"\b(GPIO\s?\d+|\d+(\.\d+)?\s?[kK]\s?(ohm|Ω)?)", line), (
+                    f"{path}: {line}"
+                )

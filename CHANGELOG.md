@@ -39,3 +39,7 @@
 
 ## 1-Wire input protocol — 2026-11-13
 - Protocol 1.3: 1-Wire block 140-199, additive. Header (device count, bus status, scan generation, age) plus 8 slots of 7 words (64-bit ROM ID, primary, secondary, status); fault bit 10 `onewire_bus_fault`; polling window 100-199 (100 words). No existing address, scale, signedness or access changed; 1-Wire bits are not in validity or critical masks.
+
+## 1-Wire hardware docs and ADR-0009 — 2026-11-13
+- ADR-0009 (proposed): monitoring-only 1-Wire input, controller-side ROM-ID binding, single polling window 100-199; critical 1-Wire, a second poll block and paged access rejected.
+- `pinout.yaml` `onewire:` section, `NODE_BUS_INTERCONNECT.md` 1-Wire section, sensor-node `HARDWARE_SPEC.md` front end and acceptance cases. Connector cavities, ratings, pull-up, GPIO, polyfuse and cable length are TBD. Checked by `test_interconnect_docs.py`.
