@@ -103,11 +103,50 @@ def test_forward_step_limit():
     assert evaluate(RO_CFG, with_seq(0x8000), previous_sequence=0) is NodeHealth.STALE
 
 
+RESET = int(reg.StatusBits.WATCHDOG_RESET_SEEN)
+
+
+def flagged(seq, boot=3, **changes):
+    return with_seq(seq, module_status=RESET, boot_counter=boot, **changes)
+
+
 def test_watchdog_reset_flag_is_stale_until_acknowledged():
-    s = with_seq(5, module_status=int(reg.StatusBits.WATCHDOG_RESET_SEEN))
+    s = flagged(5)
     assert evaluate(RO_CFG, s) is NodeHealth.STALE
     assert evaluate(RO_CFG, s, previous_sequence=4) is NodeHealth.STALE
-    assert evaluate(RO_CFG, s, previous_sequence=None, reset_acknowledged=True) is NodeHealth.OK
+    assert evaluate(RO_CFG, s, previous_sequence=None, acknowledged_boot_counter=3) is (
+        NodeHealth.OK
+    )
+
+
+def test_acknowledged_boot_with_sticky_flag_stays_ok_across_polls():
+    assert evaluate(RO_CFG, flagged(5), None, acknowledged_boot_counter=3) is NodeHealth.OK
+    for prev, seq in [(5, 6), (6, 7), (7, 9), (9, 10)]:
+        result = evaluate(RO_CFG, flagged(seq), prev, acknowledged_boot_counter=3)
+        assert result is NodeHealth.OK
+
+
+def test_second_reboot_is_stale_even_with_earlier_ack():
+    s = flagged(8, boot=4)
+    assert evaluate(RO_CFG, s, 7, acknowledged_boot_counter=3) is NodeHealth.STALE
+    assert evaluate(RO_CFG, s, 7, acknowledged_boot_counter=None) is NodeHealth.STALE
+
+
+def test_acknowledged_reset_does_not_mask_age_fault_or_sequence():
+    over = reg.CRITICAL_MAX_AGE_MS + 1
+    old = flagged(6, critical_age_ms=over)
+    assert evaluate(RO_CFG, old, 5, acknowledged_boot_counter=3) is NodeHealth.STALE
+    fault = int(reg.FaultBits.STALE_ACQUISITION)
+    s = flagged(6, fault_mask=fault, critical_age_ms=0)
+    assert evaluate(RO_CFG, s, 5, acknowledged_boot_counter=3) is NodeHealth.STALE
+    assert evaluate(RO_CFG, flagged(5), 5, acknowledged_boot_counter=3) is NodeHealth.STALE
+
+
+def test_acknowledged_reset_delta_0xffff_is_stale():
+    s = flagged(4)
+    assert evaluate(RO_CFG, s, previous_sequence=5, acknowledged_boot_counter=3) is (
+        NodeHealth.STALE
+    )
 
 
 def test_stale_acquisition_fault_alone_is_stale():

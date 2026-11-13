@@ -72,23 +72,29 @@ def evaluate(
     snapshot: Snapshot | None,
     previous_sequence: int | None = None,
     max_age_ms: int = CRITICAL_MAX_AGE_MS,
-    reset_acknowledged: bool = False,
+    acknowledged_boot_counter: int | None = None,
 ) -> NodeHealth:
     """Judge one node's latest poll.
 
     Precedence: MISSING, WRONG_NODE, node-reset flag, sequence, age/stale fault,
     INVALID, then OK.
 
-    A snapshot whose ``module_status`` has ``WATCHDOG_RESET_SEEN`` is STALE until the
-    controller acknowledges the reset. Recovery: re-baseline by calling this with
-    ``previous_sequence=None, reset_acknowledged=True`` for the next poll, then resume
-    passing the real previous sequence (with ``reset_acknowledged`` False).
+    ``WATCHDOG_RESET_SEEN`` in ``module_status`` is sticky in the node, so it is
+    accepted only when ``snapshot.boot_counter`` equals ``acknowledged_boot_counter``;
+    otherwise the node is STALE. Recovery after a reset: the controller operator/logic
+    records the node's current ``boot_counter`` as acknowledged and re-baselines by
+    passing ``previous_sequence=None`` for the next poll. Thereafter it keeps passing
+    the same ``acknowledged_boot_counter`` and the real previous sequence on every poll;
+    the sticky flag no longer blocks. A later reboot increments ``boot_counter``, the
+    acknowledgement no longer matches, and the node is STALE again. The sequence, age
+    and stale-fault checks still run for an acknowledged reset.
 
     :param config: What the controller expects of this node.
     :param snapshot: The decoded snapshot, or None if the poll got no valid reply.
     :param previous_sequence: ``snapshot_sequence`` of the previous accepted poll, if any.
     :param max_age_ms: Largest acceptable ``critical_age_ms`` (inclusive).
-    :param reset_acknowledged: True when the controller has acknowledged a node reset.
+    :param acknowledged_boot_counter: The ``boot_counter`` of the boot whose reset the
+        controller has acknowledged, or None if none.
     :returns: The node's health; anything but OK must be treated as unusable.
     """
     if snapshot is None:
@@ -97,7 +103,10 @@ def evaluate(
         return NodeHealth.WRONG_NODE
     if config.required_mask & ~snapshot.installed_mask:
         return NodeHealth.WRONG_NODE
-    if snapshot.module_status & int(StatusBits.WATCHDOG_RESET_SEEN) and not reset_acknowledged:
+    if (
+        snapshot.module_status & int(StatusBits.WATCHDOG_RESET_SEEN)
+        and snapshot.boot_counter != acknowledged_boot_counter
+    ):
         return NodeHealth.STALE
     if previous_sequence is not None:
         delta = (snapshot.snapshot_sequence - previous_sequence) & 0xFFFF
