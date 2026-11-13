@@ -77,7 +77,9 @@ def evaluate(
     """Judge one node's latest poll.
 
     Precedence: MISSING, WRONG_NODE, node-reset flag, sequence, age/stale fault,
-    INVALID, then OK.
+    INVALID, then OK. Just before OK, a node is also INVALID if ``OPERATIONAL`` is clear,
+    if any validity bit lies outside ``installed_mask``, or if ``CONFIGURATION_CRC_ERROR``
+    is set.
 
     ``WATCHDOG_RESET_SEEN`` in ``module_status`` is sticky in the node, so it is
     accepted only when ``snapshot.boot_counter`` equals ``acknowledged_boot_counter``;
@@ -118,6 +120,12 @@ def evaluate(
         return NodeHealth.STALE
     if config.required_mask & ~snapshot.validity_mask:
         return NodeHealth.INVALID
+    if not snapshot.module_status & int(StatusBits.OPERATIONAL):
+        return NodeHealth.INVALID
+    if snapshot.validity_mask & ~snapshot.installed_mask:
+        return NodeHealth.INVALID  # protocol 1.2 invariant violated by the node
+    if snapshot.module_status & int(StatusBits.CONFIGURATION_CRC_ERROR):
+        return NodeHealth.INVALID  # calibration cannot be trusted
     return NodeHealth.OK
 
 
@@ -126,10 +134,18 @@ def production_permitted(results: Mapping[int, NodeHealth], configs: Sequence[No
 
     :param results: Latest health per unit id; a unit with no entry counts as MISSING.
     :param configs: The configured node list.
-    :returns: True only if at least one critical node is configured and every critical
-        node is OK. This is necessary, not sufficient: other interlocks still apply.
+    :returns: True only if at least one critical node is configured, the union of the
+        critical nodes' ``required_mask`` covers ``CRITICAL_VALIDITY`` (so, for example, an
+        RO-skid-only critical list cannot permit production without tank volume), and
+        every critical node is OK. This is necessary, not sufficient: other interlocks
+        still apply.
     """
     critical = [c for c in configs if c.critical]
     if not critical:
+        return False
+    covered = 0
+    for c in critical:
+        covered |= c.required_mask
+    if int(CRITICAL_VALIDITY) & ~covered:
         return False
     return all(results.get(c.unit_id, NodeHealth.MISSING) is NodeHealth.OK for c in critical)

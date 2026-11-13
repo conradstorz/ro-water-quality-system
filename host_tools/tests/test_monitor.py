@@ -15,7 +15,7 @@ from ro_tools.monitor import (
     evaluate,
     production_permitted,
 )
-from ro_tools.sim.presets import RO_SKID_PROFILE, TANK_PROFILE, apply_preset
+from ro_tools.sim.presets import FULL_PROFILE, RO_SKID_PROFILE, TANK_PROFILE, apply_preset
 from ro_tools.sim.register_bank import RegisterBank
 from ro_tools.sim.server import Responder
 
@@ -107,7 +107,9 @@ RESET = int(reg.StatusBits.WATCHDOG_RESET_SEEN)
 
 
 def flagged(seq, boot=3, **changes):
-    return with_seq(seq, module_status=RESET, boot_counter=boot, **changes)
+    return with_seq(
+        seq, module_status=RESET | int(reg.StatusBits.OPERATIONAL), boot_counter=boot, **changes
+    )
 
 
 def test_watchdog_reset_flag_is_stale_until_acknowledged():
@@ -184,6 +186,27 @@ def test_optional_pressure_failure_does_not_block_a_node_that_does_not_require_i
     assert evaluate(needs_pressure, s) is NodeHealth.INVALID
 
 
+def test_non_operational_node_is_invalid():
+    s = snap(RO_SKID_PROFILE)
+    off = dataclasses.replace(s, module_status=s.module_status & ~int(reg.StatusBits.OPERATIONAL))
+    assert evaluate(RO_CFG, off) is NodeHealth.INVALID
+
+
+def test_validity_outside_installed_is_invalid():
+    s = snap(TANK_PROFILE)
+    bad = dataclasses.replace(s, validity_mask=s.validity_mask | int(V.RO_FEED_PRESSURE))
+    assert bad.validity_mask & ~bad.installed_mask
+    assert evaluate(TANK_CFG, bad) is NodeHealth.INVALID
+
+
+def test_configuration_crc_error_is_invalid():
+    s = snap(RO_SKID_PROFILE)
+    bad = dataclasses.replace(
+        s, module_status=s.module_status | int(reg.StatusBits.CONFIGURATION_CRC_ERROR)
+    )
+    assert evaluate(RO_CFG, bad) is NodeHealth.INVALID
+
+
 def test_production_permitted_only_when_every_critical_node_ok():
     configs = [RO_CFG, TANK_CFG]
     both_ok = {1: NodeHealth.OK, 2: NodeHealth.OK}
@@ -196,6 +219,15 @@ def test_production_denied_with_no_critical_node_configured():
     assert production_permitted({}, []) is False
     non_critical = dataclasses.replace(RO_CFG, critical=False)
     assert production_permitted({1: NodeHealth.OK}, [non_critical]) is False
+
+
+def test_ro_only_critical_cannot_permit_production():
+    assert production_permitted({1: NodeHealth.OK}, [RO_CFG]) is False
+
+
+def test_single_full_profile_node_covers_critical_validity():
+    cfg = NodeConfig(1, int(reg.NodeType.RO_SKID), True, critical_required(FULL_PROFILE.installed))
+    assert production_permitted({1: NodeHealth.OK}, [cfg]) is True
 
 
 def test_non_critical_node_failure_does_not_block():

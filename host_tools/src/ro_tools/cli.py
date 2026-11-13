@@ -19,6 +19,7 @@ from loguru import logger
 from ro_tools import codegen, schema
 from ro_tools.client import CommsError, ModbusExceptionError, SensorNodeClient
 from ro_tools.generated import registers as reg
+from ro_tools.monitor import critical_required
 from ro_tools.sim.bus import Bus
 from ro_tools.sim.presets import PRESETS, RO_SKID_PROFILE, TANK_PROFILE, NodeProfile, apply_preset
 from ro_tools.sim.register_bank import RegisterBank
@@ -386,8 +387,20 @@ def _cmd_read(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     mask = snap.validity_mask
     set_bits = "|".join(b.name for b in reg.ValidityBits if b.name and mask & b)
     print(f"validity: {set_bits}")
-    all_set = (mask & reg.CRITICAL_VALIDITY) == reg.CRITICAL_VALIDITY
+    try:
+        type_name = reg.NodeType(snap.node_type).name
+    except ValueError:
+        type_name = str(snap.node_type)
+    print(f"node type: {type_name}")
+    print(f"installed_mask: 0x{snap.installed_mask:04X}")
+    needed = critical_required(snap.installed_mask)
+    all_set = (mask & needed) == needed
     print(f"critical validity bits all set: {'yes' if all_set else 'no'}")
+    if mask & ~snap.installed_mask:
+        print(
+            "WARNING: validity bits outside installed_mask "
+            f"(0x{mask & ~snap.installed_mask:04X}); node violates protocol invariant"
+        )
     return EXIT_OK
 
 

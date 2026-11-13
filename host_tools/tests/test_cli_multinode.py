@@ -1,5 +1,7 @@
 """CLI support for unit ids and a multi-node simulator."""
 
+import dataclasses
+
 import pytest
 
 from ro_tools import cli
@@ -71,3 +73,41 @@ def test_sim_nodes_pressure_failed_on_tank_fails_cleanly(capsys):
 def test_pressure_failed_is_a_preset_choice():
     args = cli.build_parser().parse_args(["sim", "--tcp", "h:1", "--preset", "pressure_failed"])
     assert args.preset == "pressure_failed"
+
+
+def _serve_read(capsys, profile, unit_id=1, patch=None):
+    bus = Bus()
+    responder = Responder(RegisterBank(), unit_id=unit_id)
+    apply_preset(responder, "healthy", profile)
+    bus.add(responder)
+    with TcpSimServer(bus) as server:
+        host, port = server.address
+        argv = ["read", "--tcp", f"{host}:{port}", "--unit-id", str(unit_id)]
+        assert cli.main(argv) == 0
+    return capsys.readouterr().out
+
+
+def test_read_healthy_tank_prints_critical_yes(capsys):
+    out = _serve_read(capsys, TANK_PROFILE, unit_id=2)
+    assert "critical validity bits all set: yes" in out
+    assert "node type: TANK" in out
+    assert "installed_mask: 0x" in out
+    assert "WARNING" not in out
+
+
+def test_read_healthy_ro_skid_prints_critical_yes(capsys):
+    out = _serve_read(capsys, RO_SKID_PROFILE)
+    assert "critical validity bits all set: yes" in out
+    assert "node type: RO_SKID" in out
+
+
+def test_read_warns_when_validity_outside_installed(monkeypatch, capsys):
+    real = cli.SensorNodeClient.read_snapshot
+
+    def bad(self):
+        snap = real(self)
+        return dataclasses.replace(snap, validity_mask=snap.validity_mask | 0x10)
+
+    monkeypatch.setattr(cli.SensorNodeClient, "read_snapshot", bad)
+    out = _serve_read(capsys, TANK_PROFILE, unit_id=2)
+    assert "WARNING: validity bits outside installed_mask" in out

@@ -23,7 +23,7 @@ Shielded Cat5e/Cat6, T568B wiring, RJ45 shell bonded to shield. Daisy-chain cont
 | 7, 8 | GND (two conductors in parallel) |
 | Shell | Shield |
 
-- Power: one 24 V supply (also feeds the controller, which accepts 7–36 V). Node current assumed under 200 mA; voltage drop negligible to about 30 m (verify in Stage D).
+- Power: one 24 V supply (also feeds the controller, which accepts 7–36 V). Node current assumed under 200 mA; voltage drop and maximum trunk length are TBD (measure in Stage D).
 - Termination: switchable 120 ohm at the two end nodes only. Bias at the controller only.
 - Shield bonded to chassis at the controller end only.
 - **Ethernet hazard:** the controller has a genuine Ethernet RJ45. Use distinctly colored (red) cable and jacks, label every port "RO BUS – 24V", and never terminate this cable in a switch or patch panel.

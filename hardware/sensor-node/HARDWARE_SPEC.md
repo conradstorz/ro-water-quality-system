@@ -16,7 +16,7 @@ One carrier board serves all node types; the firmware profile selects the front 
 - Tank (unit 2, `node_type` 1): 2 × HX711 (load cells, 5V excitation), 1 × ADS1115 for optional pressure.
 ## Optional pressure channel (all nodes)
 - One input with 5V transducer excitation pin, protection network (values TBD), and a spare ADS1115 channel.
-- Solder jumper selects 0.5-4.5V ratiometric or 4-20mA (250 ohm sense resistor, loop power from 24V). Transducer model, range and ADC scaling TBD.
+- Solder jumper selects 0.5-4.5V ratiometric or 4-20mA (250 ohm sense resistor, loop power from 24V). Transducer model, range and ADC scaling TBD. TBD: ADS1115 supply rail and input scaling/protection for both options (0.5-4.5V and 4-20mA across the 250 ohm sense resistor), since each can reach about 5V, which exceeds an ADS1115 input unless the ADC runs from 5V; no values chosen yet.
 - Monitoring only; the independent hardwired pressure cutoff remains mandatory. Not installed is not a fault; installed but implausible or lost is.
 ## Wiring
 Use terminal blocks, labeled signal/ground/supply, strain relief, sensor cable separation from AC motor conductors, and a documented shield/ground scheme. RS485 twisted pair plus suitable reference conductor. No unverified 5V signal into ESP32 3.3V GPIO.
