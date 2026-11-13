@@ -121,6 +121,7 @@ class SlotReading:
     primary: int
     secondary: int
     status: SlotStatus
+    slot: int = 0
 
     @property
     def usable(self) -> bool:
@@ -227,5 +228,5 @@ def decode_slots(snapshot: Snapshot) -> tuple[SlotReading, ...]:
         rom = 0
         for word in words:
             rom = (rom << 16) | word
-        out.append(SlotReading(rom, primary, secondary, SlotStatus(status)))
+        out.append(SlotReading(rom, primary, secondary, SlotStatus(status), i))
     return tuple(out)

@@ -4,12 +4,15 @@ import pytest
 
 from ro_tools import cli
 from ro_tools.generated.registers import FaultBits as F
+from ro_tools.generated.registers import Snapshot
 from ro_tools.onewire import (
     FAMILY_DS18B20,
     FAMILY_DS2438,
     BusStatus,
+    OneWireDevice,
     SlotStatus,
     decode_slots,
+    encode_onewire,
     make_rom,
 )
 from ro_tools.sim.bus import Bus
@@ -92,8 +95,46 @@ def test_old_presets_leave_onewire_block_zero(name):
 
 
 def test_sim_help_choices_come_from_presets():
-    args = cli.build_parser().parse_args(["sim", "--tcp", "h:1", "--preset", "onewire_lost"])
+    parser = cli.build_parser()
+    args = parser.parse_args(["sim", "--tcp", "h:1", "--preset", "onewire_lost"])
     assert args.preset == "onewire_lost"
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["sim", "--tcp", "h:1", "--preset", "no_such_preset"])
+    assert exc.value.code == 2
+
+
+def test_print_onewire_uses_real_slot_index_with_gap(capsys):
+    a = OneWireDevice(TEMP_ROM, primary=2150)
+    b = OneWireDevice(DS2438_ROM, primary=2210, secondary=3300)
+    fields = encode_onewire([a, b])
+    for name in list(fields):
+        if name.startswith("onewire_s1_"):
+            fields[name] = 0
+    # Move the second device from slot 1 into slot 2 to create a gap.
+    for suffix in ("rom0", "rom1", "rom2", "rom3", "primary", "secondary", "status"):
+        fields[f"onewire_s2_{suffix}"] = encode_onewire([a, b])[f"onewire_s1_{suffix}"]
+    snap = Snapshot(**fields)
+    assert [r.slot for r in decode_slots(snap)] == [0, 2]
+    cli._print_onewire(snap)
+    rows = capsys.readouterr().out.splitlines()[2:]
+    assert [row.split()[0] for row in rows] == ["0", "2"]
+
+
+def test_read_bus_status_without_slots_prints_header_and_keeps_exit_code(capsys):
+    responder = Responder(RegisterBank(), unit_id=1)
+    apply_preset(responder, "healthy", RO_SKID_PROFILE)
+    healthy_code, _ = read_with("healthy", capsys)
+    responder.bank.set_field("onewire_bus_status", int(BusStatus.NO_PRESENCE))
+    responder.bank.commit()
+    bus = Bus()
+    bus.add(responder)
+    with TcpSimServer(bus) as server:
+        host, port = server.address
+        code = cli.main(["read", "--tcp", f"{host}:{port}"])
+    out = capsys.readouterr().out
+    assert code == healthy_code
+    assert "1-Wire bus status: NO_PRESENCE" in out
+    assert "slot" in out
 
 
 def read_with(preset, capsys):

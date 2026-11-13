@@ -407,8 +407,8 @@ def _print_onewire(snap: reg.Snapshot) -> None:
     bus = "|".join(b.name for b in BusStatus if b.name and snap.onewire_bus_status & b)
     print(f"1-Wire bus status: {bus or 'none'}")
     print(f"{'slot':<5}{'rom':<18}{'family':<17}{'primary':>8}{'secondary':>10}  status")
-    for index in range(len(slots)):
-        print(_onewire_row(index, slots[index]))
+    for reading in slots:
+        print(_onewire_row(reading.slot, reading))
 
 
 def _cmd_read(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
