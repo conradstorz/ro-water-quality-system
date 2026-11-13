@@ -40,7 +40,7 @@ Shielded Cat5e/Cat6, T568B wiring, RJ45 shell bonded to shield. Daisy-chain cont
 ## 4. Protocol
 - Shared 40-word register layout for all node types (protocol 1.2). Register 133 `node_type` (u16, enum: 0 `ro_skid`, 1 `tank`) and register 134 `installed_mask` (u16, same bit assignments as `validity_mask`; a set bit means that sensor is physically fitted).
 - Invariant: `validity_mask & ~installed_mask == 0`. A fitted but failing sensor has its installed bit set and its validity bit clear; a sensor not fitted has neither. The existing `ro_feed_pressure_psi_x10` (address 115, validity bit 6) is the optional pressure channel on every node type. Existing offsets 100-132 are unchanged (AGENTS.md rule 2); protocol version 1.1 to 1.2.
-- Optional shared pressure block: `pressure_psi_x10` (i16) with a validity bit. An `installed_sensors` bitmask in NV config marks fitted channels. Not installed means absent, not a fault. Installed but implausible or lost clears the validity bit and raises a fault.
+- Optional pressure channel: not installed means the installed bit is clear, which is not a fault. Installed but implausible or lost clears the validity bit and raises a fault.
 - Controller holds a configured node list (ID, type, criticality). A missing or stale critical node inhibits RO production; a missing non-critical node logs a fault. Stale data, implausible readings and inconsistent snapshots are invalid (AGENTS.md rule 4).
 
 ## 5. Firmware
