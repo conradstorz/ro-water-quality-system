@@ -211,7 +211,14 @@ def test_serial_server_ignores_wrong_unit(responder):
 
 
 def test_preset_names():
-    assert PRESETS == ("healthy", "critical_sensor_invalid", "stale", "frozen_sequence", "silent")
+    assert PRESETS == (
+        "healthy",
+        "critical_sensor_invalid",
+        "stale",
+        "frozen_sequence",
+        "silent",
+        "pressure_failed",
+    )
 
 
 def test_preset_healthy(responder):
