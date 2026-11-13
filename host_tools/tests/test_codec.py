@@ -25,7 +25,7 @@ def test_snapshot_round_trip(fields):
 
 
 def test_constants_match_map():
-    assert (reg.INPUT_START, reg.INPUT_COUNT) == (100, 40)
+    assert (reg.INPUT_START, reg.INPUT_COUNT) == (100, 100)
     assert (reg.STATUS_START, reg.STATUS_COUNT) == (220, 8)
     assert reg.ADDR_FEED_EC_US_CM_X10 == 109
     assert reg.ADDR_RESERVED_139 == 139

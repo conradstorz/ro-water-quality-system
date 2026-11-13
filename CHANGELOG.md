@@ -36,3 +36,6 @@
 - Interconnect: ADR-0008 (RJ45 24 V node bus, RS485 on the center pair, daisy chain, red cable and jacks, Ethernet hazard), pinout in `hardware/interconnect/pinout.yaml`, and `NODE_BUS_INTERCONNECT.md`. The pinout doc is checked against the YAML by a test.
 - Optional pressure channel documented for every node. Not installed is not a fault; installed but implausible or lost is. The independent hardwired pressure cutoff remains mandatory.
 - Hardware docs: main controller and power docs now state that the controller runs from the same 24 V supply as the node bus. Valve and contactor-coil rail voltage is TBD (12 V in the earlier plan). Termination, bias, trunk length, voltage drop, per-node current and transceiver choice remain TBD.
+
+## 1-Wire input protocol — 2026-11-13
+- Protocol 1.3: 1-Wire block 140-199, additive. Header (device count, bus status, scan generation, age) plus 8 slots of 7 words (64-bit ROM ID, primary, secondary, status); fault bit 10 `onewire_bus_fault`; polling window 100-199 (100 words). No existing address, scale, signedness or access changed; 1-Wire bits are not in validity or critical masks.

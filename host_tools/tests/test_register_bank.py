@@ -64,7 +64,7 @@ def test_new_bank_publishes_nothing_valid(bank):
 def test_fc04_full_block_decodes(bank):
     bank.set_field("feed_ec_us_cm_x10", 4257)
     bank.commit()
-    s = reg.decode_snapshot(words_of(bank.handle_pdu(read(4, 100, 40))))
+    s = reg.decode_snapshot(words_of(bank.handle_pdu(read(4, 100, reg.INPUT_COUNT))))
     assert s.feed_ec_us_cm_x10 == 4257 and s.snapshot_sequence == 1
 
 
@@ -75,7 +75,7 @@ def test_fc04_subrange(bank):
 
 
 @pytest.mark.parametrize(
-    ("addr", "count"), [(99, 1), (100, 41), (139, 2), (140, 1), (0, 1), (200, 1)]
+    ("addr", "count"), [(99, 1), (100, 101), (199, 2), (200, 1), (0, 1)]
 )
 def test_fc04_outside_block_is_illegal_address(bank, addr, count):
     assert bank.handle_pdu(read(4, addr, count)) == exc(4, EXC_ILLEGAL_ADDRESS)
@@ -271,7 +271,7 @@ def test_reader_never_sees_mixed_snapshot(bank):
     t.start()
     try:
         for _ in range(3000):
-            s = reg.decode_snapshot(words_of(bank.handle_pdu(read(4, 100, 40))))
+            s = reg.decode_snapshot(words_of(bank.handle_pdu(read(4, 100, reg.INPUT_COUNT))))
             assert s.feed_ec_us_cm_x10 == s.permeate_ec_us_cm_x100 == s.ro_feed_pressure_psi_x10
     finally:
         stop.set()
@@ -345,7 +345,7 @@ def test_last_rejection_names_bad_enum_on_fc16(bank):
 
 
 def test_last_rejection_after_out_of_range_read(bank):
-    assert bank.handle_pdu(read(4, 100, 41)) == exc(4, EXC_ILLEGAL_ADDRESS)
+    assert bank.handle_pdu(read(4, 100, 101)) == exc(4, EXC_ILLEGAL_ADDRESS)
     assert bank.last_rejection and "100" in bank.last_rejection
 
 
@@ -355,16 +355,16 @@ def test_last_rejection_for_unsupported_function(bank):
 
 
 def test_last_rejection_cleared_by_good_request(bank):
-    bank.handle_pdu(read(4, 100, 41))
+    bank.handle_pdu(read(4, 100, 101))
     assert bank.last_rejection is not None
-    bank.handle_pdu(read(4, 100, 40))
+    bank.handle_pdu(read(4, 100, reg.INPUT_COUNT))
     assert bank.last_rejection is None
 
 
 def test_reboot_at_max_boot_counter_saturates_and_flags(bank):
     bank.set_field("boot_counter", 0xFFFFFFFF)
     bank.reboot()
-    s = reg.decode_snapshot(words_of(bank.handle_pdu(read(4, 100, 40))))
+    s = reg.decode_snapshot(words_of(bank.handle_pdu(read(4, 100, reg.INPUT_COUNT))))
     assert s.boot_counter == 0xFFFFFFFF
     assert s.module_status & reg.StatusBits.OVERFLOW_OR_SATURATION
     assert s.module_status & reg.StatusBits.WATCHDOG_RESET_SEEN

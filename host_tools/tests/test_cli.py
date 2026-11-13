@@ -25,7 +25,7 @@ def _tcp(server) -> str:
 
 def test_validate_ok(capsys):
     assert cli.main(["validate"]) == 0
-    assert "OK: protocol 1.2, 40 input words" in capsys.readouterr().out
+    assert "OK: protocol 1.3, 100 input words" in capsys.readouterr().out
 
 
 def test_validate_reports_violations(tmp_path, capsys):

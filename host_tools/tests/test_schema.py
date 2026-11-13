@@ -20,8 +20,8 @@ def _reg(raw: dict, table: str, name: str) -> dict:
 
 def test_real_map_loads():
     m = schema.load()
-    assert (m.version_major, m.version_minor) == (1, 2)
-    assert (m.input_start, m.input_count) == (100, 40)
+    assert (m.version_major, m.version_minor) == (1, 3)
+    assert (m.input_start, m.input_count) == (100, 100)
     assert (m.status_start, m.status_count) == (220, 8)
     assert m.critical_validity_bits == (0, 1, 2, 3, 7)
     assert m.enums["ro_state"][4] == "production"

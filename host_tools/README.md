@@ -23,7 +23,7 @@ uv run ro-tools read (--tcp HOST:PORT | --serial DEVICE) [--unit-id N] [--timeou
 uv run ro-tools publish-status (--tcp HOST:PORT | --serial DEVICE) --state NAME [options]
 ```
 
-- `validate`: check the register map; prints `OK: protocol 1.2, 40 input words`, or one violation per line on stderr (exit 1).
+- `validate`: check the register map; prints `OK: protocol 1.3, 100 input words`, or one violation per line on stderr (exit 1).
   `uv run ro-tools validate`
 - `generate`: rewrite `generated/registers.py`; `--check` writes nothing and exits 1 on drift.
   `uv run ro-tools generate --check`
