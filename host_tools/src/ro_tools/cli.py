@@ -20,6 +20,15 @@ from ro_tools import codegen, schema
 from ro_tools.client import CommsError, ModbusExceptionError, SensorNodeClient
 from ro_tools.generated import registers as reg
 from ro_tools.monitor import critical_required
+from ro_tools.onewire import (
+    FAMILY_DS18B20,
+    FAMILY_DS2438,
+    BusStatus,
+    SlotReading,
+    SlotStatus,
+    decode_slots,
+    rom_family,
+)
 from ro_tools.sim.bus import Bus
 from ro_tools.sim.presets import PRESETS, RO_SKID_PROFILE, TANK_PROFILE, NodeProfile, apply_preset
 from ro_tools.sim.register_bank import RegisterBank
@@ -357,6 +366,51 @@ def _format_field(name: str, raw: int, by_name: dict[str, schema.Register]) -> s
     return line
 
 
+def _family_name(rom: int) -> str:
+    """Name the 1-Wire family of a ROM.
+
+    :param rom: 64-bit ROM id.
+    :returns: Family name or ``unsupported 0xNN``.
+    """
+    family = rom_family(rom)
+    if family == FAMILY_DS18B20:
+        return "DS18B20"
+    if family == FAMILY_DS2438:
+        return "DS2438"
+    return f"unsupported 0x{family:02X}"
+
+
+def _onewire_row(index: int, reading: SlotReading) -> str:
+    """Format one 1-Wire slot row.
+
+    :param index: Slot number.
+    :param reading: Decoded slot.
+    :returns: Table row.
+    """
+    flags = [f.name.lower() for f in SlotStatus if f.name and reading.status & f]
+    if reading.usable:
+        flags.append("usable")
+    return (
+        f"{index:<5}{reading.rom:016X}  {_family_name(reading.rom):<17}"
+        f"{reading.primary:>8}{reading.secondary:>10}  {' '.join(flags)}"
+    )
+
+
+def _print_onewire(snap: reg.Snapshot) -> None:
+    """Print the 1-Wire table (display only; never affects the exit status).
+
+    :param snap: Decoded snapshot.
+    """
+    slots = decode_slots(snap)
+    if not slots and not snap.onewire_bus_status:
+        return
+    bus = "|".join(b.name for b in BusStatus if b.name and snap.onewire_bus_status & b)
+    print(f"1-Wire bus status: {bus or 'none'}")
+    print(f"{'slot':<5}{'rom':<18}{'family':<17}{'primary':>8}{'secondary':>10}  status")
+    for index in range(len(slots)):
+        print(_onewire_row(index, slots[index]))
+
+
 def _cmd_read(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     """Read and print one snapshot.
 
@@ -401,6 +455,7 @@ def _cmd_read(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
             "WARNING: validity bits outside installed_mask "
             f"(0x{mask & ~snap.installed_mask:04X}); node violates protocol invariant"
         )
+    _print_onewire(snap)
     return EXIT_OK
 
 

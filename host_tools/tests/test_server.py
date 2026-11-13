@@ -218,6 +218,10 @@ def test_preset_names():
         "frozen_sequence",
         "silent",
         "pressure_failed",
+        "onewire_healthy",
+        "onewire_lost",
+        "onewire_crc_error",
+        "onewire_overflow",
     )
 
 
