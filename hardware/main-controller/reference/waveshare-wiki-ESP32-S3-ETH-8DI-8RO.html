@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html class="client-nojs" lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<title>ESP32-S3-ETH-8DI-8RO - Waveshare Wiki</title>
+<script>document.documentElement.className="client-js";RLCONF={"wgBreakFrames":!1,"wgSeparatorTransformTable":["",""],"wgDigitTransformTable":["",""],"wgDefaultDateFormat":"dmy","wgMonthNames":["","January","February","March","April","May","June","July","August","September","October","November","December"],"wgRequestId":"8676e2b1ddcb2e4599e3c9ca","wgCSPNonce":!1,"wgCanonicalNamespace":"","wgCanonicalSpecialPageName":!1,"wgNamespaceNumber":0,"wgPageName":"ESP32-S3-ETH-8DI-8RO","wgTitle":"ESP32-S3-ETH-8DI-8RO","wgCurRevisionId":111306,"wgRevisionId":111306,"wgArticleId":23563,"wgIsArticle":!0,"wgIsRedirect":!1,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":["USB interface","RS485 interface","WiFi interface","Pages using duplicate arguments in template calls","BLE interface"],"wgPageContentLanguage":"en","wgPageContentModel":"wikitext","wgRelevantPageName":"ESP32-S3-ETH-8DI-8RO","wgRelevantArticleId":23563,"wgIsProbablyEditable":!1,
+"wgRelevantPageIsProbablyEditable":!1,"wgRestrictionEdit":[],"wgRestrictionMove":[]};RLSTATE={"ext.gadget.tabber":"ready","site.styles":"ready","noscript":"ready","user.styles":"ready","user":"ready","user.options":"loading","jquery.makeCollapsible.styles":"ready","mediawiki.toc.styles":"ready","skins.tweeki.styles":"ready","skins.tweeki.bootstraptheme.styles":"ready","skins.tweeki.externallinks.styles":"ready","skins.tweeki.awesome.styles":"ready"};RLPAGEMODULES=["site","mediawiki.page.startup","mediawiki.page.ready","jquery.makeCollapsible","mediawiki.toc","ext.FancyBoxThumbs","ext.HighlightjsIntegration","skins.tweeki.messages","skins.tweeki.scripts"];</script>
+<script>(RLQ=window.RLQ||[]).push(function(){mw.loader.implement("user.options@1hzgi",function($,jQuery,require,module){/*@nomin*/mw.user.tokens.set({"patrolToken":"+\\","watchToken":"+\\","csrfToken":"+\\"});
+});});</script>
+<link rel="stylesheet" href="/w/Uy8Yw0y/aAdkk0o.php?lang=en&amp;modules=jquery.makeCollapsible.styles%7Cmediawiki.toc.styles%7Cskins.tweeki.awesome.styles%7Cskins.tweeki.bootstraptheme.styles%7Cskins.tweeki.externallinks.styles%7Cskins.tweeki.styles&amp;only=styles&amp;skin=tweeki"/>
+<script async="" src="/w/Uy8Yw0y/aAdkk0o.php?lang=en&amp;modules=startup&amp;only=scripts&amp;raw=1&amp;skin=tweeki"></script>
+<meta name="ResourceLoaderDynamicStyles" content=""/>
+<link rel="stylesheet" href="/w/Uy8Yw0y/aAdkk0o.php?lang=en&amp;modules=ext.gadget.tabber&amp;only=styles&amp;skin=tweeki"/>
+<link rel="stylesheet" href="/w/Uy8Yw0y/aAdkk0o.php?lang=en&amp;modules=site.styles&amp;only=styles&amp;skin=tweeki"/>
+<meta name="generator" content="MediaWiki 1.35.5"/>
+<meta property="og:image" content="https://www.waveshare.com/w/upload/1/17/ESP32-S3-ETH-8DI-8RO-details-2-2.jpg"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="shortcut icon" href="/w/favicon.ico"/>
+<link rel="search" type="application/opensearchdescription+xml" href="/w/opensearch_desc.php" title="Waveshare Wiki (en)"/>
+<link rel="EditURI" type="application/rsd+xml" href="https://www.waveshare.com/w/api.php?action=rsd"/>
+<link rel="alternate" type="application/atom+xml" title="Waveshare Wiki Atom feed" href="/w/index.php?title=Special:RecentChanges&amp;feed=atom"/>
+<!--[if lt IE 9]><script src="/w/resources/lib/html5shiv/html5shiv.js"></script><![endif]-->
+</head>
+<body class="mediawiki ltr sitedir-ltr mw-hide-empty-elt ns-0 ns-subject page-ESP32-S3-ETH-8DI-8RO rootpage-ESP32-S3-ETH-8DI-8RO skin-tweeki action-view tweeki-animateLayout tweeki-non-advanced tweeki-user-anon"><a href="https://www.waveshare.com/cdn-cgi/content?id=31jGD7TyEQl7OxuQh2S0IKAdVViCpyiCCjAfV67_ikI-1794530754.352372-1.2.1.1-ZD9MDMFBQ6rGsFK8gUSogZR0ydOtBpfY_GkyixwaRQb8fM9nxsiixEtK4p4TaxRm" aria-hidden="true" rel="nofollow noopener" style="display: none !important; visibility: hidden !important"></a>			<!-- navbar -->
+			<div id="mw-navigation" class="navbar navbar-default navbar-fixed-top navbar-expand-lg fixed-top navbar-light bg-light" role="navigation">
+				<h2>Navigation menu</h2>
+				<div id="mw-head" class="navbar-inner">
+					<div class="container">
+
+						<div class="navbar-header">
+							<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+								<span class="sr-only">Toggle navigation</span>
+								<span class="icon-bar"></span>
+								<span class="icon-bar"></span>
+								<span class="icon-bar"></span>
+							</button>
+
+							<a href="/wiki/Main_Page" class="navbar-brand"><img src="https://www.waveshare.com/w/upload/a/a7/Ws-watermark-en.svg" alt="Waveshare Wiki" /></a>
+						</div>
+
+						<div id="navbar" class="navbar-collapse collapse">
+													<ul class="nav navbar-nav">
+							<li class="nav"><a href="#" id="n-raspberry-pi" class="dropdown-toggle" data-toggle="dropdown">Raspberry Pi <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523rpi-boards"><a href="/wiki/Main_Page#RPi-Boards" tabindex="-1">Boards/Kits</a></li><li id="n-main_page.2523rpi-displays"><a href="/wiki/Main_Page#RPi-Displays" tabindex="-1">Displays</a></li><li id="n-main_page.2523rpi-cameras"><a href="/wiki/Main_Page#RPi-Cameras" tabindex="-1">Cameras</a></li><li id="n-main_page.2523rpi-expansions"><a href="/wiki/Main_Page#RPi-Expansions" tabindex="-1">Expansions</a></li><li id="n-main_page.2523rpi-laptops"><a href="/wiki/Main_Page#RPi-Laptops" tabindex="-1">All-in-one</a></li><li id="n-main_page.2523rpi-robots"><a href="/wiki/Main_Page#RPi-Robots" tabindex="-1">Robots</a></li><li id="n-main_page.2523rpi-games"><a href="/wiki/Main_Page#RPi-Games" tabindex="-1">Portable Gaming</a></li><li id="n-main_page.2523rpi-acces"><a href="/wiki/Main_Page#RPi-Acces" tabindex="-1">Accessories</a></li><li id="n-main_page.2523android-linux-boards"><a href="/wiki/Main_Page#Android-Linux-Boards" tabindex="-1">Other Android/Linux Boards</a></li></ul></li><li class="nav"><a href="#" id="n-ai" class="dropdown-toggle" data-toggle="dropdown">AI <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523jetson-ai-boards"><a href="/wiki/Main_Page#Jetson-AI-Boards" tabindex="-1">Boards/Kits</a></li><li id="n-main_page.2523jetson-ai-displays"><a href="/wiki/Main_Page#Jetson-AI-Displays" tabindex="-1">Displays</a></li><li id="n-main_page.2523jetson-ai-cameras"><a href="/wiki/Main_Page#Jetson-AI-Cameras" tabindex="-1">Cameras</a></li><li id="n-main_page.2523jetson-ai-hat"><a href="/wiki/Main_Page#Jetson-AI-HAT" tabindex="-1">Expansions</a></li><li id="n-main_page.2523jetson-ai-robots"><a href="/wiki/Main_Page#Jetson-AI-Robots" tabindex="-1">Robots</a></li></ul></li><li class="nav"><a href="#" id="n-displays" class="dropdown-toggle" data-toggle="dropdown">Displays <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523display-lcd-oleds"><a href="/wiki/Main_Page#Display-LCD-OLEDs" tabindex="-1">LCD/OLED</a></li><li id="n-main_page.2523display-e-paper"><a href="/wiki/Main_Page#Display-e-Paper" tabindex="-1">e-Paper</a></li></ul></li><li class="nav"><a href="#" id="n-iot" class="dropdown-toggle" data-toggle="dropdown">IoT <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523long-range-wireless-comm"><a href="/wiki/Main_Page#Long-range-wireless-comm" tabindex="-1">Long Range Wireless</a></li><li id="n-main_page.2523short-range-wireless-comm"><a href="/wiki/Main_Page#Short-range-wireless-comm" tabindex="-1">Short Range Wireless</a></li><li id="n-main_page.2523wired-communication"><a href="/wiki/Main_Page#Wired-communication" tabindex="-1">Wired Comm / Converter</a></li><li id="n-main_page.2523misc-cameras-av"><a href="/wiki/Main_Page#Misc-cameras-av" tabindex="-1">Cameras / Audio / Video</a></li><li id="n-main_page.2523misc-sensor-modules"><a href="/wiki/Main_Page#Misc-sensor-modules" tabindex="-1">Sensors</a></li><li id="n-main_page.2523misc-servos-motors"><a href="/wiki/Main_Page#Misc-servos-motors" tabindex="-1">Motors / Servos</a></li><li id="n-main_page.2523misc-other-modules"><a href="/wiki/Main_Page#Misc-other-modules" tabindex="-1">others</a></li></ul></li><li class="nav"><a href="#" id="n-robotics" class="dropdown-toggle" data-toggle="dropdown">Robotics <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523robotics-cars"><a href="/wiki/Main_Page#Robotics-cars" tabindex="-1">Mobile Robots</a></li><li id="n-main_page.2523dog-like-robots"><a href="/wiki/Main_Page#Dog-like-Robots" tabindex="-1">Dog-like Robots</a></li><li id="n-main_page.2523robotics-drivers-sensors"><a href="/wiki/Main_Page#Robotics-drivers-sensors" tabindex="-1">Drivers / Sensors</a></li><li id="n-main_page.2523robotics-robot-arms"><a href="/wiki/Main_Page#Robotics-robot-arms" tabindex="-1">Robot Arm / Control</a></li></ul></li><li class="nav"><a href="#" id="n-mcu.252Ffpga" class="dropdown-toggle" data-toggle="dropdown">MCU/FPGA <b class="caret"></b></a><ul class="dropdown-menu " role="menu"><li id="n-main_page.2523arduino-main-boards"><a href="/wiki/Main_Page#Arduino-main-boards" tabindex="-1">Arduino</a></li><li id="n-main_page.2523micro.253Abit"><a href="/wiki/Main_Page#micro:bit" tabindex="-1">micro:bit</a></li><li id="n-main_page.2523mcu.2farm" class="LPC"><a href="/wiki/Main_Page#MCU.2FARM" tabindex="-1">STM32</a></li><li id="n-main_page.2523fpga"><a href="/wiki/Main_Page#FPGA" tabindex="-1">FPGA</a></li></ul></li><li class="nav"><a href="https://service.waveshare.com" id="n-https.253A.252F.252Fservice.waveshare.com" rel="nofollow" target="_blank">Support</a></li>							</ul>
+						
+													<ul class="nav navbar-nav navbar-right">
+							</ul>
+				<form class="navbar-form navbar-right" action="/w/index.php" id="searchform">
+					<div class="form-group"><input type="search" name="search" placeholder="Product name search" title="Search Waveshare Wiki [f]" accesskey="f" id="searchInput" class="search-query form-control"/><input type="submit" name="go" value="Go" title="Go to a page with this exact name if it exists" id="mw-searchButton" class="searchButton btn hidden"/>
+					</div>
+				</form><ul class="nav navbar-nav navbar-right">							</ul>
+						</div>
+						
+					</div>
+				</div>
+			</div>
+			<!-- /navbar -->
+					<div id="mw-page-base"></div>
+			<div id="mw-head-base"></div>
+			<a id="top"></a>
+
+			<!-- content -->
+			<div id="contentwrapper" class="user-loggedout not-editable container with-navbar with-navbar-fixed">
+
+				
+				<div class="row">
+					<div class="col-md-offset-2 col-md-10" role="main">
+								<div class="mw-body" id="content">
+			<div id="mw-js-message" style="display:none;"></div>
+									<h1 id="firstHeading" class="firstHeading page-header" lang="en"><span dir="auto">ESP32-S3-ETH-8DI-8RO</span></h1>
+									<!-- bodyContent -->
+			<div id="bodyContent">
+								<div id="siteSub">From Waveshare Wiki</div>
+								<div id="contentSub"></div>
+												<div id="jump-to-nav" class="mw-jump">
+					Jump to:					<a href="#mw-navigation">navigation</a>, 					<a href="#p-search">search</a>
+				</div>
+				<div id="mw-content-text" lang="en" dir="ltr" class="mw-content-ltr"><div class="mw-parser-output"><div class="wiki-pages jet-green-color">
+<table id="infotable" class="a-r at-c roundy bgd-green bl-white" style="margin-left: 5px; margin-bottom: 5px; width: 30%;">
+
+<tbody><tr>
+<td>
+<table class="at-c roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>ESP32-S3-ETH-8DI-8RO</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><a href="https://www.waveshare.com/esp32-s3-eth-8di-8ro.htm" title="ESP32-S3-ETH-8DI-8RO" target="_blank" rel="nofollow noreferrer noopener"><img alt="ESP32-S3-ETH-8DI-8RO" src="/w/upload/1/17/ESP32-S3-ETH-8DI-8RO-details-2-2.jpg" decoding="async" loading="lazy" width="420" height="331" /></a><br /><br /><small>8-ch, WiFi/RS485/USB</small>
+</td></tr></tbody></table>
+</td></tr>
+<tr style="display:none;">
+<td>
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>{{{name2}}}</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><br />
+</td></tr></tbody></table>
+</td></tr>
+<tr style="display:none;">
+<td>
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>{{{name3}}}</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><br />
+</td></tr></tbody></table>
+</td></tr>
+<tr style="display:none;">
+<td>
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>{{{name4}}}</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><br />
+</td></tr></tbody></table>
+</td></tr>
+<tr style="display:none;">
+<td>
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>{{{name5}}}</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><br />
+</td></tr></tbody></table>
+</td></tr>
+<tr style="display:none;">
+<td>
+<table class="roundy" style="background: transparent;width:100%;">
+
+<tbody><tr>
+<td class="at-c textwhite"><b>{{{name6}}}</b>
+</td></tr>
+<tr>
+<td class="at-c bgwhite" style="margin:5px;"><br />
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="roundy" style="display:none;">
+<tbody><tr>
+<td style="width:2%;">
+</td>
+<td style="width:3%;">
+</td>
+<th colspan="2" width="90%" class="at-c roundytop bgl-white">Primary Attribute
+</th>
+<td style="width:3%;">
+</td>
+<td style="width:2%;">
+</td></tr>
+<tr>
+<td colspan="6" width="90px" class="at-c roundytl roundytr bgwhite b-green" style="border-width: 0 0 1px 0;"><b>Category:</b>
+</td></tr>
+<tr style="display:none;">
+<th colspan="3" width="90px" class="at-r bgwhite b-green" style="border-width: 0 0 1px 0;">{{{userDefinedInfo}}}:
+</th>
+<td colspan="3" class="at-l b-green bgwhite" style="border-width: 0 0 1px 0;">{{{userdefinedvalue}}}
+</td></tr>
+<tr style="display:none;">
+<td colspan="6" width="90px" class="at-c roundybl roundybr bgwhite"><b>Brand:</b> Waveshare
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="a-r roundy" style="display:none;">
+<tbody><tr>
+<td style="width:2%;">
+</td>
+<td style="width:3%;">
+</td>
+<th colspan="2" width="90%" class="at-c roundytop bgl-white">Website
+</th>
+<td style="width:3%;">
+</td>
+<td style="width:2%;">
+</td></tr>
+<tr>
+<td colspan="6" width="90px" class="at-c roundytl roundytr bgwhite b-green" style="border-width: 0 0 1px 0;"><b>International:</b> {{{website_en}}}
+</td></tr>
+<tr>
+<td colspan="6" width="90px" class="at-c roundybl roundybr bgwhite"><b>Chinese:</b> {{{website_cn}}}
+</td></tr></tbody></table>
+</td></tr>
+<tr>
+<td>
+<table class="a-r roundy" style="background: transparent; border-collapse:collapse;width:100%;display:none;">
+<tbody><tr>
+<td style="width:2%;">
+</td>
+<td style="width:3%;">
+</td>
+<th colspan="2" width="90%" class="at-c roundytop bgl-white">Onboard Interfaces
+</th>
+<td style="width:3%;">
+</td>
+<td style="width:2%;">
+</td></tr>
+<tr>
+<td colspan="6" width="90px" class="at-l roundy bgwhite b-green" style="border-width: 0 0 1px 0;">
+<table class="roundy bgwhite fulltable" style="text-align:center;">
+
+<tbody><tr>
+<td class="roundy bl-gray bw-1" style="width:25%;;"><small><b><a href="/wiki/Category:USB_interface" title="Category:USB interface">USB</a></b></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;;"><small><b><a href="/wiki/Category:RS485_interface" title="Category:RS485 interface">RS485</a></b></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;;"><small><b><a href="/wiki/Category:WiFi_interface" title="Category:WiFi interface">WiFi</a></b></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;;"><small><b><a href="/w/index.php?title=Category:BLE_interface&amp;action=edit&amp;redlink=1" class="new" title="Category:BLE interface (page does not exist)">BLE</a></b></small>
+</td></tr>
+<tr>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td></tr>
+<tr>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td></tr>
+<tr>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td></tr>
+<tr>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td>
+<td class="roundy bl-gray bw-1" style="width:25%;display:none;"><small></small>
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+</td></tr>
+<tr style="display:none;">
+<td>
+<table class="a-r roundy" style="background: transparent; border-collapse:collapse;width:100%;;display:none;">
+<tbody><tr>
+<td style="width:2%;">
+</td>
+<td style="width:3%;">
+</td>
+<th colspan="2" width="90%" class="at-c roundytop bgl-white">Related Products
+</th>
+<td style="width:3%;">
+</td>
+<td style="width:2%;">
+</td></tr>
+<tr>
+<td colspan="6" width="90px" class="at-l roundy bgwhite b-green" style="border-width: 0 0 1px 0;">
+</td></tr></tbody></table>
+</td></tr></tbody></table>
+<div class="toccolours mw-collapsible">
+<div id="toc" class="toc" role="navigation" aria-labelledby="mw-toc-heading"><input type="checkbox" role="button" id="toctogglecheckbox" class="toctogglecheckbox" style="display:none" /><div class="toctitle" lang="en" dir="ltr"><h2 id="mw-toc-heading">Contents</h2><span class="toctogglespan"><label class="toctogglelabel" for="toctogglecheckbox"></label></span></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#Introduction"><span class="tocnumber">1</span> <span class="toctext">Introduction</span></a>
+<ul>
+<li class="toclevel-2 tocsection-2"><a href="#Introduction_2"><span class="tocnumber">1.1</span> <span class="toctext">Introduction</span></a></li>
+<li class="toclevel-2 tocsection-3"><a href="#Features"><span class="tocnumber">1.2</span> <span class="toctext">Features</span></a></li>
+<li class="toclevel-2 tocsection-4"><a href="#Specifications"><span class="tocnumber">1.3</span> <span class="toctext">Specifications</span></a></li>
+<li class="toclevel-2 tocsection-5"><a href="#Onboard_Resources"><span class="tocnumber">1.4</span> <span class="toctext">Onboard Resources</span></a></li>
+<li class="toclevel-2 tocsection-6"><a href="#Interfaces"><span class="tocnumber">1.5</span> <span class="toctext">Interfaces</span></a></li>
+<li class="toclevel-2 tocsection-7"><a href="#Dimensions"><span class="tocnumber">1.6</span> <span class="toctext">Dimensions</span></a>
+<ul>
+<li class="toclevel-3"><a href="#Electrical_and_Relay_Safety_Instructions"><span class="tocnumber">1.6.1</span> <span class="toctext">Electrical and Relay Safety Instructions</span></a>
+<ul>
+<li class="toclevel-4"><a href="#1._Load_Matching"><span class="tocnumber">1.6.1.1</span> <span class="toctext">1. Load Matching</span></a></li>
+<li class="toclevel-4"><a href="#2._Short_Circuit_and_Overcurrent_Protection"><span class="tocnumber">1.6.1.2</span> <span class="toctext">2. Short Circuit and Overcurrent Protection</span></a></li>
+<li class="toclevel-4"><a href="#3._Arc_and_Switching_Protection"><span class="tocnumber">1.6.1.3</span> <span class="toctext">3. Arc and Switching Protection</span></a></li>
+<li class="toclevel-4"><a href="#4._Installation_Environment"><span class="tocnumber">1.6.1.4</span> <span class="toctext">4. Installation Environment</span></a></li>
+<li class="toclevel-4"><a href="#5._Power-Off_Operation"><span class="tocnumber">1.6.1.5</span> <span class="toctext">5. Power-Off Operation</span></a></li>
+<li class="toclevel-4"><a href="#6._Status_Confirmation"><span class="tocnumber">1.6.1.6</span> <span class="toctext">6. Status Confirmation</span></a></li>
+<li class="toclevel-4"><a href="#7._Regular_Inspection"><span class="tocnumber">1.6.1.7</span> <span class="toctext">7. Regular Inspection</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-8"><a href="#Version_Description"><span class="tocnumber">2</span> <span class="toctext">Version Description</span></a></li>
+<li class="toclevel-1 tocsection-9"><a href="#Implementation_Logic"><span class="tocnumber">3</span> <span class="toctext">Implementation Logic</span></a></li>
+<li class="toclevel-1 tocsection-10"><a href="#Usage_Instructions"><span class="tocnumber">4</span> <span class="toctext">Usage Instructions</span></a>
+<ul>
+<li class="toclevel-2 tocsection-11"><a href="#Development_Tool"><span class="tocnumber">4.1</span> <span class="toctext">Development Tool</span></a>
+<ul>
+<li class="toclevel-3 tocsection-12"><a href="#Arduino_IDE"><span class="tocnumber">4.1.1</span> <span class="toctext">Arduino IDE</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2 tocsection-13"><a href="#Components_Preparation"><span class="tocnumber">4.2</span> <span class="toctext">Components Preparation</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-14"><a href="#Working_with_Arduino"><span class="tocnumber">5</span> <span class="toctext">Working with Arduino</span></a>
+<ul>
+<li class="toclevel-2 tocsection-15"><a href="#Environment_Setup"><span class="tocnumber">5.1</span> <span class="toctext">Environment Setup</span></a>
+<ul>
+<li class="toclevel-3 tocsection-16"><a href="#Download_and_Install_Arduino_IDE"><span class="tocnumber">5.1.1</span> <span class="toctext">Download and Install Arduino IDE</span></a></li>
+<li class="toclevel-3 tocsection-17"><a href="#Install_ESP32_Development_Board"><span class="tocnumber">5.1.2</span> <span class="toctext">Install ESP32 Development Board</span></a></li>
+<li class="toclevel-3 tocsection-18"><a href="#Install_Library"><span class="tocnumber">5.1.3</span> <span class="toctext">Install Library</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2"><a href="#Run_the_First_Arduino_Demo"><span class="tocnumber">5.2</span> <span class="toctext">Run the First Arduino Demo</span></a>
+<ul>
+<li class="toclevel-3"><a href="#New_Project"><span class="tocnumber">5.2.1</span> <span class="toctext">New Project</span></a></li>
+<li class="toclevel-3"><a href="#Compile_and_Flash_Demos"><span class="tocnumber">5.2.2</span> <span class="toctext">Compile and Flash Demos</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2 tocsection-19"><a href="#Demo"><span class="tocnumber">5.3</span> <span class="toctext">Demo</span></a>
+<ul>
+<li class="toclevel-3 tocsection-20"><a href="#Arduino_Project_Parameter_Setting"><span class="tocnumber">5.3.1</span> <span class="toctext">Arduino Project Parameter Setting</span></a></li>
+<li class="toclevel-3 tocsection-21"><a href="#01_MAIN_WIFI_AP"><span class="tocnumber">5.3.2</span> <span class="toctext">01_MAIN_WIFI_AP</span></a></li>
+<li class="toclevel-3 tocsection-22"><a href="#02_MAIN_WIFI_STA"><span class="tocnumber">5.3.3</span> <span class="toctext">02_MAIN_WIFI_STA</span></a></li>
+<li class="toclevel-3 tocsection-23"><a href="#03_MAIN_WIFI_MQTT"><span class="tocnumber">5.3.4</span> <span class="toctext">03_MAIN_WIFI_MQTT</span></a></li>
+<li class="toclevel-3 tocsection-24"><a href="#04_MAIN_ALL"><span class="tocnumber">5.3.5</span> <span class="toctext">04_MAIN_ALL</span></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-25"><a href="#External_Expansion"><span class="tocnumber">6</span> <span class="toctext">External Expansion</span></a>
+<ul>
+<li class="toclevel-2 tocsection-26"><a href="#RS485_Extended_Relay_Channels"><span class="tocnumber">6.1</span> <span class="toctext">RS485 Extended Relay Channels</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-27"><a href="#Interface_Description"><span class="tocnumber">7</span> <span class="toctext">Interface Description</span></a></li>
+<li class="toclevel-1 tocsection-28"><a href="#Flash_Firmware_Flashing_and_Erasing"><span class="tocnumber">8</span> <span class="toctext">Flash Firmware Flashing and Erasing</span></a></li>
+<li class="toclevel-1 tocsection-29"><a href="#Working_with_Homeassistant"><span class="tocnumber">9</span> <span class="toctext">Working with Homeassistant</span></a></li>
+<li class="toclevel-1 tocsection-30"><a href="#Resources"><span class="tocnumber">10</span> <span class="toctext">Resources</span></a>
+<ul>
+<li class="toclevel-2 tocsection-31"><a href="#Demo_2"><span class="tocnumber">10.1</span> <span class="toctext">Demo</span></a></li>
+<li class="toclevel-2 tocsection-32"><a href="#Datasheets"><span class="tocnumber">10.2</span> <span class="toctext">Datasheets</span></a>
+<ul>
+<li class="toclevel-3 tocsection-33"><a href="#ESP32-S3"><span class="tocnumber">10.2.1</span> <span class="toctext">ESP32-S3</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2 tocsection-34"><a href="#Software_Tools"><span class="tocnumber">10.3</span> <span class="toctext">Software Tools</span></a>
+<ul>
+<li class="toclevel-3 tocsection-35"><a href="#Arduino"><span class="tocnumber">10.3.1</span> <span class="toctext">Arduino</span></a></li>
+<li class="toclevel-3 tocsection-36"><a href="#VScode"><span class="tocnumber">10.3.2</span> <span class="toctext">VScode</span></a></li>
+<li class="toclevel-3 tocsection-37"><a href="#Thonny"><span class="tocnumber">10.3.3</span> <span class="toctext">Thonny</span></a></li>
+<li class="toclevel-3 tocsection-38"><a href="#Debugging_Tools"><span class="tocnumber">10.3.4</span> <span class="toctext">Debugging Tools</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2 tocsection-39"><a href="#Other_Resource_Link"><span class="tocnumber">10.4</span> <span class="toctext">Other Resource Link</span></a></li>
+<li class="toclevel-2 tocsection-40"><a href="#Project_Resources"><span class="tocnumber">10.5</span> <span class="toctext">Project Resources</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-41"><a href="#FAQ"><span class="tocnumber">11</span> <span class="toctext">FAQ</span></a></li>
+<li class="toclevel-1 tocsection-42"><a href="#Support"><span class="tocnumber">12</span> <span class="toctext">Support</span></a></li>
+</ul>
+</div>
+
+<h1><span class="mw-headline" id="Introduction">Introduction</span></h1>
+<div class="mw-collapsible-content">
+<h2><span class="mw-headline" id="Introduction_2">Introduction</span></h2>
+<p>ESP32-S3-ETH-8DI-8RO is an industrial-grade 8-channel WiFi network relay based on ESP32-S3 main controller and supports WiFi, Bluetooth, RS485, network port and other peripheral interfaces. It has built-in protection circuits such as power supply isolation and optocoupler isolation, which is safe, stable and reliable, and suitable for the AIoT field.
+</p>
+<h2><span class="mw-headline" id="Features">Features</span></h2>
+<ul><li>Based on ESP32-S3 microcontroller with Xtensa 32-bit LX7 dual-core processor with frequency up to 240MHz</li>
+<li>Integrated 2.4GHz WiFi and Bluetooth LE dual-mode wireless communication, with superior RF performance</li>
+<li>High quality relay, contact rating: ≤10A 250V AC or ≤10A 30V DC</li>
+<li>Onboard isolated RS485 interface, for connecting to various RS485 Modbus industrial modules or sensors</li>
+<li>Onboard GPIO pin header interface, for expand other devices such as RS232 / sensor and other functions</li>
+<li>Onboard USB Type-C port for power supply, firmware downloading and debugging, making development more convenient</li>
+<li>Onboard power supply screw terminal, supports 7~36V wide voltage input, suitable for industrial applications</li>
+<li>Onboard optocoupler isolation to prevent interference with control chip from external high-voltage circuit connected to the relay</li>
+<li>Onboard digital isolation to avoid external signal interference with the control chip</li>
+<li>Onboard integrated power isolation, providing stable isolation voltage, no extra power supply required for the isolated terminal</li>
+<li>Built-in buzzer, RGB colorful LED, power supply and RS485 TX/RX indicators for monitoring the operating status of the module</li>
+<li>Rail-mounted ABS protective enclosure, easy to install, safe to use</li></ul>
+<h2><span class="mw-headline" id="Specifications">Specifications</span></h2>
+<table border="1;" style="width:700px;" align="auto">
+
+<tbody><tr>
+<td style="background:#7eb128; color:white;text-align:center;">Item
+</td>
+<td style="background:#7eb128; color:white;text-align:center;">Parameter
+</td></tr>
+<tr>
+<td style="text-align:center;">Supply voltage
+</td>
+<td style="text-align:center;">7~36V (or 5V/1A Type-C port)
+</td></tr>
+<tr>
+<td style="text-align:center;">Relay channels
+</td>
+<td style="text-align:center;">8 channels
+</td></tr>
+<tr>
+<td style="text-align:center;">Digital input channels
+</td>
+<td style="text-align:center;">8 channels
+</td></tr>
+<tr>
+<td style="text-align:center;">Contact Form
+</td>
+<td style="text-align:center;">1NO 1NC
+</td></tr>
+<tr>
+<td style="text-align:center;">Wiring port
+</td>
+<td style="text-align:center;">Type-C
+</td></tr>
+<tr>
+<td style="text-align:center;">Communication protocol
+</td>
+<td style="text-align:center;">USB protocol
+</td></tr>
+<tr>
+<td style="text-align:center;">Dimensions
+</td>
+<td style="text-align:center;">90 (H) x 175 (V) (mm)
+</td></tr></tbody></table>
+<h2><span class="mw-headline" id="Onboard_Resources">Onboard Resources</span></h2>
+<p><a href="/wiki/File:ESP32-S3-ETH-8DI-8RO-details-inter.jpg" class="image"><img alt="ESP32-S3-ETH-8DI-8RO-details-inter.jpg" src="/w/upload/thumb/4/45/ESP32-S3-ETH-8DI-8RO-details-inter.jpg/900px-ESP32-S3-ETH-8DI-8RO-details-inter.jpg" decoding="async" loading="lazy" width="900" height="546" srcset="/w/upload/4/45/ESP32-S3-ETH-8DI-8RO-details-inter.jpg 1.5x" /></a>
+</p>
+<table style="background-color: #f0f0f0;margin: 0px 30px;width: 90%;">
+<tbody><tr>
+<td style="width:50%;padding: 10px 10px;">
+<p><b>1. ESP32-S3</b><br />
+&#160;&#160;&#160;Up to 240MHz operating frequency, with 2.4GHz WiFi and BLE
+</p><p><b>2. High-quality relay</b><br />
+&#160;&#160;&#160;Contact rating per channel: ≤10A 250V AC or ≤10A 30V DC
+</p><p><b>3. Optocoupler isolation</b><br />
+&#160;&#160;&#160;Prevents interference with the control chip from external high-voltage circuit connected to the relay
+</p><p><b>4. RESET button</b><br />
+</p><p><b>5. PoE port</b><br />
+&#160;&#160;&#160;Can be connected to PoE module (PoE port version only)
+</p><p><b>6. BOOT button</b><br />
+</p><p><b>7. Power chip</b><br />
+</p><p><b>8. Digital isolation</b><br />
+&#160;&#160;&#160;Prevents interference with the control chip from external signal
+</p><p><b>9. Power isolation</b><br />
+&#160;&#160;&#160;Provides a stable isolation voltage, needs no extra power supply for the isolated terminal
+</p><p><b>10. Bidirectional optocoupler isolation</b><br />
+</p><p><b>11. RTC battery header</b><br />
+</p><p><b>12. Buzzer</b><br />
+</p><p><b>13.  Digital input interface</b><br />
+</p>
+</td>
+<td>
+</td>
+<td style="width:45%;padding: 3px 10px;">
+<p><b>14. Pin header interface</b><br />
+&#160;&#160;&#160;Can be connected to other devices
+</p><p><b>15. Operating status indicator</b><br />
+&#160;&#160;&#160;PWR: Power indicator<br />
+&#160;&#160;&#160;RXD: RS485 RX indicator<br />
+&#160;&#160;&#160;TXD: RS485 TX indicator<br />
+</p><p><b>16. USB Type-C interface</b><br />
+&#160;&#160;&#160;For module power supply, firmware downloading and USB communication
+</p><p><b>17. WS2812 RGB colorful LED</b><br />
+&#160;&#160;&#160;Controllable via GPIO38 pin
+</p><p><b>18. Network port</b><br />
+</p><p><b>19. External antenna socket</b><br />
+&#160;&#160;&#160;SMA female connector, for WiFi and Bluetooth wireless communication
+</p><p><b>20. Power supply screw terminal</b><br />
+&#160;&#160;&#160;Supports 7~36V DC wide voltage range power supply
+</p><p><b>21. RS485 communication interface</b><br />
+&#160;&#160;&#160;Supports connecting external RS485 devices
+</p><p><b>22. RS485 matching resistor</b><br />
+&#160;&#160;&#160;Onboard reserved 120R matching resistor, enabled via jumper
+</p><p><b>23. Relay screw terminal</b><br />
+&#160;&#160;&#160;Convenient for users to connect devices
+</p>
+</td></tr></tbody></table>
+<p><a href="/wiki/File:ESP32-S3-ETH-8DI-8RO-details-inter-1.jpg" class="image"><img alt="ESP32-S3-ETH-8DI-8RO-details-inter-1.jpg" src="/w/upload/thumb/7/7f/ESP32-S3-ETH-8DI-8RO-details-inter-1.jpg/900px-ESP32-S3-ETH-8DI-8RO-details-inter-1.jpg" decoding="async" loading="lazy" width="900" height="472" srcset="/w/upload/7/7f/ESP32-S3-ETH-8DI-8RO-details-inter-1.jpg 1.5x" /></a>
+</p>
+<table style="background-color: #f0f0f0;margin: 0px 30px;width: 90%;">
+<tbody><tr>
+<td style="width:50%;padding: 10px 10px;">
+<p><b>24. Onboard TVS (Transient voltage suppressor)</b><br />
+&#160;&#160;&#160;Effectively suppresses surge voltage and transient spike voltage in the circuit
+</p><p><b>25. RS485 conversion chip</b><br />
+</p><p><b>26. MP1605GTF-Z</b><br />
+&#160;&#160;&#160;DC-DC power module
+</p><p><b>27. PCF85063ATL</b><br />
+&#160;&#160;&#160;RTC chip for some timed tasks
+</p>
+</td>
+<td>
+</td>
+<td style="width:45%;padding: 3px 10px;">
+<p><b>28. TCA9554PWR</b><br />
+&#160;&#160;&#160;Expands IO for relay control
+</p><p><b>29. W5500</b><br />
+&#160;&#160;&#160;Expands 10/100Mbps network connection via SPI interface
+</p><p><b>30. TF card slot</b><br />
+&#160;&#160;&#160;Supports external TF card storage for images and files
+</p>
+</td></tr></tbody></table>
+<h2><span class="mw-headline" id="Interfaces">Interfaces</span></h2>
+<p><a href="/wiki/File:ESP32-S3-ETH-8DI-8RO-details.jpg" class="image"><img alt="ESP32-S3-ETH-8DI-8RO-details.jpg" src="/w/upload/c/c4/ESP32-S3-ETH-8DI-8RO-details.jpg" decoding="async" loading="lazy" width="900" height="764" /></a>
+</p>
+<ul><li>Pin header</li></ul>
+<p><a href="/wiki/File:900px-ESP32-S3-ETH-8DI-8RO-details-2.jpg" class="image"><img alt="900px-ESP32-S3-ETH-8DI-8RO-details-2.jpg" src="/w/upload/thumb/c/cd/900px-ESP32-S3-ETH-8DI-8RO-details-2.jpg/600px-900px-ESP32-S3-ETH-8DI-8RO-details-2.jpg" decoding="async" loading="lazy" width="600" height="446" srcset="/w/upload/c/cd/900px-ESP32-S3-ETH-8DI-8RO-details-2.jpg 1.5x" /></a>
+</p>
+<ul><li>Relay</li></ul>
+<table border="1;" style="width:700px;" align="auto">
+
+<tbody><tr>
+<td style="width:200px; background:#7eb128; color:white;text-align:center;">Control EXIO
+</td>
+<td style="background:#7eb128; color:white;text-align:center;">Function
+</td></tr>
+<tr>
+<td style="text-align:center;">EXIO1
+</td>
+<td style="text-align:center;">Relay 1 control pin
+</td></tr>
+<tr>
+<td style="text-align:center;">EXIO2
+</td>
+<td style="text-align:center;">Relay 2 control pin
+</td></tr>
+<tr>
+<td style="text-align:center;">EXIO3
+</td>
+<td style="text-align:center;">Relay 3 control pin
+</td></tr>
+<tr>
+<td style="text-align:center;">EXIO4
+</td>
+<td style="text-align:center;">Relay 4 control pin
+</td></tr>
+<tr>
+<td style="text-align:center;">EXIO5
+</td>
+<td style="text-align:center;">Relay 5 control pin
+</td></tr>
+<tr>
+<td style="text-align:center;">EXIO6
+</td>
+<td style="text-align:center;">Relay 6 control pin
+</td></tr>
+<tr>
+<td style="text-align:center;">EXIO7
+</td>
+<td style="text-align:center;">Relay 7 control pin
+</td></tr>
+<tr>
+<td style="text-align:center;">EXIO8
+</td>
+<td style="text-align:center;">Relay 8 control pin
+</td></tr></tbody></table>
+<ul><li>Digital input</li></ul>
+<table border="1;" style="width:700px;" align="auto">
+
+<tbody><tr>
+<td style="width:200px; background:#7eb128; color:white;text-align:center;">Control EXIO
+</td>
+<td style="background:#7eb128; color:white;text-align:center;">Function
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO4
+</td>
+<td style="text-align:center;">Digital input 1 detection pin
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO5
+</td>
+<td style="text-align:center;">Digital input 2 detection pin
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO6
+</td>
+<td style="text-align:center;">Digital input 3 detection pin
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO7
+</td>
+<td style="text-align:center;">Digital input 4 detection pin
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO8
+</td>
+<td style="text-align:center;">Digital input 5 detection pin
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO9
+</td>
+<td style="text-align:center;">Digital input 6 detection pin
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO10
+</td>
+<td style="text-align:center;">Digital input 7 detection pin
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO11
+</td>
+<td style="text-align:center;">Digital input 8 detection pin
+</td></tr></tbody></table>
+<ul><li>W5500 network port chip</li></ul>
+<table border="1;" style="width:700px;" align="auto">
+
+<tbody><tr>
+<td style="width:200px; background:#7eb128; color:white;text-align:center;">Control GPIO
+</td>
+<td style="background:#7eb128; color:white;text-align:center;">Function
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO12
+</td>
+<td style="text-align:center;">ETH_INT
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO13
+</td>
+<td style="text-align:center;">ETH_MOSI
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO14
+</td>
+<td style="text-align:center;">ETH_MISO
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO15
+</td>
+<td style="text-align:center;">ETH_SCLK
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO16
+</td>
+<td style="text-align:center;">ETH_CS
+</td></tr></tbody></table>
+<ul><li>TF Card</li></ul>
+<table border="1;" style="width:700px;" align="auto">
+
+<tbody><tr>
+<td style="width:200px; background:#7eb128; color:white;text-align:center;">Control GPIO
+</td>
+<td style="background:#7eb128; color:white;text-align:center;">Function
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO45
+</td>
+<td style="text-align:center;">MISO
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO47
+</td>
+<td style="text-align:center;">MOSI
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO48
+</td>
+<td style="text-align:center;">SCLK
+</td></tr>
+<tr>
+<td style="text-align:center;">NC
+</td>
+<td style="text-align:center;">CS
+</td></tr>
+<tr>
+<td style="text-align:center;">NC
+</td>
+<td style="text-align:center;">SD_D1
+</td></tr>
+<tr>
+<td style="text-align:center;">NC
+</td>
+<td style="text-align:center;">SD_D2
+</td></tr></tbody></table>
+<ul><li>RS485</li></ul>
+<table border="1;" style="width:700px;" align="auto">
+
+<tbody><tr>
+<td style="width:200px; background:#7eb128; color:white;text-align:center;">Control GPIO
+</td>
+<td style="background:#7eb128; color:white;text-align:center;">Function
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO17
+</td>
+<td style="text-align:center;">RS485 TX pin, corresponding to UART TX pin
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO18
+</td>
+<td style="text-align:center;">RS485 RX pin, corresponding to UART RX pin
+</td></tr></tbody></table>
+<ul><li>RTC</li></ul>
+<table border="1;" style="width:700px;" align="auto">
+
+<tbody><tr>
+<td style="width:200px; background:#7eb128; color:white;text-align:center;">Control GPIO
+</td>
+<td style="background:#7eb128; color:white;text-align:center;">Function
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO40
+</td>
+<td style="text-align:center;">RTC_INT, RTC interrupt receive pin
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO41
+</td>
+<td style="text-align:center;">RTC_SCL, I2C clock line
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO42
+</td>
+<td style="text-align:center;">RTC_SDA, I2C data line
+</td></tr></tbody></table>
+<ul><li>RGB light beads</li></ul>
+<table border="1;" style="width:700px;" align="auto">
+
+<tbody><tr>
+<td style="width:200px; background:#7eb128; color:white;text-align:center;">Control GPIO
+</td>
+<td style="background:#7eb128; color:white;text-align:center;">Function
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO38
+</td>
+<td style="text-align:center;">RGB control pin
+</td></tr></tbody></table>
+<ul><li>19. Buzzer</li></ul>
+<table border="1;" style="width:700px;" align="auto">
+
+<tbody><tr>
+<td style="width:200px; background:#7eb128; color:white;text-align:center;">Control GPIO
+</td>
+<td style="background:#7eb128; color:white;text-align:center;">Function
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO46
+</td>
+<td style="text-align:center;">Buzzer control pin
+</td></tr></tbody></table>
+<ul><li>BOOT button</li></ul>
+<table border="1;" style="width:700px;" align="auto">
+
+<tbody><tr>
+<td style="width:200px; background:#7eb128; color:white;text-align:center;">Control GPIO
+</td>
+<td style="background:#7eb128; color:white;text-align:center;">Function
+</td></tr>
+<tr>
+<td style="text-align:center;">GPIO0
+</td>
+<td style="text-align:center;">BOOT button control pin
+</td></tr></tbody></table>
+<h2><span class="mw-headline" id="Dimensions">Dimensions</span></h2>
+<p><a href="/wiki/File:ESP32-S3-ETH-8DI-8RO-details-size-1.jpg" class="image"><img alt="ESP32-S3-ETH-8DI-8RO-details-size-1.jpg" src="/w/upload/thumb/2/26/ESP32-S3-ETH-8DI-8RO-details-size-1.jpg/900px-ESP32-S3-ETH-8DI-8RO-details-size-1.jpg" decoding="async" loading="lazy" width="900" height="909" srcset="/w/upload/2/26/ESP32-S3-ETH-8DI-8RO-details-size-1.jpg 1.5x" /></a>
+</p><p><br />
+</p>
+</div></div>
+</div>
+<div class="wiki-pages jet-green-color">
+<p><font color="red">
+</font></p><font color="red">
+<h3><span class="mw-headline" id="Electrical_and_Relay_Safety_Instructions">Electrical and Relay Safety Instructions</span></h3>
+<ul><li>This product must be operated by professional electricians or qualified personnel. During use, ensure electrical safety, leakage protection, and proper insulation.</li>
+<li>Before installing, maintaining, or replacing the relay device, always turn off the power and unplug the device.</li>
+<li>Do not attempt to disassemble the relay device to avoid damage or the risk of electric shock.</li>
+<li>Properly install and place the relay device. Do not use it in humid, overheated, flammable, or explosive environments to prevent accidents caused by improper installation or use.</li></ul>
+<h4><span class="mw-headline" id="1._Load_Matching">1. Load Matching</span></h4>
+<ul><li>Ensure the relay's rated voltage and current match the load. Do not exceed the rated capacity.</li>
+<li>For inductive loads (motors, coils, lamps, etc.), the starting current may be much higher than the rated current. Choose a relay with sufficient current margin.</li></ul>
+<h4><span class="mw-headline" id="2._Short_Circuit_and_Overcurrent_Protection">2. Short Circuit and Overcurrent Protection</span></h4>
+<ul><li>Install a <b>fuse</b> or <b>circuit breaker</b> in the relay circuit to prevent damage due to short circuits or accidental overcurrent.</li>
+<li>Ensure the load circuit has no short circuits during wiring, and select protection components with appropriate current ratings if necessary.</li></ul>
+<h4><span class="mw-headline" id="3._Arc_and_Switching_Protection">3. Arc and Switching Protection</span></h4>
+<ul><li>Relay switching generates arcs, which can cause contact wear or welding.</li>
+<li>For inductive loads, it is recommended to use <b>RC snubber circuits</b> or <b>varistors</b> for arc suppression.</li></ul>
+<h4><span class="mw-headline" id="4._Installation_Environment">4. Installation Environment</span></h4>
+<ul><li>Do not use the relay in humid, high-temperature, flammable, explosive, or dusty environments.</li>
+<li>Install the relay securely to avoid vibrations or shocks that may cause misoperation or damage.</li></ul>
+<h4><span class="mw-headline" id="5._Power-Off_Operation">5. Power-Off Operation</span></h4>
+<ul><li>Always cut off power before maintenance, wiring, or replacing the relay to ensure personnel and device safety.</li>
+<li>Latching relays are only powered when changing state. Avoid strong vibrations or strong magnetic fields while the relay is unpowered.</li></ul>
+<h4><span class="mw-headline" id="6._Status_Confirmation">6. Status Confirmation</span></h4>
+<ul><li>After powering on, confirm or reset the relay status as needed to prevent abnormal operation caused by transportation, installation, or external disturbances.</li>
+<li>Avoid power interruption during relay operation to prevent uncertain status or contact damage.</li></ul>
+<h4><span class="mw-headline" id="7._Regular_Inspection">7. Regular Inspection</span></h4>
+<ul><li>Periodically inspect relay contacts, terminals, and insulation to ensure proper operation.</li>
+<li>If abnormal heating, odor, or burn marks are detected, immediately cut off power and replace the relay.</li></ul>
+</font><p><font color="red"></font>
+</p>
+<h1><span class="mw-headline" id="Version_Description">Version Description</span></h1>
+<div role="note" class="note note-warn"> This development board includes both common network port and POE Ethernet port versions. Please click on the corresponding product to view the usage instructions. </div>
+<table>
+
+<tbody><tr>
+<td><a href="https://www.waveshare.com/esp32-s3-eth-8di-8ro.htm?sku=31130" title="ESP32-S3-ETH-8DI-8RO" target="_blank" rel="nofollow noreferrer noopener"><img alt="ESP32-S3-ETH-8DI-8RO" src="/w/upload/c/cf/ESP32-S3-ETH-8DI-8RO-A.jpg" decoding="async" loading="lazy" width="1350" height="1064" /></a>
+</td>
+<td><a href="https://www.waveshare.com/esp32-s3-eth-8di-8ro.htm?sku=30838" title="ESP32-S3-POE-ETH-8DI-8RO" target="_blank" rel="nofollow noreferrer noopener"><img alt="ESP32-S3-POE-ETH-8DI-8RO" src="/w/upload/6/65/ESP32-S3-ETH-8DI-8RO-B.jpg" decoding="async" loading="lazy" width="1350" height="1064" /></a>
+</td></tr>
+<tr>
+<td align="center"><b><a class="mw-selflink selflink">ESP32-S3-ETH-8DI-8RO</a></b><br />Common network port
+</td>
+<td align="center"><b><a href="/wiki/ESP32-S3-POE-ETH-8DI-8RO" title="ESP32-S3-POE-ETH-8DI-8RO">ESP32-S3-POE-ETH-8DI-8RO</a></b><br />POE Ethernet port
+</td>
+<td>
+</td></tr></tbody></table>
+<h1><span class="mw-headline" id="Implementation_Logic">Implementation Logic</span></h1>
+<p><a href="/wiki/File:ESP32-S3-ETH-8DI-8RO-logic-EN(1).jpg" class="image"><img alt="ESP32-S3-ETH-8DI-8RO-logic-EN(1).jpg" src="/w/upload/6/64/ESP32-S3-ETH-8DI-8RO-logic-EN%281%29.jpg" decoding="async" loading="lazy" width="2469" height="2035" /></a>
+</p>
+<h1><span class="mw-headline" id="Usage_Instructions">Usage Instructions</span></h1>
+<p>ESP32-S3-ETH-8DI-8RO currently provides the <b>Arduino IDE</b> development tool and framework.
+</p>
+<h2><span class="mw-headline" id="Development_Tool">Development Tool</span></h2>
+<table>
+
+<tbody><tr>
+<th style="width: 180px;">
+</th>
+<th>
+</th></tr>
+<tr>
+<td><a href="/wiki/File:270px-Arduino-IDE-logo.jpg" class="image"><img alt="270px-Arduino-IDE-logo.jpg" src="/w/upload/thumb/a/a4/270px-Arduino-IDE-logo.jpg/180px-270px-Arduino-IDE-logo.jpg" decoding="async" loading="lazy" width="180" height="163" srcset="/w/upload/a/a4/270px-Arduino-IDE-logo.jpg 1.5x" /></a></td>
+<td>
+<h3><span class="mw-headline" id="Arduino_IDE">Arduino IDE</span></h3>
+<p>Arduino IDE is an open source electronic prototyping platform, convenient and flexible, easy to get started. After a simple learning, you can start to develop quickly. At the same time, Arduino has a large global user community, providing an abundance of open source code, project examples and tutorials, as well as rich library resources, encapsulating complex functions, allowing developers to quickly implement various functions.
+</p>
+</td></tr>
+</tbody></table>
+<p><br />
+Each of these two development approaches has its own advantages, and developers can choose according to their needs and skill levels. Arduino and MicroPython are suitable for beginners and non-professionals because they are easy to learn and quick to get started. 
+</p>
+<h2><span class="mw-headline" id="Components_Preparation">Components Preparation</span></h2>
+<ul><li>ESP32-S3-ETH-8DI-8RO  x1</li>
+<li>USB cable (Type-A male to Type-C male) x1</li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/Modbus-RTU-Relay.htm">Modbus RTU Relay</a> x 1</li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/USB-TO-RS485-B.htm">USB TO RS232/485</a> x 1</li></ul>
+<div role="note" class="note note-warn">Before operating, it is recommended to browse the table of contents to quickly understand the document structure. For smooth operation, please read the <a href="#FAQ">FAQ</a> carefully to understand possible problems in advance. All resources in the document are provided with hyperlinks for easy download. </div>
+<h1><span class="mw-headline" id="Working_with_Arduino">Working with Arduino</span></h1>
+<p>This chapter introduces setting up the Arduino environment, including the Arduino IDE, management of ESP32 boards, installation of related libraries, program compilation and downloading, as well as testing demos. It aims to help users master the development board and facilitate secondary development. <br />
+<a href="/wiki/File:Arduino-flow-04.png" class="image"><img alt="Arduino-flow-04.png" src="/w/upload/thumb/1/17/Arduino-flow-04.png/800px-Arduino-flow-04.png" decoding="async" loading="lazy" width="800" height="44" srcset="/w/upload/thumb/1/17/Arduino-flow-04.png/1200px-Arduino-flow-04.png 1.5x, /w/upload/1/17/Arduino-flow-04.png 2x" /></a>
+</p>
+<h2><span class="mw-headline" id="Environment_Setup">Environment Setup</span></h2>
+<h3><span class="mw-headline" id="Download_and_Install_Arduino_IDE">Download and Install Arduino IDE</span></h3>
+<ul><li>Click to visit the <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.arduino.cc/en/software">Arduino official website</a>, select the corresponding system and system bit to download <br /><a href="/wiki/File:ESP32-S3-AMOLED-1.91-Ar-software-01.png" class="image"><img alt="ESP32-S3-AMOLED-1.91-Ar-software-01.png" src="/w/upload/7/73/ESP32-S3-AMOLED-1.91-Ar-software-01.png" decoding="async" loading="lazy" width="902" height="458" /></a></li>
+<li>Run the installer and install all by default</li></ul>
+<h3><span class="mw-headline" id="Install_ESP32_Development_Board">Install ESP32 Development Board</span></h3>
+<ul><li>Regarding ESP32-related motherboards used with the Arduino IDE, the <b>esp32 by Espressif Systems</b> library must be installed first.</li>
+<li>According to <font color="red"><b> Board installation requirement</b></font>, it is generally recommended to use <b>Install Online</b>. If online installation fails, use <b>Install Offline</b></li>
+<li>For the installation tutorial, please refer to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/Arduino_Board_Managers_Tutorial">Arduino board manager tutorial</a></li></ul>
+<table class="wikitable table table-bordered" style="width:80%">
+<caption>
+<ul><li>ESP32-S3-ETH-8DI-8RO required development board installation description</li></ul>
+</caption>
+<tbody><tr>
+<th>Board name</th>
+<th>Board installation requirement</th>
+<th>Version number requirement
+</th></tr>
+<tr style="text-align:center;">
+<td>esp32 by Espressif Systems</td>
+<td>"Install Offline" / "Install Online"</td>
+<td>3.0.0 and above
+</td></tr>
+</tbody></table>
+<h3><span class="mw-headline" id="Install_Library">Install Library</span></h3>
+<ul><li>When installing Arduino libraries, there are usually two ways to choose from: <b>Install online</b> and <b>Install offline</b>.<b> <font color="red"> If the library installation requires offline installation, you must use the provided library file</font></b><br /> For most libraries, users can easily search and install them through the online library manager of the Arduino software. However, some open-source libraries or custom libraries are not synchronized to the Arduino Library Manager, so they cannot be acquired through online searches. In this case, users can only manually install these libraries offline.</li>
+<li>For library installation tutorial, please refer to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/Arduino_Library_Manager_Tutorial">Arduino library manager tutorial</a></li>
+<li>ESP32-S3-ETH-8DI-8RO library file is stored in the demo, click here to jump: <a href="#Resources">ESP32-S3-ETH-8DI-8RO Demo</a></li></ul>
+<table class="wikitable table table-bordered" style="width:80%">
+<caption>
+<ul><li>ESP32-S3-ETH-8DI-8RO library file installation description</li></ul>
+</caption>
+<tbody><tr>
+<th>Library Name</th>
+<th>Description</th>
+<th>Version</th>
+<th>Library Installation Requirement
+</th></tr>
+<tr style="text-align:center;">
+<td>ArduinoJson</td>
+<td>Lightweight JSON library</td>
+<td>v6.21.4</td>
+<td>"Install Online" or "Install Offline"
+</td></tr>
+
+<tr style="text-align:center;">
+<td>PubSubClient</td>
+<td>MQTT message subscription publishing library</td>
+<td>v2.8.0</td>
+<td>"Install Online" or "Install Offline"
+</td></tr>
+
+<tr style="text-align:center;">
+<td>NTPClient</td>
+<td>Network time synchronization client library</td>
+<td>v3.2.1</td>
+<td>"Install Online" or "Install Offline"
+</td></tr></tbody></table>
+<div role="note" class="note note-info">For more learning and use of LVGL, please refer to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://docs.lvgl.io/master/intro/introduction/index.html">LVGL official documentation</a></div>
+<h2><span class="mw-headline" id="Run_the_First_Arduino_Demo">Run the First Arduino Demo</span></h2>
+<div class="toccolours mw-collapsible mw-collapsed">
+<div role="note" class="note note-reminder">If you are just getting started with ESP32 and Arduino, and you don't know how to create, compile, flash, and run Arduino ESP32 programs, then please expand and take a look. Hope it can help you! </div>
+<div class="mw-collapsible-content" style="padding: 10px; background-color: #f9f9f9; border-radius: 10px;">
+<div style="margin-bottom: 10px;">
+<h3><span class="mw-headline" id="New_Project">New Project</span></h3>
+<ul><li>Run the Arduino IDE and select <code><b>File</b></code> -&gt; <code><b>New Sketch</b></code> <br /> <a href="/wiki/File:ESP32-S3-AMOLED-1.91-Ar-study-01.png" class="image"><img alt="ESP32-S3-AMOLED-1.91-Ar-study-01.png" src="/w/upload/c/c6/ESP32-S3-AMOLED-1.91-Ar-study-01.png" decoding="async" loading="lazy" width="800" height="584" /></a></li>
+<li>Enter the code:</li></ul>
+<pre class="code2highlight lang-c">void setup() {
+  // put your setup code here, to run once:
+  Serial.begin(115200);
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+  Serial.println(&quot;Hello, World!&quot;);
+  delay(2000);
+}</pre>
+<ul><li>Save the project and select <code><b>File</b></code> -&gt; <code><b>Save As...</b></code>. In the pop-up menu, select the path to save the project, and enter a project name, such as <b>Hello_World</b>, click <code><b>Save</b></code></li></ul>
+<pre><br /><a href="/wiki/File:ESP32-S3-AMOLED-1.91-Ar-study-02.png" class="image"><img alt="ESP32-S3-AMOLED-1.91-Ar-study-02.png" src="/w/upload/4/4c/ESP32-S3-AMOLED-1.91-Ar-study-02.png" decoding="async" loading="lazy" width="800" height="584" /></a>
+</pre>
+</div>
+<div style="margin-bottom: 10px;">
+<h3><span class="mw-headline" id="Compile_and_Flash_Demos">Compile and Flash Demos</span></h3>
+<ul><li>Select the corresponding development board, take the ESP32S3 motherboard as an example:<br /></li></ul>
+<p><font color="red">①. </font>Click to select the dropdown menu option <b>Select Other Board and Port</b>; <br />
+<font color="red">②. </font>Search for the required development board model <b>esp32s3 dev module</b> and select; <br />
+<font color="red">③. </font>Select <b>COM Port</b>; <br />
+<font color="red">④. </font><b>Save</b> the selection. <br />
+<a href="/wiki/File:ESP32-S3-AMOLED-1.91-Ar-study-03.png" class="image"><img alt="ESP32-S3-AMOLED-1.91-Ar-study-03.png" src="/w/upload/d/d9/ESP32-S3-AMOLED-1.91-Ar-study-03.png" decoding="async" loading="lazy" width="800" height="584" /></a>
+</p>
+<ul><li>If the ESP32S3 mainboard only has a USB port, you need to enable <b>USB CDC</b>, as shown in the following diagram: <br /></li></ul>
+<p><a href="/wiki/File:ESP32-S3-AMOLED-1.91-Ar-study-04.png" class="image"><img alt="ESP32-S3-AMOLED-1.91-Ar-study-04.png" src="/w/upload/3/33/ESP32-S3-AMOLED-1.91-Ar-study-04.png" decoding="async" loading="lazy" width="798" height="580" /></a>
+</p>
+<ul><li>Compile and upload the program: <br /></li></ul>
+<p><font color="red">①. </font>Compile the program; <font color="red">②. </font>Compile and download the program; <font color="red">③. </font>Download successful. <br />
+<a href="/wiki/File:ESP32-S3-AMOLED-1.91-Ar-study-05.png" class="image"><img alt="ESP32-S3-AMOLED-1.91-Ar-study-05.png" src="/w/upload/d/dc/ESP32-S3-AMOLED-1.91-Ar-study-05.png" decoding="async" loading="lazy" width="800" height="583" /></a>
+</p>
+<ul><li>Open the <b>Serial Monitor</b> window, and the demo will print "Hello World!" every 2 seconds, and the operation is as follows:<br /></li></ul>
+<p><a href="/wiki/File:ESP32-S3-AMOLED-1.91-Ar-study-06.png" class="image"><img alt="ESP32-S3-AMOLED-1.91-Ar-study-06.png" src="/w/upload/6/66/ESP32-S3-AMOLED-1.91-Ar-study-06.png" decoding="async" loading="lazy" width="798" height="580" /></a>
+</p>
+</div>
+</div>
+</div>
+</div>
+<div class="wiki-pages jet-green-color">
+<h2><span class="mw-headline" id="Demo">Demo</span></h2>
+<p><a href="/wiki/File:Demo-flow-01.png" class="image"><img alt="Demo-flow-01.png" src="/w/upload/thumb/7/74/Demo-flow-01.png/1000px-Demo-flow-01.png" decoding="async" loading="lazy" width="1000" height="54" srcset="/w/upload/7/74/Demo-flow-01.png 1.5x" /></a>
+</p>
+<table class="wikitable table table-striped table-bordered" style="width:170%;background: white;">
+<caption>
+<ul><li>ESP32-S3-ETH-8DI-8RO demos</li></ul>
+</caption>
+<tbody><tr>
+<th style="width:16%">Demo</th>
+<th style="width:42%">Basic Description</th>
+<th style="width:42%">Dependency Library
+</th></tr>
+<tr style="text-align:center;">
+<td>01_MAIN_WIFI_AP</td>
+<td>RS485 interface control, Bluetooth control, Bluetooth send IP, Web page control (short distance)</td>
+<td>Can be flashed directly<br />Web pages are only available if they are connected to device WIFI
+</td></tr>
+<tr style="text-align:center;">
+<td>02_MAIN_WIFI_STA</td>
+<td>RS485 interface control, Bluetooth control, Bluetooth send IP, Web page control (short distance)</td>
+<td>Need to <font color="red"><b>modify</b></font> the WIFI to be connected<br />Web pages can only be used within the intranet<br />
+</td></tr>
+<tr style="text-align:center;">
+<td>03_MAIN_WIFI_MQTT</td>
+<td>RS485 interface control, Bluetooth control, Bluetooth transmit IP, Waveshare cloud control (long distance)</td>
+<td>Need to <font color="red"><b>modify</b></font> the WIFI to be connected<br />The device must be <font color="red"><b>created</b></font> in the Waveshare cloud<br />(<font color="red"><b>Note: Waveshare Cloud is no longer maintained. Please choose another cloud service.</b></font>)
+</td></tr>
+<tr style="text-align:center;">
+<td>04_MAIN_ALL</td>
+<td>RS485 interface control, Bluetooth control, Bluetooth send IP, Web page control (short distance), Waveshare cloud control (long distance)</td>
+<td>Need to <font color="red"><b>modify</b></font> the WIFI to be connected<br />The device must be <font color="red"><b>created</b></font> in the Waveshare cloud<br />Web pages can only be used within the intranet<br />(<font color="red"><b>Note: Waveshare Cloud is no longer maintained. Please choose another cloud service.</b></font>)
+</td></tr></tbody></table>
+<h3><span class="mw-headline" id="Arduino_Project_Parameter_Setting">Arduino Project Parameter Setting</span></h3>
+<p><a href="/wiki/File:ESP32-S3-16MB-OPI-Parameters.png" class="image"><img alt="ESP32-S3-16MB-OPI-Parameters.png" src="/w/upload/e/e9/ESP32-S3-16MB-OPI-Parameters.png" decoding="async" loading="lazy" width="800" height="819" /></a>
+</p>
+<h3><span class="mw-headline" id="01_MAIN_WIFI_AP">01_MAIN_WIFI_AP</span></h3>
+<div class="mw-collapsible-content" style="padding: 10px; background-color: #f9f9f9; border-radius: 10px;">
+    <div style="margin-bottom: 20px;">
+<p><b>Demo description</b>
+</p>
+<hr />
+<ul><li>This example implements the control of 8 relays on and off through WiFi, Bluetooth, network port and RS485. The AP mode of WiFi is enabled in this example</li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Precautions</b>
+</p>
+<hr />
+<ul><li>Can be flashed directly</li>
+<li>The web page can only be accessed by connecting to the device's WIFI, or if connected to a network cable, by accessing the network port IP within the internal network</li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Code analysis</b>
+</p>
+<hr />
+<ul><li><b>Relay_Analysis()</b>: This function is mainly used to analyze received data, perform corresponding relay control operations based on the data content, and output corresponding status prompt information.
+<ul><li><b>Parameter analysis</b>
+<ul><li><code><b>uint8_t *buf</b></code>: A pointer to an unsigned 8-bit integer array, which is supposed to store the received data, and the function determines the content of the command based on the value of the first element (<code><b>buf[0]</b></code>) of the array.</li>
+<li><code><b>uint8_t Mode_Flag</b></code>: The mode flag is used to represent the data source, and the corresponding data source prompt information (such as Bluetooth data, Wi-Fi data, or RS485 data) is output by judging this flag, and different relay operations are performed according to different commands.</li></ul></li>
+<li><b>Logical flow</b>
+<ul><li>First output the corresponding data source prompt message according to the value of <code><b>Mode_Flag</b></code>.</li>
+<li>Then use the <code><b>switch</b></code> statement to perform different operations based on the value of <code><b>buf[0]</b></code>:
+<ul><li>For the cases from <code><b>CH1</b></code> to <code><b>CH8</b></code>, the <code><b>digitalToggle</b></code> function is used to switch the level states of the corresponding EXIO pins (such as <code><b>GPIO_PIN_CH1</b></code>, etc.), and the corresponding elements of the <code><b>Relay_Flag</b></code> array are updated to record the change in relay status. The <code><b>Buzzer_PWM</b></code> function is called to control the buzzer, and the corresponding on or off prompt information is output according to the final state of the relay.</li>
+<li>For the <code><b>ALL_ON</b></code> command, set all GPIO pins (corresponding to 8 channel relays) to high level (on state), use the <code><b>memset</b></code> function to set all elements of the <code><b>Relay_Flag</b></code> array to 1, indicating that all relays are turned on, output all relay ON prompt information, and control the buzzer.</li>
+<li>For the <code><b>ALL_OFF</b></code> command, set all relevant GPIO pins to low level (off state) similarly, update the <code><b>Relay_Flag</b></code> array elements to 0, output a message that all relays are turned off and control the buzzer, and perform two additional buzzer control operations (with a delay in between).</li>
+<li>If the value of <code><b>buf[0]</b></code> does not belong to the above command cases, a prompt message for non-instruction data is output.</li></ul></li></ul></li></ul></li></ul>
+<ul><li><b>WIFI_Init ()</b>: Configure the device as a Wi-Fi access point (AP), set up a Web server, and set up request processing functions corresponding to different paths to implement related network functions and device control functions, and give corresponding status prompts.
+<ul><li>AP creation
+<ul><li>First set the Wi-Fi mode to <code><b>WIFI_AP</b></code>, and then attempt to create a soft AP through <code><b>WiFi.softAP(ssid, password)</b></code>. If it fails, it will loop through prompt and retry until it succeeds</li></ul></li>
+<li>Parameter configuration and prompts
+<ul><li>After successfully creating the AP, give a prompt with RGB light (green light on for 1 second)</li></ul></li>
+<li>IP address display
+<ul><li>Obtain and format the IP address of the soft AP, store it in <code><b>ipStr</b></code> and output it for easy network address recognition</li></ul></li>
+<li>Web server setting
+<ul><li>Set up corresponding request handling functions (such as <code><b>handleRoot</b></code>, <code><b>handleGetData</b></code>, etc.) for multiple paths (such as "/", "/getData", etc.) through <code><b>server.on</b></code>, each function should be defined elsewhere for different functional operations like returning pages, getting data, controlling switches etc.</li>
+<li>Finally call <code><b>server.begin()</b></code> to start the Web server and output a startup prompt message.</li></ul></li></ul></li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>RS485 Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-RS485">RS485 Control Tutorial</a></li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Bluetooth Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-Bluetooth">Bluetooth Control Tutorial</a></li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Web Page Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-Web">Web Control Tutorial</a>, this example is in AP mode</li></ul>
+    </div>
+</div>
+</div>
+
+<div class="wiki-pages jet-green-color">
+<h3><span class="mw-headline" id="02_MAIN_WIFI_STA">02_MAIN_WIFI_STA</span></h3>
+<div class="mw-collapsible-content" style="padding: 10px; background-color: #f9f9f9; border-radius: 10px;">
+    <div style="margin-bottom: 20px;">
+<p><b>Demo description</b>
+</p>
+<hr />
+<ul><li>This example implements the control of 8 relays on and off through WiFi, Bluetooth, and RS485. The STA mode of WiFi is enabled in this example</li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Precautions</b>
+</p>
+<hr />
+<ul><li>Need to modify the WIFI to be connected</li>
+<li>The Web page only supports controlling the device and this product to be used under the same network, if you use the mobile phone control, you need to turn off the mobile network</li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Code analysis</b>
+</p>
+<hr />
+<ul><li><b>WIFI_Init ()</b>: Connect the device to a specified Wi-Fi network in station (STA) mode. If the connection is successful, it will perform subsequent network-related configurations (such as obtaining an IP address, starting a Web server, and registering callback functions, etc.). If the connection fails, it will give a corresponding prompt and set the connection status flag. The process also provides visual connection status indicators through an RGB light
+<ul><li>Attempt to connect to Wi-Fi network:
+<ul><li>First set Wi-Fi to <code><b>WIFI_STA</b></code> mode and enable sleep mode, then start connecting to the specified network. In the cyclic wait of unsuccessful connection, a point is output as a prompt every half second, and the RGB light briefly turns red on every even number of attempts (except the first attempt). If every 10 attempts fail, the connection is disconnected and reconnected. If the number of attempts exceeds 22, the connection is considered a failure and the loop is exited.</li></ul></li>
+<li>Operations after successful connection:
+<ul><li>If the number of connection attempts is less than 23 (i.e. successful connection), set <code><b>WIFI_Connection</b></code> to 1, light up the green light for 1 second to indicate success, and then obtain and display the local IP address. Next, register callback functions corresponding to multiple paths for the web server (such as root path, data retrieval, control of different switches, etc.), and finally start the server and output startup prompt, so that the device can receive corresponding control through the web page.</li></ul></li>
+<li>Operations after connection failure:
+<ul><li>If the number of attempts is greater than or equal to 23 (connection failure), set <code><b>WIFI_Connection</b></code> to 0, output a prompt to inform that the device can be controlled through Bluetooth debugging assistant, and light a red light to indicate a connection failure status</li></ul></li></ul></li></ul>
+    </div>
+   <div style="margin-bottom: 20px;">
+<p><b>RS485 Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-RS485">RS485 Control Tutorial</a></li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Bluetooth Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-Bluetooth">Bluetooth Control Tutorial</a></li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Web Page Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-Web">Web Control Tutorial</a>, this example is in STA mode</li></ul>
+    </div>
+</div>
+</div>
+
+<div class="wiki-pages jet-green-color">
+<h3><span class="mw-headline" id="03_MAIN_WIFI_MQTT">03_MAIN_WIFI_MQTT</span></h3>
+<div class="mw-collapsible-content" style="padding: 10px; background-color: #f9f9f9; border-radius: 10px;">
+<p><font color="red"><b>Note: Waveshare Cloud is no longer maintained. Please choose another cloud service.</b></font>
+</p>
+    <div style="margin-bottom: 20px;">
+<p><b>Demo description</b>
+</p>
+<hr />
+<ul><li>This example controls 8 relays through MQTT, Bluetooth, and RS485 communication methods. It uses ESP32 as the main control unit, supports Wi-Fi and Bluetooth connections, and provides remote control based on the MQTT protocol</li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Precautions</b>
+</p>
+<hr />
+<ul><li>Need to modify the WIFI to be connected</li>
+<li>Must create the device in Waveshare Cloud</li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Code analysis</b>
+</p>
+<hr />
+<ul><li><b>Relay_Analysis()</b>: Receive data from different communication sources and perform corresponding relay control operations
+<ul><li><b>Data Delivery</b>: Commands (such as <code><b>CH1</b></code>, <code><b>ALL_ON</b></code> etc.) are sent to the device via Bluetooth, Wi-Fi, or RS485. The device parses and executes the corresponding operation after receiving a command. For example, when the command <code><b>CH1</b></code> is received, the function will switch the state of relay 1</li>
+<li><b>Data Feedback</b>: The execution of control commands is printed to the serial monitor via <code><b>printf </b></code> (e.g., relay status update: "Relay CH1 on") and fed back via the buzzer <code><b>Buzzer_PWM</b></code>). This allows users to see real-time status updates</li>
+<li><b>Communication Protocol</b>
+<ul><li>Bluetooth: Wireless communication with mobile phones or other devices through Bluetooth modules, and the device controls the relay after receiving the command</li>
+<li>MQTT: Connect to the MQTT server via Wi-Fi, and the device subscribes to a specific topic (such as relay control commands). When a new command is issued, the device receives the message via MQTT and performs relay control</li>
+<li>RS485: The device receives RS485 commands through the serial port and switches the relay status according to the commands</li></ul></li></ul></li></ul>
+<ul><li><b>setup ()</b>
+<ul><li><b>Initialize the various modules required for the system, including serial port, GPIO, RTC, Bluetooth and Wi-Fi (MQTT)</b>
+<ul><li>Call <code><b>Bluetooth_Init()</b></code>, and the device can establish connections with other Bluetooth devices and receive control commands</li>
+<li>With <code><b>MQTT_Init()</b></code>, the device will connect to the Wi-Fi network and be able to communicate with remote servers through the MQTT protocol</li></ul></li>
+<li><b>Time Synchronization</b>
+<ul><li>If the system is connected to Wi Fi and RTC is enabled, the <code><b>Acquisition_time()</b></code> function will synchronize the current time to RTC through the network, ensuring that the device has accurate system time</li></ul></li>
+<li><b>Data Upload and Delivery</b>
+<ul><li>Upload: When the device successfully connects to Wi Fi or Bluetooth, it can upload device status information or sensor data (such as temperature, humidity) through MQTT. These data will be sent to the MQTT server regularly for other systems or users to view</li>
+<li>Delivery: The device receives a control command from the MQTT server and performs corresponding actions, such as switching relays on and off or changing configurations</li></ul></li></ul></li></ul>
+    </div>
+   <div style="margin-bottom: 20px;">
+<p><b>RS485 Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-RS485">RS485 Control Tutorial</a></li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Bluetooth Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-Bluetooth">Bluetooth Control Tutorial</a></li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Waveshare Cloud Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-Waveshare_Cloud">Waveshare Cloud Control</a></li></ul>
+    </div>
+</div>
+</div>
+
+<div class="wiki-pages jet-green-color">
+<h3><span class="mw-headline" id="04_MAIN_ALL">04_MAIN_ALL</span></h3>
+<div class="mw-collapsible-content" style="padding: 10px; background-color: #f9f9f9; border-radius: 10px;">
+<p><font color="red"><b>Note: Waveshare Cloud is no longer maintained. Please choose another cloud service.</b></font>
+</p>
+    <div style="margin-bottom: 20px;">
+<p><b>Demo description</b>
+</p>
+<hr />
+<ul><li>This example is a collection of RS485 interface control, Bluetooth control, Web page control (near distance), and Waveshare cloud control (long distance).</li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Precautions</b>
+</p>
+<hr />
+<ul><li>Need to modify the WIFI to be connected</li>
+<li>The Web page only supports controlling the device and this product to be used under the same network, if you use the mobile phone control, you need to turn off the mobile network</li>
+<li>Must create the device in Waveshare Cloud</li></ul>
+    </div>
+   <div style="margin-bottom: 20px;">
+<p><b>RS485 Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-RS485">RS485 Control Tutorial</a></li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Bluetooth Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-Bluetooth">Bluetooth Control Tutorial</a></li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Web Page Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-Web">Web Control Tutorial</a>, this example is in AP mode</li></ul>
+    </div>
+    <div style="margin-bottom: 20px;">
+<p><b>Waveshare Cloud Control</b>
+</p>
+<hr />
+<ul><li>Jump to <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/ESP32-S3-POE-ETH-8DI-8RO-Waveshare_Cloud">Waveshare Cloud Control</a></li></ul>
+    </div>
+</div>
+</div>
+
+<div class="wiki-pages jet-green-color">
+<h1><span class="mw-headline" id="External_Expansion">External Expansion</span></h1>
+<div class="toccolours mw-collapsible mw-collapsed">
+<h2><span class="mw-headline" id="RS485_Extended_Relay_Channels">RS485 Extended Relay Channels</span></h2>
+<div class="mw-collapsible-content">
+<ul><li>Use <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/Modbus-RTU-Relay.htm">Modbus RTU Relay</a> to extend 8-ch relay</li>
+<li>The 4 main example files are compatible with this operation, and the Extension_Enable in WS_imformification. h needs to be set to 1 (default is 1)</li>
+<li>Externally extended relays can be controlled via Bluetooth</li></ul>
+<dl><dd><table border="1;" style="width:700px;" align="auto">
+
+<tbody><tr>
+<td style="background:#7eb128; color:white;text-align:center;">Operation Command
+</td>
+<td style="background:#7eb128; color:white;text-align:center;">Command Function
+</td></tr>
+<tr>
+<td style="text-align:center;">06 01
+</td>
+<td style="text-align:center;">Switch the CH1 relay status of Modbus RTU Relay
+</td></tr>
+<tr>
+<td style="text-align:center;">06 02
+</td>
+<td style="text-align:center;">Switch the CH2 relay status of Modbus RTU Relay
+</td></tr>
+<tr>
+<td style="text-align:center;">06 03
+</td>
+<td style="text-align:center;">Switch the CH3 relay status of Modbus RTU Relay
+</td></tr>
+<tr>
+<td style="text-align:center;">06 04
+</td>
+<td style="text-align:center;">Switch the CH4 relay status of Modbus RTU Relay
+</td></tr>
+<tr>
+<td style="text-align:center;">06 05
+</td>
+<td style="text-align:center;">Switch the CH5 relay status of Modbus RTU Relay
+</td></tr>
+<tr>
+<td style="text-align:center;">06 06
+</td>
+<td style="text-align:center;">Switch the CH6 relay status of Modbus RTU Relay
+</td></tr>
+<tr>
+<td style="text-align:center;">06 07
+</td>
+<td style="text-align:center;">Switch the CH7 relay status of Modbus RTU Relay
+</td></tr>
+<tr>
+<td style="text-align:center;">06 08
+</td>
+<td style="text-align:center;">Switch the CH8 relay status of Modbus RTU Relay
+</td></tr>
+<tr>
+<td style="text-align:center;">06 09
+</td>
+<td style="text-align:center;">Turn on all relays of Modbus RTU Relay
+</td></tr>
+<tr>
+<td style="text-align:center;">06 0A
+</td>
+<td style="text-align:center;">Turn off all relays of Modbus RTU Relay
+</td></tr></tbody></table></dd></dl>
+<ul><li>The commands for Bluetooth control relay are characters 1-8, which are hexadecimal <b>0x06 0x01 ~ 0x38 0x0A</b></li>
+<li>Click the SEND button and fill in the data to be sent (currently hexadecimal sending), enter 0x06 0x01 as below</li></ul>
+<p><a href="/wiki/File:ESP32-S3-Relay-6CH_TO_Extension_1.png" class="image"><img alt="ESP32-S3-Relay-6CH TO Extension 1.png" src="/w/upload/9/98/ESP32-S3-Relay-6CH_TO_Extension_1.png" decoding="async" loading="lazy" width="1000" height="1077" /></a>
+</p>
+<ul><li>Send 0x06 0x01 to control relay CH1 for status reversal</li></ul>
+<p><a href="/wiki/File:ESP32-S3-Relay-6CH_TO_Extension_2.png" class="image"><img alt="ESP32-S3-Relay-6CH TO Extension 2.png" src="/w/upload/2/2d/ESP32-S3-Relay-6CH_TO_Extension_2.png" decoding="async" loading="lazy" width="1000" height="1080" /></a>
+</p>
+<ul><li>Send 0x06 0x0A to control to turn off all relays</li></ul>
+<p><a href="/wiki/File:ESP32-S3-Relay-6CH_TO_Extension_3.png" class="image"><img alt="ESP32-S3-Relay-6CH TO Extension 3.png" src="/w/upload/d/db/ESP32-S3-Relay-6CH_TO_Extension_3.png" decoding="async" loading="lazy" width="1000" height="1077" /></a>
+</p>
+</div></div>
+<h1><span class="mw-headline" id="Interface_Description">Interface Description</span></h1>
+<p><a href="/wiki/File:ESP32-S3-ETH-8DI-8RO-logic-1.png" class="image"><img alt="ESP32-S3-ETH-8DI-8RO-logic-1.png" src="/w/upload/f/f9/ESP32-S3-ETH-8DI-8RO-logic-1.png" decoding="async" loading="lazy" width="1045" height="1161" /></a>
+</p>
+<div class="tabbertab" title="Resources" id="myresources">
+<div class="wiki-pages jet-green-color">
+<h1><span class="mw-headline" id="Flash_Firmware_Flashing_and_Erasing">Flash Firmware Flashing and Erasing</span></h1>
+<div class="mw-collapsible-content" style="padding: 10px; background-color: #f9f9f9; border-radius: 10px;">
+    <div style="margin-bottom: 20px;">
+<ul><li><b>The current demo provides test firmware, which can be used to test whether the onboard device functions properly by directly flashing the test firmware</b></li>
+<li><b>bin file path: </b><pre>...\ESP32-S3-POE-ETH-8DI-8RO-Demo\Firmware\Factory bin</pre></li></ul>
+<div role="note" class="note note-info"><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/Flash_Firmware_Flashing_and_Erasing">Flash firmware flashing and erasing </a> for reference </div>
+</div>
+</div>
+</div>
+<h1><span class="mw-headline" id="Working_with_Homeassistant">Working with Homeassistant</span></h1>
+<div class="mw-collapsible-content" style="padding: 10px; background-color: #f9f9f9; border-radius: 10px;">
+    <div style="margin-bottom: 20px;">
+<p>The product can be controlled online through the Homeassistant built on the Raspberry Pi, and the relevant operations can be found in <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.waveshare.com/wiki/Using_Modbus_RTU_Relay_with_Homeassistant">Reference link</a>
+</p>
+</div>
+</div>
+<div class="wiki-pages jet-green-color">
+<h1><span class="mw-headline" id="Resources">Resources</span></h1>
+<h2><span class="mw-headline" id="Demo_2">Demo</span></h2>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/wiki/ESP32-S3-ETH-8DI-8RO/ESP32-S3-POE-ETH-8DI-8RO-Demo.zip">ESP32-S3-POE-ETH-8DI-8RO Demo</a></li></ul>
+<h2><span class="mw-headline" id="Datasheets">Datasheets</span></h2>
+<h3><span class="mw-headline" id="ESP32-S3">ESP32-S3</span></h3>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/wiki/common/Esp32-s3_datasheet_en.pdf">ESP32-S3 Datasheet</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/wiki/common/Esp32-s3_technical_reference_manual_en.pdf">ESP32-S3 Technical reference manual</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/wiki/common/Esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf">ESP32-S3-WROOM-1 datasheet</a></li></ul>
+<h2><span class="mw-headline" id="Software_Tools">Software Tools</span></h2>
+<h3><span class="mw-headline" id="Arduino">Arduino</span></h3>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.arduino.cc/en/software/">Arduino IDE Official download link</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://drive.google.com/drive/folders/1Pcs_A4FKWvdSHnz9lEBYqOpr-noTMbIv?usp=sharing">ESP32_Arduino offline package</a></li></ul>
+<h3><span class="mw-headline" id="VScode">VScode</span></h3>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://code.visualstudio.com/download">VScode official website</a></li></ul>
+<h3><span class="mw-headline" id="Thonny">Thonny</span></h3>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://thonny.org/">Thonny official download link</a></li></ul>
+<h3><span class="mw-headline" id="Debugging_Tools">Debugging Tools</span></h3>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://dl.espressif.com/public/flash_download_tool.zip">Flash_download_tool</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/wiki/ESP32-S3-Relay-6CH/SSCOM5.13.1_For_ESP32_S3_Relay_6CH.zip">SSCOM</a></li>
+<li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-mobile">Bluetooth debugging tool (nRF Connect)</a></li></ul>
+<h2><span class="mw-headline" id="Other_Resource_Link">Other Resource Link</span></h2>
+<ul><li><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://docs.espressif.com/projects/arduino-esp32/en/latest/index.html">ESP32-Arduino official documentation</a></li></ul>
+<h2><span class="mw-headline" id="Project_Resources">Project Resources</span></h2>
+<p>This section features third - party project resources. We merely provide links and bear no responsibility for content updates or maintenance. Thank you for your understanding.<br />
+</p><p><b>Engineer Ismail - I Replaced a ₹50,000 Industrial PLC with a ₹2,000 ESPBoard! 🤯</b><br />
+<iframe width="400" height="315" src="//www.youtube.com/embed/L5pb4ejEqHQ" frameborder="0" allowfullscreen=""></iframe>
+</p>
+<ul><li>YouTube: <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://www.youtube.com/watch?v=L5pb4ejEqHQ">https://www.youtube.com/watch?v=L5pb4ejEqHQ</a></li></ul>
+<h1><span class="mw-headline" id="FAQ">FAQ</span></h1>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion1">
+								Question:  After the module downloads the demo and re-downloads it, why sometimes it can't connect to the serial port or the flashing fails? 
+							</a>
+						</h4>
+					</div>
+					<div id="accordion1" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>Long press the BOOT button, press RESET at the same time, then release RESET, then release the BOOT button, at this time the module can enter the download mode, which can solve most of the problems that can not be downloaded.</li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;"></font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion2">
+								Question:  Why does the module keep resetting and flicker when viewed the recognition status from the device manager? 
+							</a>
+						</h4>
+					</div>
+					<div id="accordion2" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>It may be due to Flash blank and the USB port is not stable, you can long-press the BOOT button, press RESET at the same time, and then release RESET, and then release the BOOT button, at this time the module can enter the download mode to flash the firmware (demo) to solve the situation.</li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;"></font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion3">
+								Question:  How to deal with the first compilation of the program being extremely slow?
+							</a>
+						</h4>
+					</div>
+					<div id="accordion3" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>It's normal for the first compilation to be slow, just be patient<br /></li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;"></font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion4">
+								Question:  How to handle the display "waiting for download..." on the serial port after successfully ESP-IDF flashing? 
+							</a>
+						</h4>
+					</div>
+					<div id="accordion4" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>If there is a reset button on the development board, press the reset button; if there is no reset button, please power it on again<br /></li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;"></font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion5">
+								Question:  What should I do if I can't find the AppData folder? 
+							</a>
+						</h4>
+					</div>
+					<div id="accordion5" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>Some AppData folders are hidden by default and can be set to show.</li>
+<li>English system: Explorer-&gt;View-&gt;Check "Hidden items"</li>
+<li>Chinese system: File Explorer -&gt; View -&gt; Display -&gt; Check "Hidden Items"<br /></li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;"></font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion6">
+								Question:  How do I check the COM port I use? 
+							</a>
+						</h4>
+					</div>
+					<div id="accordion6" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>Windows system:</li></ul>
+<p>①View through Device Manager: Press the Windows + R keys to open the "Run" dialog box; input devmgmt.msc and press Enter to open the Device Manager; expand the "Ports (COM and LPT)" section, where all COM ports and their current statuses will be listed. <br />
+②Use the command prompt to view: Open the Command Prompt (CMD), enter the "mode" command, which will display status information for all COM ports. <br />
+③Check hardware connections: If you have already connected external devices to the COM port, the device usually occupies a port number, which can be determined by checking the connected hardware.
+</p>
+<ul><li>Linux system:</li></ul>
+<p>①Use the dmesg command to view: Open the terminal. <br />
+①Use the ls command to view: Enter ls /dev/ttyS* or ls /dev/ttyUSB* to list all serial port devices. <br />
+③Use the setserial command to view: Enter setserial -g /dev/ttyS* to view the configuration information of all serial port devices. <br />
+</p>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;"></font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion7">
+								Question:  Why does the program flashing fail when using a MAC device? 
+							</a>
+						</h4>
+					</div>
+					<div id="accordion7" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>Install <a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://files.waveshare.com/wiki/common/CH34XSER_MAC.7z">MAC Driver</a> and flash again.</li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;"></font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion8">
+								Question:  Why is there no output after successfully flashing the code with no issues? 
+							</a>
+						</h4>
+					</div>
+					<div id="accordion8" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>Check the schematic diagram for different development boards with Type-C interfaces, and handle the output accordingly:
+<ul><li>For development boards with direct USB output, printf function is supported for printing output. If you want to support output via the Serial function, you will need to enable the USB CDC On Boot feature or declare HWCDC.</li>
+<li>For development boards with UART to USB conversion, both printf and Serial functions are supported for printing output, and there is no need to enable USB CDC On Boot.</li></ul></li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;"></font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion9">
+								Question:  What is the I2C device address for Extended IO (TCA9554PWR)? 
+							</a>
+						</h4>
+					</div>
+					<div id="accordion9" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>The device address is 0x20.<br /></li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;"></font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion10">
+								Question:  Please note! 
+							</a>
+						</h4>
+					</div>
+					<div id="accordion10" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>The factory demo is for learning only, if it is used for practical application, please optimize the demo logic by yourself.</li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;"></font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<div class="panel-group">
+				<div class="panel panel-default">
+					<div class="panel-heading">
+						<h4 class="panel-title">
+							<a data-toggle="collapse" data-parent="#accordion" href="#accordion11">
+								Question:  When controlling other devices using RS485, it is not sensitive or communication fails? 
+							</a>
+						</h4>
+					</div>
+					<div id="accordion11" class="panel-collapse collapse in">
+						<div class="panel-body">
+<div>&#160;<b>Answer:</b></div>
+<div>
+<ul><li>Please move the jumper cap to 120R and try again. Some RS485 devices require a 120R resistor to be connected in series</li></ul>
+</div>
+<div style="display:none;"></div>
+<div style="display:none;"></div>
+<p><font color="red" style="display:none;"></font>
+</p>
+						</div>
+					</div>
+				</div>
+</div>
+<p><br />
+</p>
+<h1><span class="mw-headline" id="Support">Support</span></h1>
+<p><br />
+<br />
+</p>
+<div style="background:linear-gradient(to bottom right,#91C942,#7DB036); border-radius:15px; width:100%;min-width:750px;">
+<div style="display:flex;flex-direction: row;align-items: flex-start;">
+<div style="flex:l; font-size:15px; width:70%; margin-top:20px; margin-bottom:20px; margin-right:40px;padding-left:40px;">
+<p style="font-size:20px; font-weight:bold;">
+Technical Support
+</p>
+<p>
+If you need technical support or have any feedback/review, please click the <b>Submit Now</b> button to submit a ticket, Our support team will check and reply to you within 1 to 2 working days. Please be patient as we make every effort to help you to resolve the issue. 
+<br /> 
+Working Time: 9 AM - 6 PM GMT+8 (Monday to Friday)
+</p>
+</div>
+<div style="margin-top:94px;">
+<div id="service" style="display:flex; flex:r; background-color:#393939; color:white; text-align:center; font-size:20px; border-radius:20px;">
+<p><a target="_blank" rel="nofollow noreferrer noopener" class="external text" href="https://service.waveshare.com/">Submit Now</a>
+</p>
+</div>
+</div>
+</div>
+</div>
+</div></div></div>
+<!-- 
+NewPP limit report
+Cached time: 20261113004555
+Cache expiry: 0
+Dynamic content: true
+Complications: []
+CPU time usage: 0.231 seconds
+Real time usage: 0.335 seconds
+Preprocessor visited node count: 1210/1000000
+Post‐expand include size: 16959/2097152 bytes
+Template argument size: 9522/2097152 bytes
+Highest expansion depth: 6/40
+Expensive parser function count: 0/100
+Unstrip recursion depth: 0/20
+Unstrip post‐expand size: 9962/5000000 bytes
+-->
+<!--
+Transclusion expansion time report (%,ms,calls,template)
+100.00%  107.959      1 -total
+ 26.15%   28.228     11 Template:FAQ
+ 21.34%   23.042      1 Template:Infobox_item
+ 13.51%   14.582      1 Template:Run_the_first_Arduino_demo
+ 13.31%   14.371      1 Template:Servicebox1
+ 11.68%   12.613      1 Template:Relay_Terms_and_Conditions
+ 11.44%   12.355      5 Template:Note
+-->
+</div></div>								<div class="printfooter">
+				Retrieved from "<a dir="ltr" href="https://www.waveshare.com/w/index.php?title=ESP32-S3-ETH-8DI-8RO&amp;oldid=111306">https://www.waveshare.com/w/index.php?title=ESP32-S3-ETH-8DI-8RO&amp;oldid=111306</a>"				</div>
+												<div id="catlinks" class="catlinks" data-mw="interface"><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/Special:Categories" title="Special:Categories">Categories</a>: <ul><li><a href="/w/index.php?title=Category:Pages_using_duplicate_arguments_in_template_calls&amp;action=edit&amp;redlink=1" class="new" title="Category:Pages using duplicate arguments in template calls (page does not exist)">Pages using duplicate arguments in template calls</a></li><li><a href="/w/index.php?title=Category:BLE_interface&amp;action=edit&amp;redlink=1" class="new" title="Category:BLE interface (page does not exist)">BLE interface</a></li></ul></div><div id="mw-hidden-catlinks" class="mw-hidden-catlinks mw-hidden-cats-hidden">Hidden categories: <ul><li><a href="/wiki/Category:USB_interface" title="Category:USB interface">USB interface</a></li><li><a href="/wiki/Category:RS485_interface" title="Category:RS485 interface">RS485 interface</a></li><li><a href="/wiki/Category:WiFi_interface" title="Category:WiFi interface">WiFi interface</a></li></ul></div></div>												<div class="visualClear"></div>
+							</div>
+			<!-- /bodyContent -->
+		</div>
+						</div>
+				</div>
+			</div>
+			<!-- /content -->
+
+			<!-- sidebar-left -->
+			<div class="sidebar-wrapper sidebar-left-wrapper">
+				<div class="sidebar-container container">
+					<div class="row">
+						<div id="sidebar-left" class="col-md-2 col-md-offset-0">
+							<div id="tweekiTOC"></div>						</div>
+					</div>
+				</div>
+			</div>
+			<!-- /sidebar-left -->
+					<!-- footer -->
+			<div id="footer" role="contentinfo" class="footer container footer-sticky bg-light">
+			<ul id="footer-custom"><li class="dropup"><a href="/w/index.php?title=Special:UserLogin&amp;returnto=ESP32-S3-ETH-8DI-8RO" title="You are encouraged to log in; however, it is not mandatory [o]" accesskey="o">Login / Create Account</a></li></ul><div style="clear:both"></div>			</div>
+			<!-- /footer -->
+		
+<script>
+var fbtFancyBoxOptions = {};
+</script>
+
+<script>(RLQ=window.RLQ||[]).push(function(){mw.config.set({"wgPageParseReport":{"limitreport":{"cputime":"0.231","walltime":"0.335","ppvisitednodes":{"value":1210,"limit":1000000},"postexpandincludesize":{"value":16959,"limit":2097152},"templateargumentsize":{"value":9522,"limit":2097152},"expansiondepth":{"value":6,"limit":40},"expensivefunctioncount":{"value":0,"limit":100},"unstrip-depth":{"value":0,"limit":20},"unstrip-size":{"value":9962,"limit":5000000},"timingprofile":["100.00%  107.959      1 -total"," 26.15%   28.228     11 Template:FAQ"," 21.34%   23.042      1 Template:Infobox_item"," 13.51%   14.582      1 Template:Run_the_first_Arduino_demo"," 13.31%   14.371      1 Template:Servicebox1"," 11.68%   12.613      1 Template:Relay_Terms_and_Conditions"," 11.44%   12.355      5 Template:Note"]},"cachereport":{"timestamp":"20261113004555","ttl":0,"transientcontent":true}}});mw.config.set({"wgBackendResponseTime":892});});</script>	<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a599c19ebe490d7f',t:'MTc5NDUzMDc1NA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a599c19ebe490d7f',a=document.createElement('script');a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
