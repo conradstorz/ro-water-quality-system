@@ -11,7 +11,7 @@
 - Added fault-code catalog, ADR-0005, and LCD fault-injection acceptance matrix.
 
 ## Firmware runtime decision — 2026-11-12
-- Added ADR-0007 (proposed): C++ on Arduino-ESP32 (>= 3.0) with PlatformIO for both boards, framework-independent logic library tested on the host; MicroPython and ESPHome rejected.
+- Added ADR-0007 (proposed): C++ on Arduino-ESP32 (>= 3.0) with PlatformIO for both boards, framework-independent logic library tested on the host; MicroPython and ESPHome rejected (ESPHome on component-model fit, not Modbus server support).
 
 ## Permeate diversion decision — 2026-11-12
 - Added ADR-0006 (proposed): permeate diversion is a normally closed quality-control dump valve on a tee drain branch, not a fail-to-drain safety function.
