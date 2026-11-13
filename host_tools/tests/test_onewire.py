@@ -97,7 +97,9 @@ def test_crc_error_device() -> None:
 
 def test_missing_device() -> None:
     ok = OneWireDevice(make_rom(FAMILY_DS18B20, 1), primary=2000)
-    gone = OneWireDevice(make_rom(FAMILY_DS18B20, 2), primary=2000, missing=True)
+    gone = OneWireDevice(
+        make_rom(FAMILY_DS18B20, 2), primary=2000, present=False, missing=True
+    )
     snap = _snap(encode_onewire([ok, gone]))
     assert snap.onewire_device_count == 1
     slots = {s.rom: s for s in decode_slots(snap)}
@@ -112,6 +114,43 @@ def test_stale_not_usable() -> None:
     dev = OneWireDevice(make_rom(FAMILY_DS18B20, 1), primary=2000, stale=True)
     (slot,) = decode_slots(_snap(encode_onewire([dev])))
     assert slot.status & SlotStatus.STALE
+    assert not slot.usable
+
+
+@pytest.mark.parametrize("present,missing", [(False, False), (True, True)])
+def test_present_missing_combo_rejected(present: bool, missing: bool) -> None:
+    with pytest.raises(ValueError):
+        OneWireDevice(make_rom(FAMILY_DS18B20, 1), present=present, missing=missing)
+
+
+def test_invalid_device_values_zeroed() -> None:
+    dev = OneWireDevice(make_rom(FAMILY_DS18B20, 1), primary=2000, secondary=5, valid=False)
+    (slot,) = decode_slots(_snap(encode_onewire([dev])))
+    assert slot.primary == 0 and slot.secondary == 0
+    assert not slot.status & SlotStatus.VALID
+    assert not slot.usable
+
+
+def test_negative_age_rejected() -> None:
+    with pytest.raises(ValueError):
+        encode_onewire([], age_ms=-1)
+
+
+@pytest.mark.parametrize("rom", [-1, 1 << 64])
+def test_rom_out_of_range_rejected(rom: int) -> None:
+    with pytest.raises(ValueError):
+        OneWireDevice(rom)
+
+
+def test_bus_status_passed_through() -> None:
+    status = BusStatus.BUS_SHORT | BusStatus.CRC_ERRORS
+    assert encode_onewire([], bus_status=status)["onewire_bus_status"] == int(status)
+
+
+def test_stale_with_crc_error_unusable() -> None:
+    dev = OneWireDevice(make_rom(FAMILY_DS18B20, 1), primary=2000, stale=True, crc_error=True)
+    (slot,) = decode_slots(_snap(encode_onewire([dev])))
+    assert slot.status & SlotStatus.STALE and slot.status & SlotStatus.CRC_ERROR
     assert not slot.usable
 
 

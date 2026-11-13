@@ -101,6 +101,17 @@ class OneWireDevice:
     crc_error: bool = False
     missing: bool = False
 
+    def __post_init__(self) -> None:
+        """Validate the device description.
+
+        :raises ValueError: If ``rom`` is not a 64-bit value, or ``present`` and
+            ``missing`` are not exactly one of each (a device is present or missing).
+        """
+        if not 0 <= self.rom < 1 << 64:
+            raise ValueError(f"rom {self.rom} outside 64 bits")
+        if self.present == self.missing:
+            raise ValueError("a device must be exactly one of present or missing")
+
 
 @dataclass(frozen=True)
 class SlotReading:
@@ -131,13 +142,13 @@ def _slot_words(device: OneWireDevice) -> tuple[int, int, int]:
     """
     status = SlotStatus(0)
     primary, secondary = device.primary, device.secondary
-    if device.present and not device.missing:
+    if device.present:
         status |= SlotStatus.PRESENT
     if device.missing:
         status |= SlotStatus.MISSING
     if device.stale:
         status |= SlotStatus.STALE
-    if device.valid and not device.missing:
+    if device.valid:
         status |= SlotStatus.VALID
     if device.crc_error:
         status |= SlotStatus.CRC_ERROR
@@ -145,6 +156,7 @@ def _slot_words(device: OneWireDevice) -> tuple[int, int, int]:
         status |= SlotStatus.UNSUPPORTED_FAMILY
     if status & (SlotStatus.CRC_ERROR | SlotStatus.UNSUPPORTED_FAMILY | SlotStatus.MISSING):
         status &= ~SlotStatus.VALID
+    if not status & SlotStatus.VALID:
         primary = secondary = 0
     return primary, secondary, int(status)
 
@@ -162,8 +174,10 @@ def encode_onewire(
     :param age_ms: Age of the scan in ms, saturating at 65535.
     :param generation: Scan generation counter.
     :returns: Mapping of snapshot field name to raw register value.
-    :raises ValueError: If two devices share a ROM.
+    :raises ValueError: If two devices share a ROM or ``age_ms`` is negative.
     """
+    if age_ms < 0:
+        raise ValueError(f"age_ms {age_ms} is negative")
     roms = [d.rom for d in devices]
     if len(set(roms)) != len(roms):
         raise ValueError("duplicate ROM on bus")
@@ -176,7 +190,7 @@ def encode_onewire(
         "onewire_device_count": 0,
         "onewire_bus_status": int(status),
         "onewire_scan_generation": generation,
-        "onewire_age_ms": min(max(age_ms, 0), _U16_MAX),
+        "onewire_age_ms": min(age_ms, _U16_MAX),
     }
     count = 0
     for i in range(SLOT_COUNT):
