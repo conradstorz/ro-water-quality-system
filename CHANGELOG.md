@@ -10,6 +10,10 @@
 - Added optional atomic Modbus FC16 display-only controller-status extension (holding registers 220–227); input measurement addresses unchanged.
 - Added fault-code catalog, ADR-0005, and LCD fault-injection acceptance matrix.
 
+## Permeate diversion decision — 2026-11-12
+- Added ADR-0006 (proposed): permeate diversion is a normally closed quality-control dump valve on a tee drain branch, not a fail-to-drain safety function.
+- Updated safety requirements, P&ID, acceptance tests, main-controller relay K3 description and AGENTS.md rule 3 to match; added permeate back-pressure requirement (highest line point about 5 ft above membrane).
+
 ## Stage A protocol tooling — 2026-11-11
 - Added `ro_tools` host package: register-map validator, Python codec generator, simulated Modbus sensor node (TCP and serial RTU) with fault injection, pymodbus-based client, and `ro-tools` CLI.
 - Added machine-readable enums, controller-flag bits, and fault codes to `protocol/register_map.yaml` (additive; protocol remains 1.1, no address/scale/signedness/access change).

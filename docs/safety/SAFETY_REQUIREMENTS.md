@@ -4,7 +4,8 @@
 - Low feed pressure / dry-run protection is independent where required by pump design. Determine safe startup behavior after pump identification.
 - Distribution pump is separate 120 VAC equipment controlled by its own pressure switch; independent low-water protection is required. Sensor ESP32 does not actuate it.
 - RO flush valve USS-MSV00072 is **provisional**: advertised 145 PSI maximum vs remembered ~125 PSI operating pressure. Do not install until pressure suitability and maximum transient/relief conditions are resolved.
-- On ESP32 reset or comms failure: RO contactor deenergized, flush valve unpowered/open, permeate diverted to drain (subject to verified valve hardware).
+- On ESP32 reset or comms failure: RO contactor deenergized and flush valve unpowered/open, so no permeate is produced. The permeate diversion valve is a normally closed quality-control valve (ADR-0006): unpowered, permeate goes to the tank. It is not a fail-safe and must not be relied on to keep bad water out of the tank.
+- Permeate back pressure must not exceed the membrane datasheet limit (typically feed/concentrate + about 5 psi, TBD for the selected membrane). Highest permeate line point is about 5 ft (about 2.2 psi) above the membrane; include sensor friction and check-valve cracking pressure.
 - Software must not override physical interlocks. Modbus is not a safety-rated bus.
 - All wetted and electrical parts must be rated for measured conditions; sanitary atmospheric tank, filtered vent, overflow air gap, potable water materials, maintenance/sanitation.
 - Use qualified electrical practices for mains wiring, grounding, fusing, separation, and enclosure construction.

@@ -9,7 +9,9 @@
 - Two HX711 tare/gain and known gallons; fill/drain hysteresis and hinge effects.
 - Pressure gauge comparison, disconnect and ADC saturation.
 ## Actuators and safety
-- Bench test with dummy loads. Confirm power-off contactor OFF, flush valve opens and diversion goes to drain.
+- Bench test with dummy loads. Confirm power-off contactor OFF and flush valve opens. Diversion valve (K3, normally closed) is closed when unpowered; confirm it energizes to drain only while the controller commands a dump.
+- Permeate diversion (ADR-0006): startup dump until EC below threshold then switch to tank; high permeate EC during production switches to dump and raises a fault; dump-time limit triggers the configured fault; stale or invalid EC inhibits production (rule 4). Thresholds and limits TBD.
+- Measure permeate-side back pressure at the membrane port with the line full, running and after shutdown; confirm it stays within the membrane datasheet limit.
 - Independently trip high-pressure and high-high-level switches with controller disconnected.
 - Confirm distribution pump remains pressure-switch operated and has independent low-water cutoff.
 - No live high-pressure tests until component ratings and safety devices validated.
