@@ -16,7 +16,11 @@ from ro_tools.generated.registers import (
     PROTOCOL_MAJOR,
     FaultBits,
     Snapshot,
+    StatusBits,
 )
+
+#: Largest forward step of the u16 ``snapshot_sequence`` (modular) accepted as fresh.
+MAX_SEQUENCE_FORWARD_STEP = 0x7FFF
 
 
 class NodeHealth(Enum):
@@ -45,6 +49,14 @@ class NodeConfig:
     critical: bool
     required_mask: int
 
+    def __post_init__(self) -> None:
+        """Reject a critical node that requires nothing (it would always read OK).
+
+        :raises ValueError: If ``critical`` is True and ``required_mask`` is 0.
+        """
+        if self.critical and self.required_mask == 0:
+            raise ValueError("a critical node must require at least one validity bit")
+
 
 def critical_required(installed_mask: int) -> int:
     """Return the critical validity bits that a node with ``installed_mask`` fits.
@@ -60,13 +72,23 @@ def evaluate(
     snapshot: Snapshot | None,
     previous_sequence: int | None = None,
     max_age_ms: int = CRITICAL_MAX_AGE_MS,
+    reset_acknowledged: bool = False,
 ) -> NodeHealth:
     """Judge one node's latest poll.
+
+    Precedence: MISSING, WRONG_NODE, node-reset flag, sequence, age/stale fault,
+    INVALID, then OK.
+
+    A snapshot whose ``module_status`` has ``WATCHDOG_RESET_SEEN`` is STALE until the
+    controller acknowledges the reset. Recovery: re-baseline by calling this with
+    ``previous_sequence=None, reset_acknowledged=True`` for the next poll, then resume
+    passing the real previous sequence (with ``reset_acknowledged`` False).
 
     :param config: What the controller expects of this node.
     :param snapshot: The decoded snapshot, or None if the poll got no valid reply.
     :param previous_sequence: ``snapshot_sequence`` of the previous accepted poll, if any.
     :param max_age_ms: Largest acceptable ``critical_age_ms`` (inclusive).
+    :param reset_acknowledged: True when the controller has acknowledged a node reset.
     :returns: The node's health; anything but OK must be treated as unusable.
     """
     if snapshot is None:
@@ -75,8 +97,12 @@ def evaluate(
         return NodeHealth.WRONG_NODE
     if config.required_mask & ~snapshot.installed_mask:
         return NodeHealth.WRONG_NODE
-    if previous_sequence is not None and snapshot.snapshot_sequence == previous_sequence:
+    if snapshot.module_status & int(StatusBits.WATCHDOG_RESET_SEEN) and not reset_acknowledged:
         return NodeHealth.STALE
+    if previous_sequence is not None:
+        delta = (snapshot.snapshot_sequence - previous_sequence) & 0xFFFF
+        if not 1 <= delta <= MAX_SEQUENCE_FORWARD_STEP:
+            return NodeHealth.STALE
     if snapshot.critical_age_ms > max_age_ms or snapshot.fault_mask & int(
         FaultBits.STALE_ACQUISITION
     ):

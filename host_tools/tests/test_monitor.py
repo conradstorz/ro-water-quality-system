@@ -2,6 +2,7 @@
 
 import dataclasses
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -75,10 +76,64 @@ def test_age_limit_is_inclusive():
     assert evaluate(RO_CFG, over) is NodeHealth.STALE
 
 
+def with_seq(seq, **changes):
+    return dataclasses.replace(snap(RO_SKID_PROFILE), snapshot_sequence=seq, **changes)
+
+
 def test_unchanged_sequence_is_stale():
-    s = snap(RO_SKID_PROFILE)
-    assert evaluate(RO_CFG, s, previous_sequence=s.snapshot_sequence) is NodeHealth.STALE
-    assert evaluate(RO_CFG, s, previous_sequence=s.snapshot_sequence - 1) is NodeHealth.OK
+    s = with_seq(100)
+    assert evaluate(RO_CFG, s, previous_sequence=100) is NodeHealth.STALE
+
+
+def test_forward_step_is_ok():
+    assert evaluate(RO_CFG, with_seq(101), previous_sequence=100) is NodeHealth.OK
+
+
+def test_sequence_wrap_is_ok():
+    assert evaluate(RO_CFG, with_seq(0), previous_sequence=0xFFFF) is NodeHealth.OK
+
+
+def test_backward_step_is_stale():
+    assert evaluate(RO_CFG, with_seq(99), previous_sequence=100) is NodeHealth.STALE
+    assert evaluate(RO_CFG, with_seq(0), previous_sequence=500) is NodeHealth.STALE
+
+
+def test_forward_step_limit():
+    assert evaluate(RO_CFG, with_seq(0x7FFF), previous_sequence=0) is NodeHealth.OK
+    assert evaluate(RO_CFG, with_seq(0x8000), previous_sequence=0) is NodeHealth.STALE
+
+
+def test_watchdog_reset_flag_is_stale_until_acknowledged():
+    s = with_seq(5, module_status=int(reg.StatusBits.WATCHDOG_RESET_SEEN))
+    assert evaluate(RO_CFG, s) is NodeHealth.STALE
+    assert evaluate(RO_CFG, s, previous_sequence=4) is NodeHealth.STALE
+    assert evaluate(RO_CFG, s, previous_sequence=None, reset_acknowledged=True) is NodeHealth.OK
+
+
+def test_stale_acquisition_fault_alone_is_stale():
+    s = with_seq(1, fault_mask=int(reg.FaultBits.STALE_ACQUISITION), critical_age_ms=0)
+    assert evaluate(RO_CFG, s) is NodeHealth.STALE
+
+
+def test_precedence_stale_over_invalid():
+    s = snap(RO_SKID_PROFILE, "critical_sensor_invalid")
+    s = dataclasses.replace(s, critical_age_ms=reg.CRITICAL_MAX_AGE_MS + 1)
+    assert evaluate(RO_CFG, s) is NodeHealth.STALE
+
+
+def test_precedence_wrong_node_over_stale():
+    s = dataclasses.replace(snap(TANK_PROFILE), critical_age_ms=reg.CRITICAL_MAX_AGE_MS + 1)
+    assert evaluate(RO_CFG, s) is NodeHealth.WRONG_NODE
+    flagged = dataclasses.replace(s, module_status=int(reg.StatusBits.WATCHDOG_RESET_SEEN))
+    assert evaluate(RO_CFG, flagged, previous_sequence=flagged.snapshot_sequence) is (
+        NodeHealth.WRONG_NODE
+    )
+
+
+def test_critical_node_requiring_nothing_is_rejected():
+    with pytest.raises(ValueError):
+        NodeConfig(9, int(reg.NodeType.TANK), True, 0)
+    NodeConfig(9, int(reg.NodeType.TANK), False, 0)
 
 
 def test_optional_pressure_failure_does_not_block_a_node_that_does_not_require_it():
