@@ -47,6 +47,7 @@ Link parameters (from `docs/specs/SENSOR_NODE_MODBUS_RS485_SPEC.md`): 19200 8E1,
 | RS485 B (D-) | RS485 B (D-) | Twisted pair. |
 | RS485 GND / reference `[T]` | Transceiver reference | Third conductor of the pair cable, no earth bond at both ends. Main-controller RS485 is isolated; the sensor node transceiver should be isolated or share the reference deliberately (TBD). |
 
+- **Multi-node trunk:** the RS485 A/B/GND terminals feed an RJ45 trunk jack wired per `hardware/interconnect/pinout.yaml` (A pin 4, B pin 5, GND pins 7 and 8). The bus now serves multiple nodes (unit 1 RO skid, unit 2 tank) in a daisy chain, not a single point-to-point link; the single-node notes in this section apply per the interconnect doc (`hardware/interconnect/NODE_BUS_INTERCONNECT.md`). All `[T]` terminal names remain unverified. Never plug the trunk into the controller's Ethernet port.
 - **Termination:** controller end has a 120 ohm termination jumper cap (enabled by default per the wiki). Fit a 120 ohm resistor at the sensor node end only. No other terminations.
 - **Bias:** open item. The wiki does not say whether the board biases the bus. Add fail-safe bias at one point only if the bench shows an undriven bus floating.
 - **Direction control:** the pin map lists only TX GPIO17 and RX GPIO18, which suggests automatic direction control. Unverified; confirm on the bench.
