@@ -76,6 +76,14 @@ class Responder:
         return resp
 
 
+class SupportsRespond(Protocol):
+    """Anything a transport can ask to answer one request (a node or a whole bus)."""
+
+    def respond(self, unit: int, pdu: bytes) -> bytes | None:
+        """Answer one request, or return None when nothing must be sent."""
+        ...
+
+
 def _read_exact(rfile, size: int) -> bytes | None:
     data = rfile.read(size)
     return data if len(data) == size else None
@@ -91,7 +99,7 @@ class _Handler(socketserver.StreamRequestHandler):
         super().finish()
 
     def handle(self) -> None:
-        responder: Responder = self.server.responder  # type: ignore[attr-defined]
+        responder: SupportsRespond = self.server.responder  # type: ignore[attr-defined]
         try:
             while True:
                 header = _read_exact(self.rfile, 7)
@@ -117,7 +125,7 @@ class _Server(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
     daemon_threads = True
 
-    def __init__(self, address: tuple[str, int], responder: Responder) -> None:
+    def __init__(self, address: tuple[str, int], responder: SupportsRespond) -> None:
         super().__init__(address, _Handler)
         self.responder = responder
         self._clients: set[socket.socket] = set()
@@ -148,7 +156,7 @@ class _Server(socketserver.ThreadingTCPServer):
 class TcpSimServer:
     """Threaded Modbus-TCP server bound at construction."""
 
-    def __init__(self, responder: Responder, host: str = "127.0.0.1", port: int = 0) -> None:
+    def __init__(self, responder: SupportsRespond, host: str = "127.0.0.1", port: int = 0) -> None:
         """Bind a listening socket.
 
         :param responder: Responder that answers requests.
@@ -197,7 +205,7 @@ class SerialLike(Protocol):
         ...
 
 
-def serve_rtu_on(responder: Responder, port: SerialLike, stop: threading.Event) -> None:
+def serve_rtu_on(responder: SupportsRespond, port: SerialLike, stop: threading.Event) -> None:
     """Run the RTU loop on an open port until ``stop`` is set.
 
     Bytes are grouped into a burst by an idle gap (a read timeout with bytes
@@ -211,7 +219,7 @@ def serve_rtu_on(responder: Responder, port: SerialLike, stop: threading.Event) 
     next burst whether or not it matched, so a genuine later request that
     looks identical is only ever dropped once per transmission.
 
-    :param responder: Responder that answers requests.
+    :param responder: Responder that answers requests (a node or a bus).
     :param port: Open port with a short read timeout.
     :param stop: Set to end the loop.
     """

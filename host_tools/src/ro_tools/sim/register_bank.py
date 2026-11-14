@@ -5,6 +5,8 @@ No sockets and no Modbus library: it turns request PDUs into response PDUs.
 
 from __future__ import annotations
 
+import functools
+import operator
 import struct
 import threading
 import time
@@ -22,9 +24,11 @@ from ro_tools.generated.registers import (
     STATUS_START,
     TYPE_RANGES,
     ControllerStatus,
+    NodeType,
     Snapshot,
     StatusBits,
     StatusValidationError,
+    ValidityBits,
     decode_status,
     encode_snapshot,
     validate_status,
@@ -43,6 +47,22 @@ def _exception(fc: int, code: int) -> bytes:
 
 _U32_MAX: int = TYPE_RANGES["u32"][1]
 
+ALL_SENSORS: int = functools.reduce(operator.or_, (int(bit) for bit in ValidityBits), 0)
+
+
+def _check_identity(node_type: int, installed_mask: int) -> None:
+    """Reject an impossible node identity.
+
+    :param node_type: Candidate ``node_type`` register value.
+    :param installed_mask: Candidate ``installed_mask`` register value.
+    :raises ValueError: If ``node_type`` is not a defined :class:`NodeType` value or
+        ``installed_mask`` has a bit that is not a defined validity bit.
+    """
+    if node_type not in {int(member) for member in NodeType}:
+        raise ValueError(f"node_type {node_type} is not a defined NodeType")
+    if installed_mask < 0 or installed_mask & ~ALL_SENSORS:
+        raise ValueError(f"installed_mask {installed_mask:#06x} has undefined sensor bits")
+
 
 class RegisterBank:
     """Double-buffered snapshot plus controller-status mailbox.
@@ -55,11 +75,17 @@ class RegisterBank:
         self,
         clock: Callable[[], float] = time.monotonic,
         metadata: tuple[int, int, int] = (1, 0, 1),
+        node_type: int = int(NodeType.RO_SKID),
+        installed_mask: int = ALL_SENSORS,
     ) -> None:
         """Create a bank that publishes nothing as valid.
 
         :param clock: Returns the current time in seconds.
         :param metadata: (configuration_schema_version, calibration_revision, device_id).
+        :param node_type: A :class:`NodeType` value; defaults to the full RO skid.
+        :param installed_mask: Validity bits that are physically fitted; defaults to every
+            sensor.
+        :raises ValueError: If ``node_type`` or ``installed_mask`` is impossible.
         """
         self._lock = threading.Lock()
         self._clock = clock
@@ -67,6 +93,9 @@ class RegisterBank:
         self._pending["protocol_major"] = PROTOCOL_MAJOR
         self._pending["protocol_minor"] = PROTOCOL_MINOR
         self._pending["sample_interval_ms"] = 1000
+        _check_identity(node_type, installed_mask)
+        self._pending["node_type"] = node_type
+        self._pending["installed_mask"] = installed_mask
         self._published = Snapshot(**self._pending)
         self._frozen = False
         self._boot_time = clock()
@@ -116,6 +145,18 @@ class RegisterBank:
         """
         self.set_field("module_status", bits)
 
+    def configure_node(self, node_type: int, installed_mask: int) -> None:
+        """Change the pending node identity.
+
+        :param node_type: A :class:`NodeType` value.
+        :param installed_mask: Bits of the validity mask that are physically fitted.
+        :raises ValueError: If either value is impossible (see :func:`_check_identity`).
+        """
+        _check_identity(node_type, installed_mask)
+        with self._lock:
+            self._pending["node_type"] = node_type
+            self._pending["installed_mask"] = installed_mask
+
     def freeze_sequence(self, on: bool) -> None:
         """Stop (or resume) sequence advance on commit.
 
@@ -145,9 +186,29 @@ class RegisterBank:
             self._pending[name] = hi
             self._pending["module_status"] |= int(StatusBits.OVERFLOW_OR_SATURATION)
 
+    def _require_validity_installed(self) -> None:
+        """Check that every pending validity bit is a fitted sensor (lock held).
+
+        :raises ValueError: If a validity bit is set for a sensor that is not installed.
+        """
+        unfitted = self._pending["validity_mask"] & ~self._pending["installed_mask"]
+        if unfitted:
+            raise ValueError(
+                f"validity bits {unfitted:#06x} set for sensors that are not installed"
+            )
+
     def commit(self) -> None:
-        """Publish the pending snapshot, advancing sequence unless frozen."""
+        """Publish the pending snapshot, advancing sequence unless frozen.
+
+        A commit is rejected, and the published snapshot is left as it was, if the
+        pending validity mask sets a bit for a sensor that is not installed. The bad
+        pending value stays pending: the caller must correct it (``set_validity``
+        or ``configure_node``) before a later commit or reboot can succeed.
+
+        :raises ValueError: If a pending validity bit is set for an uninstalled sensor.
+        """
         with self._lock:
+            self._require_validity_installed()
             if not self._frozen:
                 self._pending["snapshot_sequence"] = (
                     self._pending["snapshot_sequence"] + 1
@@ -160,8 +221,12 @@ class RegisterBank:
 
         The boot counter saturates at its u32 maximum instead of wrapping, and
         ``OVERFLOW_OR_SATURATION`` is then flagged in the module status.
+
+        :raises ValueError: If the pending validity mask sets a bit for an uninstalled
+            sensor. Checked before any state change, so a rejected reboot changes nothing.
         """
         with self._lock:
+            self._require_validity_installed()
             if self._pending["boot_counter"] >= _U32_MAX:
                 self._pending["boot_counter"] = _U32_MAX
                 self._pending["module_status"] |= int(StatusBits.OVERFLOW_OR_SATURATION)

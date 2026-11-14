@@ -1,0 +1,14 @@
+# Normative RJ45 trunk pinout for the RO node bus. T568B wiring, shielded Cat5e/Cat6.
+# Test: host_tools/tests/test_interconnect_docs.py
+connector: RJ45 shielded, red cable and jacks, label "RO BUS - 24V"
+supply_nominal_v: 24
+pins:
+  1: "+24V"
+  2: "+24V"
+  3: RESERVED
+  4: RS485_A
+  5: RS485_B
+  6: RESERVED
+  7: GND
+  8: GND
+shell: SHIELD

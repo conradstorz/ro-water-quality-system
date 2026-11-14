@@ -19,7 +19,9 @@ from loguru import logger
 from ro_tools import codegen, schema
 from ro_tools.client import CommsError, ModbusExceptionError, SensorNodeClient
 from ro_tools.generated import registers as reg
-from ro_tools.sim.presets import PRESETS, apply_preset
+from ro_tools.monitor import critical_required
+from ro_tools.sim.bus import Bus
+from ro_tools.sim.presets import PRESETS, RO_SKID_PROFILE, TANK_PROFILE, NodeProfile, apply_preset
 from ro_tools.sim.register_bank import RegisterBank
 from ro_tools.sim.server import Responder, TcpSimServer, open_serial_port, serve_rtu_on
 
@@ -46,6 +48,49 @@ def _endpoint(parser: argparse.ArgumentParser) -> None:
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--tcp", metavar="HOST:PORT", help="Modbus-TCP endpoint")
     group.add_argument("--serial", metavar="DEVICE", help="serial device, e.g. COM5")
+
+
+_NODE_PROFILES: dict[str, NodeProfile] = {"ro_skid": RO_SKID_PROFILE, "tank": TANK_PROFILE}
+
+
+def _unit_id(text: str) -> int:
+    """Parse a Modbus unit id in 1..15 (the DIP-switch range).
+
+    :param text: Command-line text.
+    :returns: The unit id.
+    :raises argparse.ArgumentTypeError: If not an integer in 1..15.
+    """
+    try:
+        value = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r} is not an integer") from None
+    if not 1 <= value <= 15:
+        raise argparse.ArgumentTypeError(f"unit id {value} outside 1..15")
+    return value
+
+
+def _parse_nodes(parser: argparse.ArgumentParser, text: str) -> list[tuple[str, int]]:
+    """Parse ``TYPE:ID[,TYPE:ID...]`` for ``sim --nodes``.
+
+    :param parser: Parser for usage errors.
+    :param text: The option value, e.g. ``ro_skid:1,tank:2``.
+    :returns: ``(node type name, unit id)`` pairs in the order given.
+    """
+    nodes: list[tuple[str, int]] = []
+    seen: set[int] = set()
+    for item in text.split(","):
+        kind, sep, ident = item.partition(":")
+        if not sep or kind not in _NODE_PROFILES:
+            parser.error(f"--nodes: {item!r} must be TYPE:ID with TYPE in {sorted(_NODE_PROFILES)}")
+        try:
+            unit = _unit_id(ident)
+        except argparse.ArgumentTypeError as exc:
+            parser.error(f"--nodes: {item!r}: {exc}")
+        if unit in seen:
+            parser.error(f"--nodes: unit id {unit} used twice")
+        seen.add(unit)
+        nodes.append((kind, unit))
+    return nodes
 
 
 def _positive_float(text: str) -> float:
@@ -85,9 +130,16 @@ def build_parser() -> argparse.ArgumentParser:
     _endpoint(p)
     p.add_argument("--preset", choices=PRESETS, default="healthy")
     p.add_argument("--period", type=_positive_float, default=1.0, metavar="SECONDS")
+    p.add_argument(
+        "--nodes",
+        default=None,
+        metavar="TYPE:ID[,...]",
+        help="simulate several nodes, e.g. ro_skid:1,tank:2 (default: one full node, unit 1)",
+    )
 
     p = sub.add_parser("read", help="read and print one snapshot")
     _endpoint(p)
+    p.add_argument("--unit-id", type=_unit_id, default=reg.UNIT_ID, metavar="N")
     p.add_argument("--timeout", type=_positive_float, default=1.0, metavar="S")
 
     p = sub.add_parser("publish-status", help="write one display-only controller status block")
@@ -169,10 +221,12 @@ def _cmd_generate(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def _commit_loop(responder: Responder, period: float, alive: Callable[[], bool], what: str) -> int:
-    """Commit a new snapshot every ``period`` seconds until interrupted.
+def _commit_loop(
+    responders: Sequence[Responder], period: float, alive: Callable[[], bool], what: str
+) -> int:
+    """Commit a new snapshot on every bank each ``period`` seconds until interrupted.
 
-    :param responder: Responder whose bank is committed.
+    :param responders: Responders whose banks are committed.
     :param period: Seconds between commits.
     :param alive: Returns False if the server has died.
     :param what: Server description for the failure message.
@@ -184,9 +238,34 @@ def _commit_loop(responder: Responder, period: float, alive: Callable[[], bool],
             if not alive():
                 print(f"simulator stopped unexpectedly: {what}", file=sys.stderr)
                 return EXIT_FAIL
-            responder.bank.commit()
+            for responder in responders:
+                responder.bank.commit()
     except KeyboardInterrupt:
         return EXIT_OK
+
+
+def _build_multi_node(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> tuple[Bus, list[Responder]] | None:
+    """Build the simulated bus for ``--nodes``.
+
+    :param parser: Parser for usage errors.
+    :param args: Parsed arguments.
+    :returns: The bus and its responders, or None (message printed) if a preset
+        does not apply to a node type.
+    """
+    bus = Bus()
+    responders: list[Responder] = []
+    for kind, unit in _parse_nodes(parser, args.nodes):
+        responder = Responder(RegisterBank(), unit_id=unit)
+        try:
+            apply_preset(responder, args.preset, _NODE_PROFILES[kind])
+        except ValueError as exc:
+            print(f"cannot apply preset {args.preset!r} to {kind}:{unit}: {exc}", file=sys.stderr)
+            return None
+        bus.add(responder)
+        responders.append(responder)
+    return bus, responders
 
 
 def _cmd_sim(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
@@ -197,19 +276,32 @@ def _cmd_sim(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     :returns: Exit status.
     """
     endpoint = _parse_tcp(parser, args.tcp) if args.tcp is not None else None
-    responder = Responder(RegisterBank())
+    multi = args.nodes is not None
+    if multi:
+        # Presets are applied before any port or socket is opened, so a bad
+        # preset/node combination leaves nothing to clean up.
+        built = _build_multi_node(parser, args)
+        if built is None:
+            return EXIT_FAIL
+        target: Responder | Bus = built[0]
+        responders = built[1]
+    else:
+        single = Responder(RegisterBank())
+        target = single
+        responders = [single]
     if endpoint is not None:
         try:
-            server = TcpSimServer(responder, *endpoint)
+            server = TcpSimServer(target, *endpoint)
             server.start()
         except OSError as exc:
             print(f"cannot start TCP simulator on {args.tcp}: {exc}", file=sys.stderr)
             return EXIT_FAIL
-        apply_preset(responder, args.preset)
+        if not multi:
+            apply_preset(responders[0], args.preset)
         print(f"SIMULATED VALUES ONLY - not equipment limits; preset={args.preset}", flush=True)
         logger.info("simulator listening on {}:{}", *server.address)
         try:
-            return _commit_loop(responder, args.period, lambda: True, args.tcp)
+            return _commit_loop(responders, args.period, lambda: True, args.tcp)
         finally:
             server.stop()
     import serial
@@ -220,13 +312,14 @@ def _cmd_sim(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         print(f"cannot open serial port {args.serial}: {exc}", file=sys.stderr)
         return EXIT_FAIL
     stop = threading.Event()
-    thread = threading.Thread(target=serve_rtu_on, args=(responder, port, stop), daemon=True)
+    thread = threading.Thread(target=serve_rtu_on, args=(target, port, stop), daemon=True)
     try:
-        apply_preset(responder, args.preset)
+        if not multi:
+            apply_preset(responders[0], args.preset)
         print(f"SIMULATED VALUES ONLY - not equipment limits; preset={args.preset}", flush=True)
         thread.start()
         logger.info("simulator serving RTU on {}", args.serial)
-        return _commit_loop(responder, args.period, thread.is_alive, args.serial)
+        return _commit_loop(responders, args.period, thread.is_alive, args.serial)
     finally:
         stop.set()
         if thread.is_alive():
@@ -241,10 +334,11 @@ def _open_client(parser: argparse.ArgumentParser, args: argparse.Namespace) -> S
     :param args: Parsed arguments.
     :returns: Unconnected client.
     """
+    unit_id = getattr(args, "unit_id", reg.UNIT_ID)
     if args.tcp is not None:
         host, port = _parse_tcp(parser, args.tcp)
-        return SensorNodeClient.tcp(host, port, timeout=args.timeout)
-    return SensorNodeClient.serial(args.serial, timeout=args.timeout)
+        return SensorNodeClient.tcp(host, port, unit_id=unit_id, timeout=args.timeout)
+    return SensorNodeClient.serial(args.serial, unit_id=unit_id, timeout=args.timeout)
 
 
 def _format_field(name: str, raw: int, by_name: dict[str, schema.Register]) -> str:
@@ -293,8 +387,20 @@ def _cmd_read(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     mask = snap.validity_mask
     set_bits = "|".join(b.name for b in reg.ValidityBits if b.name and mask & b)
     print(f"validity: {set_bits}")
-    all_set = (mask & reg.CRITICAL_VALIDITY) == reg.CRITICAL_VALIDITY
+    try:
+        type_name = reg.NodeType(snap.node_type).name
+    except ValueError:
+        type_name = str(snap.node_type)
+    print(f"node type: {type_name}")
+    print(f"installed_mask: 0x{snap.installed_mask:04X}")
+    needed = critical_required(snap.installed_mask)
+    all_set = (mask & needed) == needed
     print(f"critical validity bits all set: {'yes' if all_set else 'no'}")
+    if mask & ~snap.installed_mask:
+        print(
+            "WARNING: validity bits outside installed_mask "
+            f"(0x{mask & ~snap.installed_mask:04X}); node violates protocol invariant"
+        )
     return EXIT_OK
 
 

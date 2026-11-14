@@ -18,19 +18,21 @@ The global `-v` / `--verbose` flag (before the command) logs at DEBUG level; the
 ```
 uv run ro-tools validate [PATH]
 uv run ro-tools generate [--check]
-uv run ro-tools sim (--tcp HOST:PORT | --serial DEVICE) [--preset NAME] [--period SECONDS]
-uv run ro-tools read (--tcp HOST:PORT | --serial DEVICE) [--timeout S]
+uv run ro-tools sim (--tcp HOST:PORT | --serial DEVICE) [--preset NAME] [--period SECONDS] [--nodes TYPE:ID,...]
+uv run ro-tools read (--tcp HOST:PORT | --serial DEVICE) [--unit-id N] [--timeout S]
 uv run ro-tools publish-status (--tcp HOST:PORT | --serial DEVICE) --state NAME [options]
 ```
 
-- `validate`: check the register map; prints `OK: protocol 1.1, 40 input words`, or one violation per line on stderr (exit 1).
+- `validate`: check the register map; prints `OK: protocol 1.2, 40 input words`, or one violation per line on stderr (exit 1).
   `uv run ro-tools validate`
 - `generate`: rewrite `generated/registers.py`; `--check` writes nothing and exits 1 on drift.
   `uv run ro-tools generate --check`
-- `sim`: run the simulated sensor node until Ctrl-C. A new snapshot is committed every `--period` seconds (default 1.0). Presets: `healthy` (default), `critical_sensor_invalid`, `stale`, `frozen_sequence`, `silent`.
+- `sim`: run the simulated sensor node until Ctrl-C. A new snapshot is committed every `--period` seconds (default 1.0). Presets: `healthy` (default), `critical_sensor_invalid`, `stale`, `frozen_sequence`, `silent`, `pressure_failed` (needs a pressure channel; rejected for tank nodes). `--nodes ro_skid:1,tank:2` simulates several nodes on one bus (unit ids 1..15, preset applied to each); without it, one full node on unit 1.
   `uv run ro-tools sim --tcp 127.0.0.1:5020 --preset healthy`
-- `read`: print one decoded snapshot, one line per field, with scaled values and units, the validity bits set, and whether all critical validity bits are set. Exit 2 on communication failure, 3 on a Modbus exception.
+  `uv run ro-tools sim --tcp 127.0.0.1:5020 --nodes ro_skid:1,tank:2`
+- `read`: print one decoded snapshot (from `--unit-id`, default 1, range 1..15), one line per field, with scaled values and units, the validity bits set, and whether all critical validity bits are set. Exit 2 on communication failure, 3 on a Modbus exception.
   `uv run ro-tools read --tcp 127.0.0.1:5020`
+  `uv run ro-tools read --tcp 127.0.0.1:5020 --unit-id 2`
 - `publish-status`: write one display-only controller status block (exit 2 / 3 as for `read`). Options: `--pump off|on|unknown` (default `unknown`), `--fault-code`, `--severity`, `--fault-count`, `--sequence`. Range errors exit 1 before any connection is opened. Consistency is not checked locally: the simulator rejects inconsistent fault code/severity/count with a Modbus exception (exit 3) and logs the reason at WARNING.
   `uv run ro-tools publish-status --tcp 127.0.0.1:5020 --state production --pump on --sequence 1`
 

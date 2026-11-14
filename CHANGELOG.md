@@ -27,3 +27,12 @@
 - Simulator logs each rejected request at WARNING with its reason (`bank.last_rejection`) and ignores requests with function code >= 0x80; added `ro-tools -v`.
 - Schema hardening: duplicate YAML mapping keys and duplicate `critical_validity_bits` are rejected, Python keywords and unusable generated member names are rejected, wrong-typed values are reported as violations instead of `TypeError`, and generated masks use bitwise OR.
 - Serial simulator: suppresses the echo of its own transmission and splits closely spaced RTU frames by request length instead of discarding the merged burst.
+
+## Multi-node bus and RJ45 interconnect — 2026-11-13
+- Protocol 1.2: added `node_type` (register 133) and `installed_mask` (register 134) for node identity on a multi-node bus. No existing address, scale, signedness or access changed; `validity_mask` must be a subset of `installed_mask`, and the simulator rejects a violation.
+- Simulator: per-node profiles (`node_type`, `installed_mask`), a `Bus` that routes requests by unit id (1..15), and a `pressure_failed` preset (needs a pressure channel; rejected for tank nodes).
+- `monitor` reference model: per-node health (OK, MISSING, WRONG_NODE, STALE, INVALID) and a production-permit check that fails closed. A backward or non-advancing sequence, a node reset not acknowledged by boot counter, a missing critical node, and an empty critical mask all deny production. A critical `NodeConfig` must require at least one validity bit.
+- CLI: `ro-tools read --unit-id N` and `ro-tools sim --nodes TYPE:ID,...`.
+- Interconnect: ADR-0008 (RJ45 24 V node bus, RS485 on the center pair, daisy chain, red cable and jacks, Ethernet hazard), pinout in `hardware/interconnect/pinout.yaml`, and `NODE_BUS_INTERCONNECT.md`. The pinout doc is checked against the YAML by a test.
+- Optional pressure channel documented for every node. Not installed is not a fault; installed but implausible or lost is. The independent hardwired pressure cutoff remains mandatory.
+- Hardware docs: main controller and power docs now state that the controller runs from the same 24 V supply as the node bus. Valve and contactor-coil rail voltage is TBD (12 V in the earlier plan). Termination, bias, trunk length, voltage drop, per-node current and transceiver choice remain TBD.

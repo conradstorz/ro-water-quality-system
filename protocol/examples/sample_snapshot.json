@@ -1,6 +1,8 @@
 {
   "unit_id": 1,
-  "protocol_version": "1.1",
+  "protocol_version": "1.2",
+  "node_type": "ro_skid",
+  "installed_mask": "0x00FF",
   "snapshot_sequence": 42,
   "feed_ec_us_cm": 425.7,
   "permeate_ec_us_cm": 18.3,

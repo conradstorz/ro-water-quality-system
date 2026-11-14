@@ -90,3 +90,8 @@ Use fixed-size buffers where practical, deterministic scheduling, watchdog with 
 
 ## 11. Unresolved hardware selections
 Exact sensor node ESP32 variant; controller pinout; RS485 transceiver/isolation; EC front ends; external ADC; flow-meter pulse electrical output and pressure ratings; temperature sensor type; pressure transducer range; power budget; enclosure; grounding. These are gates, not permission to guess.
+
+## Node identity and multi-node bus (protocol 1.2)
+Two read-only input registers identify the node: register 133 `node_type` (0 ro_skid, 1 tank) and register 134 `installed_mask` (same bit positions as `validity_mask`; a set bit means that sensor is physically fitted). Invariant: `validity_mask` is a subset of `installed_mask`; a fitted-but-failing sensor has its installed bit set and its validity bit clear. Registers 135-139 remain reserved.
+
+Unit ids 1-15 are set by a 4-position DIP switch on the carrier board, read at boot. A duplicate or out-of-range id leaves the node silent on the bus.
