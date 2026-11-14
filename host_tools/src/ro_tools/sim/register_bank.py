@@ -10,7 +10,7 @@ import operator
 import struct
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 
 from ro_tools.generated.registers import (
     INPUT_COUNT,
@@ -33,6 +33,7 @@ from ro_tools.generated.registers import (
     encode_snapshot,
     validate_status,
 )
+from ro_tools.onewire import NO_BUS_STATUS, BusStatus, OneWireDevice, encode_onewire
 
 EXC_ILLEGAL_FUNCTION = 0x01
 EXC_ILLEGAL_ADDRESS = 0x02
@@ -120,6 +121,30 @@ class RegisterBank:
             raise ValueError(f"{name}={raw} outside {typ} range {lo}..{hi}")
         with self._lock:
             self._pending[name] = raw
+
+    def set_onewire(
+        self,
+        devices: Sequence[OneWireDevice],
+        bus_status: BusStatus = NO_BUS_STATUS,
+        age_ms: int = 0,
+        generation: int = 0,
+    ) -> None:
+        """Set the pending 1-Wire block (registers 140-199) atomically.
+
+        :param devices: Simulated devices (see :func:`ro_tools.onewire.encode_onewire`).
+        :param bus_status: Bus status bits.
+        :param age_ms: Scan age in ms, saturating at 65535.
+        :param generation: Scan generation counter.
+        :raises ValueError: If devices duplicate a ROM or a value is out of range;
+            nothing is changed in that case.
+        """
+        fields = encode_onewire(devices, bus_status, age_ms, generation)
+        for name, raw in fields.items():
+            lo, hi = TYPE_RANGES[_TYPES[name]]
+            if not lo <= raw <= hi:
+                raise ValueError(f"{name}={raw} outside {_TYPES[name]} range {lo}..{hi}")
+        with self._lock:
+            self._pending.update(fields)
 
     def set_validity(self, bits: int) -> None:
         """Set the pending validity mask.

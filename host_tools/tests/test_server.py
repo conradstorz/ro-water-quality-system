@@ -14,7 +14,7 @@ from ro_tools.sim.presets import PRESETS, apply_preset
 from ro_tools.sim.register_bank import RegisterBank
 from ro_tools.sim.server import Responder, TcpSimServer, open_serial_port, serve_rtu_on
 
-READ_BLOCK = struct.pack(">BHH", 4, 100, 40)
+READ_BLOCK = struct.pack(">BHH", 4, 100, reg.INPUT_COUNT)
 
 
 @pytest.fixture()
@@ -24,7 +24,7 @@ def responder() -> Responder:
 
 def test_responder_answers_own_unit(responder):
     resp = responder.respond(reg.UNIT_ID, READ_BLOCK)
-    assert resp is not None and resp[0] == 4 and resp[1] == 80
+    assert resp is not None and resp[0] == 4 and resp[1] == 2 * reg.INPUT_COUNT
     assert responder.request_count == 1
 
 
@@ -65,13 +65,13 @@ def test_responder_ignores_request_with_exception_bit(responder, fc, log_lines):
 
 
 def test_responder_logs_warning_for_exception_response(responder, log_lines):
-    bad = struct.pack(">BHH", 4, 100, 41)
+    bad = struct.pack(">BHH", 4, 100, 101)
     resp = responder.respond(reg.UNIT_ID, bad)
     assert resp == bytes([0x84, 2])
     warnings = [m for level, m in log_lines if level == "WARNING"]
     assert len(warnings) == 1
     assert "4" in warnings[0] and "exception 2" in warnings[0]
-    assert "100..140" in warnings[0], "bank.last_rejection text must be included"
+    assert "100..200" in warnings[0], "bank.last_rejection text must be included"
 
 
 def test_responder_does_not_warn_for_normal_response(responder, log_lines):
@@ -100,11 +100,11 @@ def _exchange(sock: socket.socket, tid: int, unit: int, pdu: bytes) -> bytes:
 def test_tcp_server_serves_block_and_exceptions(responder):
     with TcpSimServer(responder) as srv, socket.create_connection(srv.address, timeout=2) as sock:
         resp = _exchange(sock, 1, reg.UNIT_ID, READ_BLOCK)
-        assert resp[0] == 4 and len(resp) == 82
+        assert resp[0] == 4 and len(resp) == 202
         assert _exchange(sock, 2, reg.UNIT_ID, struct.pack(">BHH", 6, 220, 1)) == bytes(
             [0x86, 0x01]
         )
-        assert _exchange(sock, 3, reg.UNIT_ID, struct.pack(">BHH", 4, 140, 1)) == bytes(
+        assert _exchange(sock, 3, reg.UNIT_ID, struct.pack(">BHH", 4, 200, 1)) == bytes(
             [0x84, 0x02]
         )
 
@@ -178,7 +178,7 @@ def test_serial_server_answers_valid_frame(responder):
         port.feed(frames.build_rtu(reg.UNIT_ID, READ_BLOCK))
         assert _wait_for(lambda: port.tx)
         unit, pdu = frames.parse_rtu(port.tx[0])
-        assert unit == reg.UNIT_ID and pdu[0] == 4 and pdu[1] == 80
+        assert unit == reg.UNIT_ID and pdu[0] == 4 and pdu[1] == 2 * reg.INPUT_COUNT
     finally:
         stop.set()
         t.join(2)
@@ -218,6 +218,10 @@ def test_preset_names():
         "frozen_sequence",
         "silent",
         "pressure_failed",
+        "onewire_healthy",
+        "onewire_lost",
+        "onewire_crc_error",
+        "onewire_overflow",
     )
 
 
@@ -295,12 +299,12 @@ def test_stop_closes_accepted_connections_and_is_idempotent(responder, capfd):
     s = socket.create_connection(srv.address)
     s.settimeout(1)
     s.sendall(frames.build_mbap(1, reg.UNIT_ID, READ_BLOCK))
-    assert len(s.recv(200)) > 0
+    assert len(s.recv(512)) > 0
     srv.stop()
     srv.stop()
     try:
         s.sendall(frames.build_mbap(2, reg.UNIT_ID, READ_BLOCK))
-        data = s.recv(200)
+        data = s.recv(512)
     except OSError:
         data = b""
     s.close()
@@ -428,7 +432,7 @@ def test_serial_server_answers_back_to_back_requests_in_order(responder):
             + frames.build_rtu(reg.UNIT_ID, READ_BLOCK)
         )
         assert _wait_for(lambda: len(port.tx) == 2)
-        assert [len(frames.parse_rtu(f)[1]) for f in port.tx] == [6, 82]
+        assert [len(frames.parse_rtu(f)[1]) for f in port.tx] == [6, 202]
     finally:
         stop.set()
         t.join(2)

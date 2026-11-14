@@ -1,4 +1,4 @@
-"""Protocol 1.2 guards: v1.1 addresses are frozen; node identity registers added."""
+"""Protocol 1.2 guards: v1.1 addresses frozen; identity registers (window/minor now 1.3)."""
 
 from ro_tools import schema
 from ro_tools.generated import registers as reg
@@ -42,9 +42,9 @@ def test_v11_input_registers_unchanged():
         assert (r.address, r.type, r.scale_divisor, r.access) == (addr, typ, div, "read_only"), name
 
 
-def test_polling_window_unchanged():
+def test_polling_window_is_v13():
     m = schema.load()
-    assert (m.input_start, m.input_count) == (100, 40)
+    assert (m.input_start, m.input_count) == (100, 100)
 
 
 def test_node_identity_registers():
@@ -55,11 +55,11 @@ def test_node_identity_registers():
     installed = by_name["installed_mask"]
     assert (installed.address, installed.type, installed.access) == (134, "u16", "read_only")
     assert m.enums["node_type"] == {0: "ro_skid", 1: "tank"}
-    assert (m.version_major, m.version_minor) == (1, 2)
+    assert (m.version_major, m.version_minor) == (1, 3)
 
 
 def test_generated_module_exposes_identity():
-    assert reg.PROTOCOL_MINOR == 2
+    assert reg.PROTOCOL_MINOR == 3
     assert reg.ADDR_NODE_TYPE == 133
     assert reg.ADDR_INSTALLED_MASK == 134
     assert int(reg.NodeType.RO_SKID) == 0

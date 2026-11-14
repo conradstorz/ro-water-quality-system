@@ -4,3 +4,5 @@
 Enums, controller-flag bits and the fault-code catalog are machine-readable in register_map.yaml; host_tools tests fail if the markdown tables drift from it.
 
 Protocol 1.2 adds node identity for multi-node buses: `node_type` (register 133) and `installed_mask` (register 134). No existing address changed. `validity_mask` must be a subset of `installed_mask`: a validity bit set for a sensor that is not installed is invalid.
+
+Protocol 1.3 adds the 1-Wire block (registers 140-199, polling window now 100-199) and fault bit 10. No existing address changed; 1-Wire data is monitoring-only and never affects validity or production permission.

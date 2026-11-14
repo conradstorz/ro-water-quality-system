@@ -22,4 +22,4 @@ This **optional** Modbus holding-register block carries *display-only* main-cont
 
 RO states: 0=unknown, 1=standby, 2=startup_flush, 3=divert, 4=production, 5=shutdown_flush, 6=fault, 7=maintenance. Additional states require a compatible version update. If `fault_count > 1`, only the primary highest-severity fault is in this compact block; future revisions may add a fault-list transport.
 
-**Compatibility:** Existing input registers 100–139 and holding registers 200–202 are unchanged. The optional 220–227 extension does not require the sensor node to implement it to remain compatible with the v1 measurement reader. The firmware should expose extension support explicitly and test with older versions.
+**Compatibility:** Existing input registers 100–139 (the polling window is 100–199 as of protocol 1.3; 100–139 is unchanged) and holding registers 200–202 are unchanged. The optional 220–227 extension does not require the sensor node to implement it to remain compatible with the v1 measurement reader. The firmware should expose extension support explicitly and test with older versions.

@@ -12,3 +12,27 @@ pins:
   7: GND
   8: GND
 shell: SHIELD
+
+# 1-Wire monitoring bus. NOT part of the RJ45 trunk. Nothing here is verified; every TBD stays TBD (AGENTS.md rule 5).
+onewire:
+  connector: Nilight 3-pin waterproof male/female harness connector
+  form: inline wire-to-wire (not panel mount); one male-end and one female-end pigtail per node, through a cable gland
+  label: "1-WIRE"
+  signals:
+    +5V:
+      cavity: TBD
+    DATA:
+      cavity: TBD
+    GND:
+      cavity: TBD
+  rating_voltage: TBD
+  rating_current: TBD
+  power: node 5V rail, non-parasitic
+  polyfuse: TBD
+  pull_up: TBD
+  gpio: TBD
+  max_length: TBD
+  shield: continuous along the chain, bonded at one point only; bonding location TBD
+  max_devices: TBD  # electrical limit; the protocol slot limit is 8 (not an electrical rating)
+  rescan_interval: TBD
+  monitoring_only: true

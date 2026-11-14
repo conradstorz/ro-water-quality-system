@@ -37,12 +37,12 @@ Feed EC temperature compensation needs a defensible temperature measurement. A d
 - Signed 16-bit fields use two's-complement.
 - Most measurements use scaled integers. Exact scale, signedness, units, and ranges appear in YAML.
 - Do not use magic sentinel values to imply valid data. Use validity bits plus explicit freshness and update counters. When invalid, raw measurement may be zero or last value but MUST NOT be trusted by client.
-- A single function-04 read of 100..139 is a coherent, atomic published snapshot; node double-buffers acquisitions and copies a snapshot for the response. Any later expansion must preserve this behavior.
+- A single function-04 read of 100..199 is a coherent, atomic published snapshot; node double-buffers acquisitions and copies a snapshot for the response. Any later expansion must preserve this behavior.
 - The register block includes protocol version, snapshot counter, age, validity, and diagnostics so the client can reject stale/incomplete data.
 - Unsigned flow/volume overflow is saturated and flagged, never wrapped silently.
 
 ## 5. Polling and acquisition
-- Main controller polls input registers 100..139 every **1 second** (configurable).
+- Main controller polls input registers 100..199 every **1 second** (configurable).
 - Sensor acquisition tasks run independently: pulse counts continuously, flow rate ~1 s rolling window, load cells ~5–10 Hz if hardware permits, pressure ~5–10 Hz, temperature and conductivity ~1–5 s.
 - Each channel carries last-good sample time internally. Publish age of oldest **required critical** channel in milliseconds, saturated at 65535.
 - Publish snapshot sequence monotonically modulo 65536, advancing only on newly committed acquisition snapshots. Repeated identical counters across excessive polls are stale.
@@ -95,3 +95,6 @@ Exact sensor node ESP32 variant; controller pinout; RS485 transceiver/isolation;
 Two read-only input registers identify the node: register 133 `node_type` (0 ro_skid, 1 tank) and register 134 `installed_mask` (same bit positions as `validity_mask`; a set bit means that sensor is physically fitted). Invariant: `validity_mask` is a subset of `installed_mask`; a fitted-but-failing sensor has its installed bit set and its validity bit clear. Registers 135-139 remain reserved.
 
 Unit ids 1-15 are set by a 4-position DIP switch on the carrier board, read at boot. A duplicate or out-of-range id leaves the node silent on the bus.
+
+## 1-Wire input (protocol 1.3)
+Additive, monitoring-only. The input polling window is now 100..199 (100 words, one atomic function-04 read). Registers 140..143 are the 1-Wire header (`onewire_device_count`, `onewire_bus_status`, `onewire_scan_generation`, `onewire_age_ms`) and 144..199 hold eight 7-word slots (ROM ID in 4 words, `primary` i16, `secondary` i16, `status`). Fault bit 10 is `onewire_bus_fault`. 1-Wire data is never part of `validity_mask`/`critical_validity_bits` and never affects production permission. Pinout, pull-up, voltage and cable limits remain TBD; see `docs/superpowers/specs/2026-11-13-onewire-input-design.md` and `protocol/REGISTER_MAP_REFERENCE.md`.

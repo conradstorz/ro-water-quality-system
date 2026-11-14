@@ -5,6 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ro_tools.generated.registers import FaultBits, NodeType, StatusBits, ValidityBits
+from ro_tools.onewire import (
+    FAMILY_DS18B20,
+    FAMILY_DS2438,
+    NO_BUS_STATUS,
+    BusStatus,
+    OneWireDevice,
+    make_rom,
+)
 from ro_tools.sim.register_bank import ALL_SENSORS, RegisterBank
 from ro_tools.sim.server import Responder
 
@@ -15,7 +23,34 @@ PRESETS: tuple[str, ...] = (
     "frozen_sequence",
     "silent",
     "pressure_failed",
+    "onewire_healthy",
+    "onewire_lost",
+    "onewire_crc_error",
+    "onewire_overflow",
 )
+
+# SIMULATED 1-Wire devices; serials and readings are illustrative only.
+_OW_DS18B20_ROM = make_rom(FAMILY_DS18B20, 0x000000000001)
+_OW_DS2438_ROM = make_rom(FAMILY_DS2438, 0x000000000002)
+
+
+def _ow_devices(
+    *, lost: bool = False, crc_error: bool = False
+) -> tuple[OneWireDevice, OneWireDevice]:
+    """Build the SIMULATED DS18B20 + DS2438 pair, optionally degrading the DS18B20.
+
+    :param lost: Mark the DS18B20 as missing.
+    :param crc_error: Mark the DS18B20 as having a CRC error.
+    :returns: The two devices.
+    """
+    if lost:
+        temp = OneWireDevice(_OW_DS18B20_ROM, present=False, valid=False, missing=True)
+    elif crc_error:
+        temp = OneWireDevice(_OW_DS18B20_ROM, valid=False, crc_error=True)
+    else:
+        temp = OneWireDevice(_OW_DS18B20_ROM, primary=2150)
+    return temp, OneWireDevice(_OW_DS2438_ROM, primary=2210, secondary=3300)
+
 
 # SIMULATED illustrative values from protocol/examples/sample_snapshot.json.
 _HEALTHY_FIELDS: dict[str, int] = {
@@ -127,6 +162,7 @@ def _healthy(bank: RegisterBank, profile: NodeProfile) -> None:
     bank.set_status(StatusBits.OPERATIONAL)
     bank.set_validity(profile.validity)
     bank.set_faults(0)
+    bank.set_onewire((), NO_BUS_STATUS)
 
 
 def apply_preset(responder: Responder, name: str, profile: NodeProfile = FULL_PROFILE) -> None:
@@ -160,4 +196,16 @@ def apply_preset(responder: Responder, name: str, profile: NodeProfile = FULL_PR
     elif name == "pressure_failed":
         bank.set_validity(profile.validity & ~int(ValidityBits.RO_FEED_PRESSURE))
         bank.set_faults(FaultBits.PRESSURE_FAULT)
+    elif name == "onewire_healthy":
+        bank.set_onewire(_ow_devices())
+    elif name == "onewire_lost":
+        bank.set_onewire(_ow_devices(lost=True))
+        bank.set_faults(FaultBits.ONEWIRE_BUS_FAULT)
+    elif name == "onewire_crc_error":
+        bank.set_onewire(_ow_devices(crc_error=True), BusStatus.CRC_ERRORS)
+        bank.set_faults(FaultBits.ONEWIRE_BUS_FAULT)
+    elif name == "onewire_overflow":
+        devices = [OneWireDevice(make_rom(FAMILY_DS18B20, n), primary=2150) for n in range(1, 10)]
+        bank.set_onewire(devices, BusStatus.OVERFLOW)
+        bank.set_faults(FaultBits.ONEWIRE_BUS_FAULT)
     bank.commit()
