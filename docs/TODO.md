@@ -9,19 +9,27 @@ Owner's intended behavior (2026-11-23):
 - **Button 1 (NEXT):** advances the display to the next page in the normal sequence and restarts the automatic page rotation from that page, including when the display was frozen.
 - **Button 2 (HOLD):** freezes the display on the current page. Auto-advance stops; the page keeps refreshing its live values.
 
-Open questions about that behavior:
-- Pressing HOLD while already frozen: no effect, or unfreeze?
-- Does a freeze time out back to auto rotation (and after how long), or stay until NEXT is pressed?
-- A CRITICAL or WARNING fault preempts a frozen page, as the fault-first LCD spec requires. When the fault clears, does the display go back to the frozen page or resume rotation?
-- Are diagnostic pages part of the normal sequence, or a separate set reached by a long press or both buttons together?
-- Should the screen show a visible HOLD indicator (for example, a character in a corner) while frozen?
+Owner decisions (2026-11-23):
+- **HOLD toggles:** pressing HOLD while frozen unfreezes and auto rotation resumes.
+- **No freeze timeout:** the display stays frozen until HOLD or NEXT is pressed.
+- **Faults never steal focus from a held page.** Every screen, held or rotating, shows a fault indicator character or warning text while any fault is active.
+- **Not held:** fault pages preempt rotation as today, and rotation resumes when the fault clears.
+
+**Spec conflict to resolve when this is designed:** `docs/specs/EXCEPTION_DRIVEN_LCD_AND_FAULTS_SPEC.md` currently requires a CRITICAL fault to preempt the current page immediately and stay until resolved. Held pages are an owner-approved exception. Amend that spec, its acceptance test 2, and `docs/test/LCD_FAULT_PRIORITY_TESTS.md`.
+
+The change is acceptable because the LCD is not part of any safety mechanism: the main controller and hardwired protections act regardless of what the display shows.
+
+Remaining open questions:
+- **Where the fault indicator goes on every page.** Every layout must reserve space for it, including the 1-Wire rows (label 12 + space + value 7 = 20 columns).
+- **HOLD marker:** should the screen show one while frozen, and where?
+- **Diagnostic pages:** part of the normal sequence, or a separate set reached by a long press or both buttons together?
 
 To define:
 - **Gestures beyond the above:** whether long press or both-held are used.
 - **Diagnostic content:** per-channel raw values (ADC counts, pulse counts, HX711 counts, loop mA), validity, fault and installed bits, age of last sample, 1-Wire slot status and ROM IDs, calibration revision, Modbus link statistics.
 - **Interaction with the exception-driven LCD:**
   - Does a diagnostic view time out back to normal rotation?
-  - Must a CRITICAL fault still preempt it? The expected answer is yes.
+  - A held page is never preempted (owner decision above); an unheld one follows the fault-first rules.
   - See `docs/specs/EXCEPTION_DRIVEN_LCD_AND_FAULTS_SPEC.md`.
 - **Behavior without an LCD:** do the buttons do anything, such as an LED blink code or a USB log dump?
 - **Authority limits.** Buttons are local display and diagnostics only. They must never:
