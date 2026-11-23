@@ -6,6 +6,8 @@ import threading
 import pytest
 
 from ro_tools.generated import registers as reg
+from ro_tools.onewire import FAMILY_DS18B20, FAMILY_DS2438, make_rom
+from ro_tools.onewire_names import NameEntry, encode_name_table
 from ro_tools.sim.register_bank import (
     EXC_ILLEGAL_ADDRESS,
     EXC_ILLEGAL_FUNCTION,
@@ -380,3 +382,173 @@ def test_reboot_below_max_does_not_flag_overflow(bank):
     bank.reboot()
     assert not bank.published().module_status & reg.StatusBits.OVERFLOW_OR_SATURATION
     assert bank.published().boot_counter == 1
+
+
+# --- Protocol 1.4 1-Wire name table (holding 240-322) ---------------------------------
+
+
+NAMES = encode_name_table(
+    [
+        NameEntry(make_rom(FAMILY_DS2438, 2), "Tank air"),
+        NameEntry(make_rom(FAMILY_DS18B20, 1), "Outside temp"),
+    ],
+    revision=0x1234,
+)
+NAMES_2 = encode_name_table([NameEntry(make_rom(FAMILY_DS18B20, 3), "Feed")], revision=9)
+
+
+def _bad_names(kind: str) -> list[int]:
+    words = list(NAMES)
+    if kind == "schema":
+        words[0] = 2
+    elif kind == "count":
+        words[2] = 9
+    elif kind == "unused_nonzero":
+        words[reg.NAMES_ENTRY_BASE - reg.NAMES_START + 5 * reg.NAMES_ENTRY_STRIDE] = 1
+    elif kind == "rom_crc":
+        words[reg.NAMES_ENTRY_BASE - reg.NAMES_START] ^= 1
+    elif kind == "empty_label":
+        base = reg.NAMES_ENTRY_BASE - reg.NAMES_START + reg.NAMES_ROM_WORDS
+        words[base : base + reg.NAMES_LABEL_WORDS] = [0] * reg.NAMES_LABEL_WORDS
+    elif kind == "duplicate_rom":
+        first = reg.NAMES_ENTRY_BASE - reg.NAMES_START
+        second = first + reg.NAMES_ENTRY_STRIDE
+        words[second : second + reg.NAMES_ROM_WORDS] = words[first : first + reg.NAMES_ROM_WORDS]
+    return words
+
+
+def test_name_table_is_zero_after_construction(bank):
+    assert words_of(bank.handle_pdu(read(3, 240, 83))) == [0] * 83
+    assert bank.name_table_words == (0,) * 83
+    assert bank.names_supported
+
+
+def test_name_table_write_accepted_and_read_back(bank):
+    assert bank.handle_pdu(write16(240, NAMES)) == struct.pack(">BHH", 16, 240, 83)
+    assert bank.last_rejection is None
+    assert words_of(bank.handle_pdu(read(3, 240, 83))) == NAMES
+    assert bank.name_table_words == tuple(NAMES)
+
+
+@pytest.mark.parametrize(("addr", "count"), [(240, 1), (242, 5), (300, 23), (322, 1)])
+def test_name_table_subrange_read_back(bank, addr, count):
+    bank.handle_pdu(write16(240, NAMES))
+    assert words_of(bank.handle_pdu(read(3, addr, count))) == NAMES[addr - 240 : addr - 240 + count]
+
+
+@pytest.mark.parametrize(
+    "kind", ["schema", "count", "unused_nonzero", "rom_crc", "empty_label", "duplicate_rom"]
+)
+def test_invalid_name_table_is_illegal_value_and_keeps_prior(bank, kind):
+    bank.handle_pdu(write16(240, NAMES))
+    assert bank.handle_pdu(write16(240, _bad_names(kind))) == exc(16, EXC_ILLEGAL_VALUE)
+    assert bank.last_rejection is not None and "name table rejected" in bank.last_rejection
+    assert words_of(bank.handle_pdu(read(3, 240, 83))) == NAMES
+
+
+def test_valid_name_table_replaces_prior(bank):
+    bank.handle_pdu(write16(240, NAMES))
+    bank.handle_pdu(write16(240, NAMES_2))
+    assert bank.name_table_words == tuple(NAMES_2)
+
+
+@pytest.mark.parametrize(
+    ("addr", "values"),
+    [
+        (240, NAMES[:82]),
+        (241, NAMES[1:]),
+        (241, NAMES[:82]),
+        (239, [0] + NAMES[:82]),
+        (240, NAMES + [0]),
+        (250, [0] * 10),
+        (322, [0]),
+        (300, [0] * 40),
+        (228, [0] * 20),
+    ],
+)
+def test_partial_name_table_write_is_illegal_address_and_keeps_prior(bank, addr, values):
+    bank.handle_pdu(write16(240, NAMES))
+    assert bank.handle_pdu(write16(addr, values)) == exc(16, EXC_ILLEGAL_ADDRESS)
+    assert bank.name_table_words == tuple(NAMES)
+
+
+@pytest.mark.parametrize(("addr", "count"), [(239, 2), (322, 2), (323, 1), (230, 20), (240, 84)])
+def test_fc03_straddling_name_table_is_illegal_address(bank, addr, count):
+    assert bank.handle_pdu(read(3, addr, count)) == exc(3, EXC_ILLEGAL_ADDRESS)
+
+
+def test_reboot_clears_name_table(bank):
+    bank.handle_pdu(write16(240, NAMES))
+    bank.reboot()
+    assert words_of(bank.handle_pdu(read(3, 240, 83))) == [0] * 83
+
+
+def test_commit_and_status_write_keep_name_table(bank):
+    bank.handle_pdu(write16(240, NAMES))
+    bank.set_validity(0)
+    bank.commit()
+    bank.handle_pdu(write16(220, GOOD))
+    assert bank.name_table_words == tuple(NAMES)
+
+
+def test_name_table_write_leaves_snapshot_and_status_mailbox_alone(bank, clock):
+    bank.handle_pdu(write16(220, GOOD))
+    before_words = bank.handle_pdu(read(4, 100, reg.INPUT_COUNT))
+    before = (
+        bank.published(),
+        bank.controller_status,
+        bank.last_valid_status_received_ms,
+        bank.last_status_sequence_progress_ms,
+    )
+    clock.t += 5
+    bank.handle_pdu(write16(240, NAMES))
+    bank.handle_pdu(write16(240, _bad_names("schema")))
+    assert bank.handle_pdu(read(4, 100, reg.INPUT_COUNT)) == before_words
+    assert (
+        bank.published(),
+        bank.controller_status,
+        bank.last_valid_status_received_ms,
+        bank.last_status_sequence_progress_ms,
+    ) == before
+
+
+def test_load_name_table_validates_and_keeps_prior(bank):
+    bank.load_name_table(NAMES)
+    assert bank.name_table_words == tuple(NAMES)
+    with pytest.raises(ValueError, match="rejected"):
+        bank.load_name_table(_bad_names("count"))
+    with pytest.raises(ValueError, match="83"):
+        bank.load_name_table(NAMES[:82])
+    assert bank.name_table_words == tuple(NAMES)
+
+
+@pytest.fixture()
+def legacy_bank(clock) -> RegisterBank:
+    return RegisterBank(clock=clock, names_supported=False)
+
+
+def test_legacy_bank_publishes_minor_3(legacy_bank):
+    assert legacy_bank.published().protocol_minor == 3
+    assert not legacy_bank.names_supported
+
+
+@pytest.mark.parametrize(("addr", "count"), [(240, 83), (240, 1), (300, 5)])
+def test_legacy_bank_fc03_names_is_illegal_address(legacy_bank, addr, count):
+    assert legacy_bank.handle_pdu(read(3, addr, count)) == exc(3, EXC_ILLEGAL_ADDRESS)
+
+
+def test_legacy_bank_fc16_names_is_illegal_address(legacy_bank):
+    assert legacy_bank.handle_pdu(write16(240, NAMES)) == exc(16, EXC_ILLEGAL_ADDRESS)
+    assert legacy_bank.last_rejection is not None
+    assert "name table" not in legacy_bank.last_rejection
+    assert legacy_bank.name_table_words == (0,) * 83
+
+
+def test_legacy_bank_load_name_table_raises(legacy_bank):
+    with pytest.raises(ValueError, match="1.3"):
+        legacy_bank.load_name_table(NAMES)
+
+
+def test_legacy_bank_still_serves_status_block(legacy_bank):
+    assert legacy_bank.handle_pdu(write16(220, GOOD))[0] == 16
+    assert words_of(legacy_bank.handle_pdu(read(3, 220, 8))) == GOOD

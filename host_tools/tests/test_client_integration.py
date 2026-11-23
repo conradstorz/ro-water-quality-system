@@ -10,6 +10,8 @@ import pytest
 
 from ro_tools.client import CommsError, ModbusExceptionError, ProtocolError, SensorNodeClient
 from ro_tools.generated import registers as reg
+from ro_tools.onewire import FAMILY_DS18B20, FAMILY_DS2438, make_rom
+from ro_tools.onewire_names import NameEntry
 from ro_tools.sim.frames import build_mbap, parse_mbap_header
 from ro_tools.sim.presets import apply_preset
 from ro_tools.sim.register_bank import RegisterBank
@@ -190,6 +192,12 @@ class ScriptedServer:
         self._listener.close()
 
 
+ENTRIES = (
+    NameEntry(make_rom(FAMILY_DS2438, 2), "Tank air"),
+    NameEntry(make_rom(FAMILY_DS18B20, 1), "Outside temp"),
+)
+
+
 def _words_pdu(fc: int, count: int) -> bytes:
     return bytes([fc, 2 * count]) + struct.pack(f">{count}H", *range(count))
 
@@ -216,6 +224,15 @@ MALFORMED_REPLIES = {
         _words_pdu(3, 1),
         lambda c: c.publish_status(_status()),
     ),
+    "names_fc16_echo_status_address": (
+        struct.pack(">BHH", 16, reg.STATUS_START, reg.STATUS_COUNT),
+        lambda c: c.write_name_table(ENTRIES, 1),
+    ),
+    "names_fc16_echo_wrong_count": (
+        struct.pack(">BHH", 16, reg.NAMES_START, reg.NAMES_COUNT - 1),
+        lambda c: c.write_name_table(ENTRIES, 1),
+    ),
+    "names_read_82_words": (_words_pdu(3, 82), lambda c: c.read_name_table()),
     "exception_for_other_function": (bytes([0x83, 2]), lambda c: c.read_snapshot()),
     "status_read_exception_for_other_function": (bytes([0x84, 2]), lambda c: c.read_status()),
 }
@@ -287,3 +304,75 @@ def test_read_status_invalid_nonzero_block_raises_protocol_error():
                 c.read_status()
         finally:
             c.close()
+
+
+# --- Protocol 1.4 1-Wire name table ---------------------------------------------------
+
+
+def test_read_name_table_never_written_is_none(client):
+    assert client.read_name_table() is None
+
+
+def test_write_and_read_back_name_table(client, responder):
+    client.write_name_table(ENTRIES, 0xBEEF)
+    assert client.read_name_table() == (0xBEEF, ENTRIES)
+    assert responder.bank.last_rejection is None
+
+
+def test_write_empty_name_table_reads_back_as_revision_and_no_entries(client):
+    client.write_name_table((), 5)
+    assert client.read_name_table() == (5, ())
+
+
+def test_read_name_table_after_reboot_is_none(client, responder):
+    client.write_name_table(ENTRIES, 1)
+    responder.bank.reboot()
+    assert client.read_name_table() is None
+
+
+def test_unencodable_name_table_raises_value_error_and_sends_nothing(client, responder):
+    before = responder.request_count
+    with pytest.raises(ValueError):
+        client.write_name_table((NameEntry(make_rom(FAMILY_DS18B20, 1), "bad~label"),), 1)
+    assert responder.request_count == before
+
+
+def test_node_rejected_name_table_raises_illegal_value_and_keeps_prior(client, responder):
+    client.write_name_table(ENTRIES, 1)
+    pdu = struct.pack(">BHHB", 16, reg.NAMES_START, reg.NAMES_COUNT, 2 * reg.NAMES_COUNT)
+    resp = responder.respond(reg.UNIT_ID, pdu + struct.pack(">83H", 2, *([0] * 82)))
+    assert resp == bytes([0x90, 0x03])
+    assert client.read_name_table() == (1, ENTRIES)
+
+
+def test_13_node_name_table_raises_illegal_address():
+    responder = Responder(RegisterBank(names_supported=False))
+    apply_preset(responder, "healthy")
+    with TcpSimServer(responder) as srv, SensorNodeClient.tcp(*srv.address, timeout=0.5) as c:
+        with pytest.raises(ModbusExceptionError) as wexc:
+            c.write_name_table(ENTRIES, 1)
+        with pytest.raises(ModbusExceptionError) as rexc:
+            c.read_name_table()
+        assert c.read_snapshot().protocol_minor == 3
+    assert (wexc.value.function_code, wexc.value.code) == (16, 2)
+    assert (rexc.value.function_code, rexc.value.code) == (3, 2)
+
+
+def test_read_name_table_invalid_nonzero_block_raises_protocol_error():
+    block = struct.pack(">83H", 2, 1, 0, *([0] * 80))
+    with ScriptedServer(bytes([3, 166]) + block) as srv:
+        c = _scripted_client(srv)
+        c.connect()
+        try:
+            with pytest.raises(ProtocolError):
+                c.read_name_table()
+            assert not c._client.connected
+        finally:
+            c.close()
+
+
+def test_preset_onewire_named_reads_back_through_client(client, responder):
+    apply_preset(responder, "onewire_named")
+    revision, entries = client.read_name_table()
+    assert revision != 0
+    assert {e.label for e in entries} == {"Outside temp", "Tank air"}

@@ -27,7 +27,8 @@ from ro_tools.sim.register_bank import RegisterBank
 from ro_tools.sim.server import Responder, TcpSimServer
 
 OW_PRESETS = ("onewire_healthy", "onewire_lost", "onewire_crc_error", "onewire_overflow")
-OLD_PRESETS = tuple(p for p in PRESETS if p not in OW_PRESETS)
+NAMED_PRESETS = ("onewire_named",)
+OLD_PRESETS = tuple(p for p in PRESETS if p not in OW_PRESETS + NAMED_PRESETS)
 TEMP_ROM = make_rom(FAMILY_DS18B20, 1)
 DS2438_ROM = make_rom(FAMILY_DS2438, 2)
 
@@ -38,14 +39,15 @@ def snap_of(preset, profile=FULL_PROFILE):
     return responder.bank.published()
 
 
-@pytest.mark.parametrize("name", OW_PRESETS)
+@pytest.mark.parametrize("name", OW_PRESETS + NAMED_PRESETS)
 def test_new_presets_registered(name):
     assert name in PRESETS
 
 
+@pytest.mark.parametrize("preset", ["onewire_healthy", "onewire_named"])
 @pytest.mark.parametrize("profile", [FULL_PROFILE, RO_SKID_PROFILE, TANK_PROFILE])
-def test_onewire_healthy_keeps_validity_and_no_fault(profile):
-    snap = snap_of("onewire_healthy", profile)
+def test_onewire_healthy_keeps_validity_and_no_fault(profile, preset):
+    snap = snap_of(preset, profile)
     assert snap.validity_mask == snap_of("healthy", profile).validity_mask
     assert snap.fault_mask & F.ONEWIRE_BUS_FAULT == 0
     readings = decode_slots(snap)
@@ -172,6 +174,6 @@ def test_read_lost_shows_missing_and_same_exit_code(capsys):
     assert crit in out and crit in healthy_out
 
 
-@pytest.mark.parametrize("name", OW_PRESETS)
+@pytest.mark.parametrize("name", OW_PRESETS + NAMED_PRESETS)
 def test_read_exit_code_unaffected(name, capsys):
     assert read_with(name, capsys)[0] == read_with("healthy", capsys)[0]

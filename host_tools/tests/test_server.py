@@ -9,8 +9,12 @@ import pytest
 from loguru import logger
 
 from ro_tools.generated import registers as reg
+from ro_tools.monitor import OneWireBinding
+from ro_tools.onewire import FAMILY_DS18B20, FAMILY_DS2438, decode_slots, make_rom
+from ro_tools.onewire_names import decode_name_table, encode_name_table, select_for_node
 from ro_tools.sim import frames
-from ro_tools.sim.presets import PRESETS, apply_preset
+from ro_tools.sim.bus import Bus
+from ro_tools.sim.presets import NAMED_ENTRIES, NAMED_REVISION, PRESETS, apply_preset
 from ro_tools.sim.register_bank import RegisterBank
 from ro_tools.sim.server import Responder, TcpSimServer, open_serial_port, serve_rtu_on
 
@@ -222,6 +226,7 @@ def test_preset_names():
         "onewire_lost",
         "onewire_crc_error",
         "onewire_overflow",
+        "onewire_named",
     )
 
 
@@ -450,3 +455,107 @@ def test_serial_server_wrong_unit_then_addressed_gives_one_response(responder):
     finally:
         stop.set()
         t.join(2)
+
+
+# --- Protocol 1.4 1-Wire name table over the wire ------------------------------------
+
+
+def _names_words() -> list[int]:
+    return encode_name_table(NAMED_ENTRIES, NAMED_REVISION)
+
+
+def _write_names(words: list[int]) -> bytes:
+    return struct.pack(">BHHB", 16, reg.NAMES_START, len(words), 2 * len(words)) + struct.pack(
+        f">{len(words)}H", *words
+    )
+
+
+READ_NAMES = struct.pack(">BHH", 3, reg.NAMES_START, reg.NAMES_COUNT)
+
+
+def test_tcp_name_table_write_and_read_back(responder):
+    words = _names_words()
+    with TcpSimServer(responder) as srv, socket.create_connection(srv.address, timeout=2) as sock:
+        empty = _exchange(sock, 1, reg.UNIT_ID, READ_NAMES)
+        assert empty == bytes([3, 166]) + bytes(166)
+        echo = _exchange(sock, 2, reg.UNIT_ID, _write_names(words))
+        assert echo == struct.pack(">BHH", 16, reg.NAMES_START, reg.NAMES_COUNT)
+        back = _exchange(sock, 3, reg.UNIT_ID, READ_NAMES)
+        assert list(struct.unpack(">83H", back[2:])) == words
+        bad = list(words)
+        bad[0] = 2
+        assert _exchange(sock, 4, reg.UNIT_ID, _write_names(bad)) == bytes([0x90, 0x03])
+        assert _exchange(sock, 5, reg.UNIT_ID, _write_names(words[:82])) == bytes([0x90, 0x02])
+        back = _exchange(sock, 6, reg.UNIT_ID, READ_NAMES)
+        assert list(struct.unpack(">83H", back[2:])) == words
+
+
+def test_rejected_name_table_logs_warning_with_reason(responder, log_lines):
+    bad = _names_words()
+    bad[2] = 9
+    assert responder.respond(reg.UNIT_ID, _write_names(bad)) == bytes([0x90, 0x03])
+    warnings = [msg for level, msg in log_lines if level == "WARNING"]
+    assert len(warnings) == 1 and "name table rejected" in warnings[0]
+
+
+def test_bus_mixes_14_and_13_nodes():
+    new = Responder(RegisterBank(), unit_id=1)
+    old = Responder(RegisterBank(names_supported=False), unit_id=2)
+    bus = Bus()
+    bus.add(new)
+    bus.add(old)
+    words = _names_words()
+    assert bus.respond(1, _write_names(words))[0] == 16
+    assert bus.respond(2, _write_names(words)) == bytes([0x90, 0x02])
+    assert bus.respond(2, READ_NAMES) == bytes([0x83, 0x02])
+    assert list(struct.unpack(">83H", bus.respond(1, READ_NAMES)[2:])) == words
+
+
+def test_preset_onewire_named_loads_table_and_devices(responder):
+    apply_preset(responder, "onewire_named")
+    snap = responder.bank.published()
+    roms = {r.rom for r in decode_slots(snap)}
+    revision, entries = decode_name_table(responder.bank.name_table_words)
+    assert revision != 0
+    assert {e.rom: e.label for e in entries} == {
+        make_rom(FAMILY_DS18B20, 1): "Outside temp",
+        make_rom(FAMILY_DS2438, 2): "Tank air",
+    }
+    assert {e.rom for e in entries} == roms
+    assert [e.rom for e in entries] == sorted(e.rom for e in entries)
+
+
+def test_preset_onewire_named_on_13_node_raises_and_leaves_bank_untouched():
+    responder = Responder(RegisterBank(names_supported=False))
+    apply_preset(responder, "healthy")
+    before = responder.bank.published()
+    with pytest.raises(ValueError, match="1.4"):
+        apply_preset(responder, "onewire_named")
+    assert responder.bank.published() == before
+
+
+@pytest.mark.parametrize("name", [p for p in PRESETS if p != "onewire_named"])
+def test_presets_work_on_13_node_and_keep_minor_3(name):
+    responder = Responder(RegisterBank(names_supported=False))
+    apply_preset(responder, name)
+    assert responder.bank.published().protocol_minor == 3
+
+
+@pytest.mark.parametrize("name", PRESETS)
+def test_no_preset_clears_name_table(responder, name):
+    apply_preset(responder, "onewire_named")
+    words = responder.bank.name_table_words
+    apply_preset(responder, name)
+    assert responder.bank.name_table_words == words
+
+
+def test_preset_onewire_named_matches_controller_selection(responder):
+    apply_preset(responder, "onewire_named")
+    bindings = (
+        OneWireBinding("tank_air", make_rom(FAMILY_DS2438, 2), "Tank air"),
+        OneWireBinding("outside_temp", make_rom(FAMILY_DS18B20, 1), "Outside temp"),
+        OneWireBinding("not_on_node", make_rom(FAMILY_DS18B20, 0x77), "Elsewhere"),
+    )
+    selected = select_for_node(bindings, decode_slots(responder.bank.published()))
+    assert selected == NAMED_ENTRIES
+    assert decode_name_table(responder.bank.name_table_words) == (NAMED_REVISION, selected)
