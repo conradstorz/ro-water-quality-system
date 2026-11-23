@@ -5,6 +5,8 @@ from __future__ import annotations
 import struct
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from ro_tools.generated.registers import SNAPSHOT_LAYOUT, Snapshot, encode_snapshot
 from ro_tools.onewire import (
@@ -18,7 +20,9 @@ from ro_tools.onewire import (
     dallas_crc8,
     decode_slots,
     encode_onewire,
+    format_rom,
     make_rom,
+    parse_rom,
     rom_crc_ok,
     rom_family,
 )
@@ -221,3 +225,53 @@ def test_rom_registers_carry_family_low_and_crc_high() -> None:
         (rom & ((1 << 56) - 1)).to_bytes(7, "little")
     )
     assert fields["onewire_s0_rom0"] >> 8 == rom >> 56
+
+
+def test_format_rom_known_example() -> None:
+    rom = make_rom(FAMILY_DS18B20, 0x0123456789AB)
+    assert format_rom(rom) == "28AB89674523015A"
+    assert parse_rom("28AB89674523015A") == rom
+    assert parse_rom("28ab89674523015a") == rom
+
+
+def test_format_rom_is_wire_order() -> None:
+    rom = make_rom(FAMILY_DS2438, 0x1002)
+    text = format_rom(rom)
+    assert len(text) == 16 and text == text.upper()
+    assert text[:2] == "26"
+    assert int(text[-2:], 16) == rom >> 56
+
+
+@pytest.mark.parametrize("rom", [-1, 1 << 64])
+def test_format_rom_rejects_out_of_range(rom: int) -> None:
+    with pytest.raises(ValueError):
+        format_rom(rom)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "",
+        "28AB89674523015",  # 15 digits
+        "28AB89674523015A0",  # 17 digits
+        "28AB89674523015G",  # non-hex
+        "28AB 9674523015A",  # space
+        " 28AB89674523015A",
+        "28AB89674523015A\n",
+        "0x28AB89674523015",
+        "28AB89674523015B",  # CRC wrong
+        "２8AB89674523015A",  # fullwidth digit 2
+    ],
+)
+def test_parse_rom_rejects(text: str) -> None:
+    with pytest.raises(ValueError):
+        parse_rom(text)
+
+
+@given(st.integers(0, 0xFF), st.integers(0, (1 << 48) - 1))
+def test_rom_text_round_trip(family: int, serial: int) -> None:
+    rom = make_rom(family, serial)
+    text = format_rom(rom)
+    assert parse_rom(text) == rom
+    assert parse_rom(text.lower()) == rom
+    assert format_rom(parse_rom(text)) == text
