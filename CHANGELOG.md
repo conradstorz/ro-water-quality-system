@@ -43,3 +43,9 @@
 ## 1-Wire hardware docs and ADR-0009 — 2026-11-13
 - ADR-0009 (proposed): monitoring-only 1-Wire input, controller-side ROM-ID binding, single polling window 100-199; critical 1-Wire, a second poll block and paged access rejected.
 - `pinout.yaml` `onewire:` section, `NODE_BUS_INTERCONNECT.md` 1-Wire section, sensor-node `HARDWARE_SPEC.md` front end and acceptance cases. Connector cavities, ratings, pull-up, GPIO, polyfuse and cable length are TBD. Checked by `test_interconnect_docs.py`.
+
+## RO feed pressure transmitter and ADR-0010 — 2026-11-23
+- ADR-0010 (proposed): Lefoo LFT2000 0-16 bar 2-wire 4-20 mA on the RO feed, loop powered from the 24 V trunk through an LM317 current limiter (about 29 mA) and PTC, 100 ohm sense resistor read directly by ESP32-S3 GPIO1 (ADC1_CH0) through 10 kohm, 100 nF and a BAT54S clamp. A shorted transmitter reads as overrange, not damage. Monitoring only; bit 6 stays non-critical; no software pressure trip. NE43 interpretation: 3.8-20.5 mA valid, outside sets `pressure_fault`.
+- Same front end on every node; 4-20 mA is the only pressure signal. The solder jumper, the 0.5-4.5 V option and the tank node ADS1115 are removed.
+- No protocol change: `pressure_raw_adc` keeps u16/counts and documents ESP32 12-bit counts. Full scale 232.1 psi fits `ro_feed_pressure_psi_x10`.
+- Updated sensor-node hardware spec, Modbus spec, register reference, calibration and acceptance plan; checked by `test_pressure_docs.py`.

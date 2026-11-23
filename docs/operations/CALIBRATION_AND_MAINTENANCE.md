@@ -3,5 +3,5 @@ Record sensor make/model, serial, voltage, signal type, calibration date, refere
 - EC: use suitable standards for feed and permeate ranges; record temperature and 25°C compensation model.
 - Flow: measure known volume at representative production/flush flow, calibrate pulses per gallon separately.
 - Load cells: empty tare, known gallon increments, full and empty direction; store both raw and calibrated readings.
-- Pressure: compare against trusted mechanical gauge over useful range.
+- Pressure: compare against trusted mechanical gauge over useful range. RO feed Lefoo LFT2000 (ADR-0010): record loop current (mA), raw ADC counts and gauge psi at no less than two points; store offset/span.
 - Maintenance: inspect filters, clean tank, validate high-level float, exercise flush valve, verify safety trip devices and log anomalies.

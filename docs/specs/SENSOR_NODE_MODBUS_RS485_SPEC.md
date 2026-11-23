@@ -16,7 +16,7 @@ Independent hardwired high-pressure, high-level, and distribution-pump low-water
 | Permeate temperature | 1 | meter-integrated, interface TBD | no assumption that sensor is DS18B20 |
 | Concentrate temperature | 1 | meter-integrated, interface TBD | may serve as feed-temperature proxy only if validated |
 | Tank load cells | 2 | two HX711 | rear-hinged platform; empirical gallons calibration |
-| RO feed pressure | 1 proposed | analog transducer | diagnostic only; hardwired cutoff independent |
+| RO feed pressure | 1 | Lefoo LFT2000 0-16 bar, 2-wire 4-20 mA, ESP32 GPIO1 (ADR-0010) | diagnostic only; hardwired cutoff independent |
 
 Feed EC temperature compensation needs a defensible temperature measurement. A dedicated feed temperature probe may be required; do not silently use permeate temperature without testing. Add channel if selected. Additional pressure channels are optional expansion.
 
@@ -64,7 +64,7 @@ Flow calibration must support pulses per gallon independently per meter; do not 
 - EC: support two-point calibration where hardware allows, with temperature compensation to 25°C and documented compensation model. Keep raw EC and corrected EC distinguishable internally.
 - Flow: independently calibrate pulse/gallon with measured volumes; include zero-flow timeout and noise rejection.
 - Load cells: individual tare and gain, combined empirical tank-volume calibration over known fill increments, fill/drain hysteresis check, mechanical-stop/hinge considerations.
-- Pressure: offset/span against trusted gauge, verify transducer supply and signal range.
+- Pressure: offset/span against trusted gauge, verify transducer supply and signal range. Loop current 3.8-20.5 mA is valid (3.8-4.0 mA clamps to 0 psi); outside it sets `pressure_fault` and clears validity bit 6 (proposed thresholds, ADR-0010).
 - Configuration writes: initial release read-only from Modbus; use local USB maintenance command/tool for calibration until explicit protected write protocol and test plan exist. Never expose unguarded writable calibration over unauthenticated RS485.
 
 ## 8. Fault model
@@ -89,7 +89,7 @@ Use fixed-size buffers where practical, deterministic scheduling, watchdog with 
 9. Test with simulated sensors and dummy loads before connecting live equipment.
 
 ## 11. Unresolved hardware selections
-Exact sensor node ESP32 variant; controller pinout; RS485 transceiver/isolation; EC front ends; external ADC; flow-meter pulse electrical output and pressure ratings; temperature sensor type; pressure transducer range; power budget; enclosure; grounding. These are gates, not permission to guess.
+Exact sensor node ESP32 variant; controller pinout; RS485 transceiver/isolation; EC front ends; external ADC; flow-meter pulse electrical output and pressure ratings; temperature sensor type; power budget; enclosure; grounding. These are gates, not permission to guess.
 
 ## Node identity and multi-node bus (protocol 1.2)
 Two read-only input registers identify the node: register 133 `node_type` (0 ro_skid, 1 tank) and register 134 `installed_mask` (same bit positions as `validity_mask`; a set bit means that sensor is physically fitted). Invariant: `validity_mask` is a subset of `installed_mask`; a fitted-but-failing sensor has its installed bit set and its validity bit clear. Registers 135-139 remain reserved.
