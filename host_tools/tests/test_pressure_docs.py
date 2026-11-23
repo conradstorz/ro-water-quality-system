@@ -1,6 +1,5 @@
 """RO feed pressure channel (ADR-0010): docs and register map stay consistent."""
 
-import re
 from pathlib import Path
 
 from ro_tools import schema
@@ -63,12 +62,30 @@ def test_pressure_section_found_and_supersedes_250_ohm() -> None:
     assert not any("250 ohm" in ln and "Supersedes" not in ln for ln in lines)
 
 
-def test_unverified_pressure_hardware_values_stay_tbd() -> None:
-    """Pin assignment, protection and current limit are not chosen yet (AGENTS.md rule 5)."""
-    topics = re.compile(r"series resistor|clamp|current limit|exact assignment", re.IGNORECASE)
-    hits = [ln for ln in _pressure_section() if topics.search(ln)]
-    assert hits
-    for line in hits:
-        assert "TBD" in line, line
-    protection = next(ln for ln in hits if "series resistor" in ln.lower())
-    assert not re.search(r"\d+(?:\.\d+)?\s*k?\s*ohms?\b|[ΩΩ]", protection)
+# Chosen front-end values (ADR-0010) and datasheet limits they must respect.
+R_SENSE_OHM = 100
+R_LIMIT_OHM = 43
+LM317_VREF_MIN_V, LM317_VREF_MAX_V = 1.20, 1.30
+ADC_ATTEN3_MAX_MV = 2900  # ESP32-S3 datasheet Table 4-5
+GPIO_RAIL_MV = 3300
+OVERRANGE_MA = 20.5
+
+
+def test_front_end_values_are_documented() -> None:
+    adr = ADR10.read_text(encoding="utf-8")
+    spec = "\n".join(_pressure_section())
+    for text in (adr, spec):
+        assert "GPIO1" in text and "ADC1_CH0" in text
+        assert f"{R_SENSE_OHM} ohm" in text.replace("Ω", "ohm")
+        assert f"{R_LIMIT_OHM} ohm" in text.replace("Ω", "ohm")
+        assert "TBD" not in text
+
+
+def test_measuring_range_fits_adc_and_short_reads_as_overrange() -> None:
+    assert OVERRANGE_MA * R_SENSE_OHM < ADC_ATTEN3_MAX_MV
+    limit_min_ma = LM317_VREF_MIN_V / R_LIMIT_OHM * 1000
+    limit_max_ma = LM317_VREF_MAX_V / R_LIMIT_OHM * 1000
+    # A shorted transmitter must be distinguishable as overrange ...
+    assert limit_min_ma > OVERRANGE_MA
+    # ... and must never put more than the 3.3 V rail on the ADC pin.
+    assert limit_max_ma * R_SENSE_OHM < GPIO_RAIL_MV

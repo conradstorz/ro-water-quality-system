@@ -12,15 +12,15 @@
 - Node ID: 4-position DIP switch read at boot, IDs 1-15; duplicate or out-of-range ID leaves the node silent.
 ## Node types
 One carrier board serves all node types; the firmware profile selects the front end.
-- RO skid (unit 1, `node_type` 0): 2 × ADS1115 (EC on one, thermistors on the other), 2 pulse inputs on ESP32 PCNT, 2 EC modules, 2 thermistors, RO feed pressure on an ESP32 ADC1 input (ADR-0010).
-- Tank (unit 2, `node_type` 1): 2 × HX711 (load cells, 5V excitation), optional pressure; front end (ESP32 ADC1 as on the RO skid, or its ADS1115) TBD (ADR-0010).
+- RO skid (unit 1, `node_type` 0): 2 × ADS1115 (EC on one, thermistors on the other), 2 pulse inputs on ESP32 PCNT, 2 EC modules, 2 thermistors, RO feed pressure on ESP32 GPIO1 (ADR-0010).
+- Tank (unit 2, `node_type` 1): 2 × HX711 (load cells, 5V excitation), optional pressure on ESP32 GPIO1, same front end as the RO skid; no ADS1115 (ADR-0010).
 ## Optional pressure channel (all nodes)
-- Decision record: ADR-0010. Monitoring only; the independent hardwired pressure cutoff remains mandatory. Not installed (`installed_mask` bit 6 clear) is not a fault; installed but implausible or lost is.
-- RO feed transmitter: LFT2000 (manufacturer to confirm from label), 0-16 bar (232.1 psi full scale), 2-wire 4-20 mA. True supply range, gauge/absolute reference and accuracy class TBD (read the label/order code).
-- Loop power: node 24 V trunk, through a per-node loop current limit (value TBD). No separate 12 V supply.
-- Input: proposed 120 ohm 0.1 % sense resistor (4-20 mA = 0.48-2.40 V), read directly by an ESP32-S3 ADC1 input at ATTEN3 (0-2900 mV effective range, ESP32-S3 datasheet Table 4-5). Pin: ADC1 (GPIO1-10), exact assignment TBD.
-- Protection between sense resistor and pin: series resistor and clamp, values TBD; the clamp must not back-feed the 3.3 V rail.
-- Supersedes the earlier 4-20 mA option (250 ohm sense into an ADS1115). The 0.5-4.5 V ratiometric option is undecided (on a direct ESP32 input it needs a divider); TBD.
+- Decision record and schematic: ADR-0010. Monitoring only; the independent hardwired pressure cutoff remains mandatory. Not installed (`installed_mask` bit 6 clear) is not a fault; installed but implausible or lost is.
+- RO feed transmitter: Lefoo LFT2000, 0-16 bar (232.1 psi full scale), 2-wire 4-20 mA. 4-20 mA is the only supported pressure signal.
+- Loop power: node 24 V trunk through an LM317 current limiter (43 ohm, about 29 mA), terminal P+, transmitter, terminal P-, resettable PTC (hold >= 50 mA, trip <= 100 mA, >= 30 V), sense resistor to GND.
+- Sense: 100 ohm 0.1 %, >= 0.25 W (4-20 mA = 0.40-2.00 V; current limit about 2.9 V). Read by ESP32-S3 GPIO1 (ADC1_CH0) at ATTEN3 (0-2900 mV, ESP32-S3 datasheet Table 4-5).
+- Pin protection: 10 kohm series resistor, 100 nF to GND at the pin, BAT54S dual Schottky clamp to 3V3 and GND. A shorted transmitter reads as overrange; a field wire shorted to +24 V trips the PTC and puts at most about 2 mA into the clamp.
+- Supersedes the earlier solder-jumper options (250 ohm sense into an ADS1115, and 0.5-4.5 V ratiometric).
 ## 1-Wire front end (all nodes, optional population)
 - Monitoring only; never an interlock. See `hardware/interconnect/NODE_BUS_INTERCONNECT.md` and ADR-0009.
 - Connector: Nilight 3-pin waterproof male/female harness connector (inline, pigtail through a cable gland). Cavity numbering TBD; voltage and current rating TBD.

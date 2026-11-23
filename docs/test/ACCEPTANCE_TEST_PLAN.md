@@ -9,8 +9,10 @@
 - Two HX711 tare/gain and known gallons; fill/drain hysteresis and hinge effects.
 - Pressure gauge comparison, disconnect and ADC saturation.
 ## RO feed pressure (monitoring only, ADR-0010)
-- Inject 4.0, 12.0 and 20.0 mA with a loop calibrator; confirm 0, 116.0 and 232.1 psi within calibration tolerance (TBD).
-- Open loop (0 mA), shorted loop (current limit active) and overrange (> 20.5 mA): each sets fault bit 5 and clears validity bit 6; the sense node never exceeds the GPIO limit; the 24 V trunk and other nodes stay up.
+- Inject 4.0, 12.0 and 20.0 mA with a loop calibrator; confirm 0, 116.0 and 232.1 psi (0.40, 1.20 and 2.00 V at GPIO1) within calibration tolerance (TBD).
+- Measure the LM317 limit with P+ shorted to P- (expect about 29 mA, 28-30 mA) and the GPIO1 voltage (expect below 3.0 V).
+- Open loop (0 mA), shorted transmitter terminals and overrange (> 20.5 mA): each sets fault bit 5 and clears validity bit 6; the 24 V trunk and other nodes stay up.
+- P- shorted to +24 V through a current-limited bench supply: PTC trips, GPIO1 stays clamped, ESP32 keeps running.
 - With pressure not installed, no pressure fault is raised. With any pressure fault, `production_permitted` is unchanged unless the controller config requires pressure.
 ## 1-Wire (monitoring only, ADR-0009)
 - Device add: a new device appears and `onewire_scan_generation` increments, `onewire_device_count` rises. Slots are sorted by ROM ascending, so a new device with a lower ROM shifts the indices of the others; controller bindings are by ROM, never by slot index.
