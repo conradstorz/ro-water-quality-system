@@ -565,3 +565,68 @@ def paginate(rows: Sequence[str], per_page: int = LCD_ROWS) -> list[list[str]]:
     if per_page < 1:
         raise ValueError(f"per_page {per_page} must be positive")
     return [list(rows[i : i + per_page]) for i in range(0, len(rows), per_page)]
+
+
+# --------------------------------------------------------------------------------------
+# Controller push policy (spec section 5; pure, no I/O)
+# --------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class NodeObservation:
+    """What the controller knows about one node when deciding whether to push names.
+
+    :ivar unit_id: Modbus unit id of the node.
+    :ivar boot_counter: The node's ``boot_counter`` from its latest snapshot.
+    :ivar scan_generation: The node's ``onewire_scan_generation`` from its latest snapshot.
+    :ivar revision: Revision of the bindings file (:func:`bindings_revision`).
+    """
+
+    unit_id: int
+    boot_counter: int
+    scan_generation: int
+    revision: int
+
+
+class NamePushPolicy:
+    """Decide when the controller (re)pushes a node's name table.
+
+    Push on first contact with a node, or when its ``boot_counter``, its
+    ``onewire_scan_generation`` or the bindings revision differs from the last
+    successful push. A node marked unsupported (it answered ILLEGAL_DATA_ADDRESS, a
+    protocol 1.3 node) is not pushed again until its ``boot_counter`` changes. A push
+    that fails for any other reason is simply not recorded, so it is retried on the
+    next observation. The policy never affects node health or the production permit.
+    """
+
+    def __init__(self) -> None:
+        """Start with no node contacted."""
+        self._pushed: dict[int, NodeObservation] = {}
+        self._unsupported_boot: dict[int, int] = {}
+
+    def should_push(self, observed: NodeObservation) -> bool:
+        """:returns: True if the node's name table should be written now."""
+        unsupported_boot = self._unsupported_boot.get(observed.unit_id)
+        if unsupported_boot is not None:
+            return observed.boot_counter != unsupported_boot
+        return self._pushed.get(observed.unit_id) != observed
+
+    def record_pushed(self, observed: NodeObservation) -> None:
+        """Record a push that was written and verified by read-back.
+
+        :param observed: The observation the push was made for.
+        """
+        self._pushed[observed.unit_id] = observed
+        self._unsupported_boot.pop(observed.unit_id, None)
+
+    def record_unsupported(self, observed: NodeObservation) -> None:
+        """Mark the node "names unsupported" until its ``boot_counter`` changes.
+
+        :param observed: The observation for which the node answered ILLEGAL_DATA_ADDRESS.
+        """
+        self._unsupported_boot[observed.unit_id] = observed.boot_counter
+        self._pushed.pop(observed.unit_id, None)
+
+    def supported(self, unit_id: int) -> bool:
+        """:returns: False while the node is marked "names unsupported", else True."""
+        return unit_id not in self._unsupported_boot
