@@ -5,8 +5,19 @@ Future work that is not yet specified. Each item needs a design (and an ADR if i
 ## Sensor-node diagnostic push buttons (2 buttons)
 Added 2026-11-23. Two local push buttons on the sensor node for diagnosing sensor issues. Supersedes the open question in `docs/specs/SENSOR_NODE_LCD_SPEC.md` about a page-select button.
 
+Owner's intended behavior (2026-11-23):
+- **Button 1 (NEXT):** advances the display to the next page in the normal sequence and restarts the automatic page rotation from that page, including when the display was frozen.
+- **Button 2 (HOLD):** freezes the display on the current page. Auto-advance stops; the page keeps refreshing its live values.
+
+Open questions about that behavior:
+- Pressing HOLD while already frozen: no effect, or unfreeze?
+- Does a freeze time out back to auto rotation (and after how long), or stay until NEXT is pressed?
+- A CRITICAL or WARNING fault preempts a frozen page, as the fault-first LCD spec requires. When the fault clears, does the display go back to the frozen page or resume rotation?
+- Are diagnostic pages part of the normal sequence, or a separate set reached by a long press or both buttons together?
+- Should the screen show a visible HOLD indicator (for example, a character in a corner) while frozen?
+
 To define:
-- **Purpose of each button:** for example, button 1 steps through diagnostic pages and button 2 selects or holds a page. Decide whether short press, long press and both-held gestures are used.
+- **Gestures beyond the above:** whether long press or both-held are used.
 - **Diagnostic content:** per-channel raw values (ADC counts, pulse counts, HX711 counts, loop mA), validity, fault and installed bits, age of last sample, 1-Wire slot status and ROM IDs, calibration revision, Modbus link statistics.
 - **Interaction with the exception-driven LCD:**
   - Does a diagnostic view time out back to normal rotation?
