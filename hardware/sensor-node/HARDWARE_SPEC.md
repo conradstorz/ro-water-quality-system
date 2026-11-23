@@ -13,10 +13,10 @@
 ## Node types
 One carrier board serves all node types; the firmware profile selects the front end.
 - RO skid (unit 1, `node_type` 0): 2 × ADS1115 (EC on one, thermistors on the other), 2 pulse inputs on ESP32 PCNT, 2 EC modules, 2 thermistors, RO feed pressure on an ESP32 ADC1 input (ADR-0010).
-- Tank (unit 2, `node_type` 1): 2 × HX711 (load cells, 5V excitation), optional pressure on an ESP32 ADC1 input; whether its ADS1115 is still fitted is TBD (ADR-0010).
+- Tank (unit 2, `node_type` 1): 2 × HX711 (load cells, 5V excitation), optional pressure; front end (ESP32 ADC1 as on the RO skid, or its ADS1115) TBD (ADR-0010).
 ## Optional pressure channel (all nodes)
 - Decision record: ADR-0010. Monitoring only; the independent hardwired pressure cutoff remains mandatory. Not installed (`installed_mask` bit 6 clear) is not a fault; installed but implausible or lost is.
-- RO feed transmitter: Lefoo LFT2000, 0-16 bar (232.1 psi full scale), 2-wire 4-20 mA. True supply range, gauge/absolute reference and accuracy class TBD (read the label/order code).
+- RO feed transmitter: LFT2000 (manufacturer to confirm from label), 0-16 bar (232.1 psi full scale), 2-wire 4-20 mA. True supply range, gauge/absolute reference and accuracy class TBD (read the label/order code).
 - Loop power: node 24 V trunk, through a per-node loop current limit (value TBD). No separate 12 V supply.
 - Input: proposed 120 ohm 0.1 % sense resistor (4-20 mA = 0.48-2.40 V), read directly by an ESP32-S3 ADC1 input at ATTEN3 (0-2900 mV effective range, ESP32-S3 datasheet Table 4-5). Pin: ADC1 (GPIO1-10), exact assignment TBD.
 - Protection between sense resistor and pin: series resistor and clamp, values TBD; the clamp must not back-feed the 3.3 V rail.

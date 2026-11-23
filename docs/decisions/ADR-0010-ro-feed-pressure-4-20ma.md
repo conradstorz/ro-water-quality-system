@@ -2,7 +2,7 @@
 
 **Status:** Proposed (2026-11-23) — pending owner review and bench verification.
 
-**Decision:** The RO feed pressure channel (RO skid node, validity bit 6, fault bit 5, registers 115 and 131) uses a Lefoo **LFT2000**, 0-16 bar, 2-wire 4-20 mA transmitter. The loop is powered from the node's **24 V trunk** (no separate 12 V supply). The loop current develops a voltage across a precision sense resistor read **directly by an ESP32-S3 ADC1 input** (GPIO1-10), not by an ADS1115. The channel stays **monitoring only**: bit 6 is not in `critical_validity_bits`, no software pressure trip or warning threshold is defined, and the independent hardwired high-pressure cutoff remains mandatory. No protocol change.
+**Decision:** The RO feed pressure channel (RO skid node, validity bit 6, fault bit 5, registers 115 and 131) uses an **LFT2000** (listed online as Lefoo; confirm from label), 0-16 bar, 2-wire 4-20 mA transmitter. The loop is powered from the node's **24 V trunk** (no separate 12 V supply). The loop current develops a voltage across a precision sense resistor read **directly by an ESP32-S3 ADC1 input** (GPIO1-10), not by an ADS1115. The channel stays **monitoring only**: bit 6 is not in `critical_validity_bits`, no software pressure trip or warning threshold is defined, and the independent hardwired high-pressure cutoff remains mandatory. No protocol change.
 
 **Facts (owner-supplied):** LFT2000, RO feed, 0-16 bar, 2-wire 4-20 mA, 24 V trunk, direct ESP32 ADC input.
 
