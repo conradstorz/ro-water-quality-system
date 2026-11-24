@@ -46,3 +46,41 @@ To define:
   - Panel-mount, waterproof button type, enclosure position and labeling.
 - **Firmware:** nonblocking button service, debounce timing, stuck-button detection (a stuck button must not lock the display), host-side tests with a mock input.
 - **Docs to update when defined:** sensor-node hardware spec, both LCD specs, `LCD_FAULT_PRIORITY_TESTS.md`, acceptance test plan, CHANGELOG.
+
+## Exact hardware specification
+Added 2026-11-23. Replace every hardware TBD with a specific part, value or measured figure. Record the decisions in ADRs like ADR-0010 (circuit, parts list, arithmetic checked by a test), and update the specs listed under each item. AGENTS.md rule 5 still applies: owner facts and datasheets, never guesses.
+
+### Owner to supply (model number, listing link, or "not chosen yet")
+- [ ] **Main controller:** confirm the Waveshare ESP32-S3-ETH-8DI-8RO (Amazon B0FBKH9YPM) and its manual. Then size fuse F1 (`hardware/main-controller/HARDWARE_SPEC.md`, `WIRING.md`).
+- [ ] **Sensor-node ESP32-S3 board**, if one is already owned (`hardware/sensor-node/HARDWARE_SPEC.md`).
+- [ ] **Flow meters (permeate, concentrate):** pulse output type and voltage, K-factor, and whether temperature is built in and how it is read (Modbus spec temperature rows).
+- [ ] **Conductivity probes and modules (feed, permeate):** range (the permeate low range must be verified), output signal, supply.
+- [ ] **Tank load cells and HX711 boards:** capacity, excitation, mounting.
+- [ ] **Flush valve and permeate diversion valve:** model, voltage, coil current and inrush, duty cycle, fail state. The USS-MSV00072 is provisional. Then size F2 and settle the 12 V rail (ADR-0006, `WIRING.md`).
+- [ ] **Pump contactor:** coil voltage and current. **Booster pump** model.
+- [ ] **RO membrane** datasheet: permeate back-pressure limit (`docs/safety/SAFETY_REQUIREMENTS.md`), recovery limit.
+- [ ] **Plumbing:** pressure ratings, low-crack check valve, relief discharge routing (`hardware/plumbing/PROCESS_AND_INSTRUMENTATION.md`).
+- [ ] **Power supplies:** 24 V (trunk and controller) and 12 V (valves, coil) models and ratings (`hardware/power/POWER_AND_WIRING.md`).
+- [ ] **LCD module:** 20×4 I²C backpack part and its character ROM (A00 assumption in ADR-0011).
+- [ ] **Trunk cable and 1-Wire connector:** RJ45 cable type, and the Nilight connector's cavity numbering and ratings.
+
+### Claude to design (sensor-node carrier board; no owner facts needed)
+- [ ] Full GPIO map for the ESP32-S3 carrier: avoid strapping pins (0, 3, 45, 46), USB (19/20) and JTAG (39-42); keep GPIO1 for pressure (ADR-0010); reserve two GPIOs for the diagnostic buttons (section above). Recorded in `hardware/interconnect/pinout.yaml`.
+- [ ] Trunk input stage: fuse, reverse-polarity protection, TVS, 24→5 V buck, 3.3 V regulator, per-node current budget.
+- [ ] RS485: transceiver part, bias resistor values at the controller, termination plan including the controller's jumper (ADR-0008).
+- [ ] Pulse inputs: level conditioning and protection into PCNT (finalize after the flow-meter output type is known).
+- [ ] 1-Wire front end: GPIO, series resistor, pull-up, polyfuse rating, ESD/TVS (ADR-0009).
+- [ ] ADS1115 (EC and thermistors) and HX711 wiring, I²C addresses, input protection.
+- [ ] DIP-switch node-ID input; LCD I²C connection; push-button inputs and debounce.
+- [ ] Carrier BOM with part numbers; DIN-rail enclosure and connectors.
+
+### Bench measurements (Stage D)
+- [ ] Maximum trunk length, voltage drop, per-node current.
+- [ ] Idle-bus bias check; whether the controller board already biases RS485.
+- [ ] 1-Wire maximum cable length and device count.
+- [ ] Pressure loop: limiter current, ADC at 4/12/20 mA, shorted and open loop (acceptance plan).
+
+### Firmware-side TBDs tied to hardware
+- [ ] Pinned Arduino-ESP32 and PlatformIO versions; Modbus RTU library choice (ADR-0007).
+- [ ] EC acceptance threshold for dump→tank, maximum dump time (ADR-0006).
+- [ ] Pressure calibration tolerance (acceptance plan).
