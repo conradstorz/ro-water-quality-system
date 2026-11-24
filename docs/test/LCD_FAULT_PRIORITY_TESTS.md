@@ -16,7 +16,7 @@
 | P12 | Partial status write | Reject atomically; keep previous valid block |
 | P13 | Sequence stuck | Detect stale publisher even if duplicate writes continue |
 | P14 | Restart | `STARTING / DATA WAIT` until valid snapshots |
-| P15 | String rendering | All rows exactly 20 columns: content in columns 1-19, column 20 reserved for the fault/status indicator on every page |
+| P15 | String rendering | All rows exactly 20 columns: content in columns 1-19, column 20 is a space with no fault, `*` on every page (held or rotating) while any WARNING or CRITICAL fault is active, and a space with only ADVISORY faults |
 | P16 | 1-Wire names pushed, then any fault | Fault order, severity and preemption identical to the same faults without names |
 | P17 | 1-Wire pages present, no fault | 1-Wire pages appear in NORMAL rotation after diagnostics only |
 | P18 | 1-Wire pages present, fault raised or 1-Wire bus fault | 1-Wire pages never preempt and never appear among fault pages; the bus fault shows as an ADVISORY |

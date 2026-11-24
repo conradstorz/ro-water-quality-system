@@ -33,6 +33,8 @@ from ro_tools.onewire import (
 )
 from ro_tools.onewire_names import (
     DEFAULT_BINDINGS_PATH,
+    INDICATOR_BLANK,
+    INDICATOR_WARNING,
     BindingsError,
     NameEntry,
     NameTableError,
@@ -40,6 +42,7 @@ from ro_tools.onewire_names import (
     decode_name_table,
     encode_name_table,
     format_temperature,
+    indicator_for,
     is_lcd_safe,
     load_bindings,
     paginate,
@@ -661,6 +664,17 @@ def test_render_rejects_bad_entry_label() -> None:
         render_onewire_rows([], [NameEntry(DS18, "a~")])
     with pytest.raises(ValueError, match="1-11"):
         render_onewire_rows([], [NameEntry(DS18, "x" * 12)])
+
+
+def test_indicator_blank_normally_asterisk_on_warning() -> None:
+    """Owner decision 2026-11-23: column 20 is blank normally, ``*`` during a warning."""
+    assert (INDICATOR_BLANK, INDICATOR_WARNING) == (" ", "*")
+    assert indicator_for(False) == " "
+    assert indicator_for(True) == "*"
+    rows = render_onewire_rows(
+        [_slot(DS18, primary=2150)], [NameEntry(DS18, "Outside air")], indicator_for(True)
+    )
+    assert rows == ["Outside air   21.5C*"]
 
 
 def test_render_indicator_in_column_20() -> None:

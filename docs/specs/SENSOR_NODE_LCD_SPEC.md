@@ -11,7 +11,7 @@ Add a local read-only status display to the ESP32 RS485/Modbus sensor node. LCD 
 - Place the LCD where it can be read during maintenance; provide strain relief and moisture protection as appropriate.
 
 ## Screens (20 characters per row; column 20 reserved)
-**Column 20 rule (owner decision 2026-11-23):** on every page, normal, fault or diagnostic, column 20 of every row is reserved for a fault/status indicator. Page content uses columns 1-19. The indicator glyph and any HOLD marker are not designed yet (`docs/TODO.md`).
+**Column 20 rule (owner decision 2026-11-23):** on every page, normal, fault or diagnostic, column 20 of every row is reserved for a fault/status indicator. Page content uses columns 1-19. Column 20 is blank (space) in normal operation and `*` while any WARNING or CRITICAL fault is active (owner decision 2026-11-23); ADVISORY alone leaves it blank. Any HOLD marker is not designed yet (`docs/TODO.md`).
 
 Page 1: water quality — feed EC, permeate EC, rejection percentage, permeate temperature.
 Page 2: hydraulics — permeate GPM, concentrate GPM, recovery %, membrane feed PSI (if fitted).
@@ -62,7 +62,7 @@ Exact sensor ESP32 board and pins; LCD backpack model and voltage; I2C pull-up a
 [             3300mV ]  same DS2438, voltage row
 [Outside air   21.5C ]  DS18B20 "Outside air" (ROM 28FF1B2C3D5F4EDE)
 ```
-A fifth row, `[?28-BEEF     -12.3C ]` (unnamed DS18B20, ROM 28EFBE00000000FE), goes to the next page. Column 20 is blank here (no indicator glyph is designed yet). These rows were produced by `render_onewire_rows` in `host_tools/src/ro_tools/onewire_names.py`, not written by hand.
+A fifth row, `[?28-BEEF     -12.3C ]` (unnamed DS18B20, ROM 28EFBE00000000FE), goes to the next page. Column 20 is blank here (normal operation; it shows `*` during a WARNING or CRITICAL fault). These rows were produced by `render_onewire_rows` in `host_tools/src/ro_tools/onewire_names.py`, not written by hand.
 
 ## Draft 0.4 superseding display policy
 The fault-first behavior in `EXCEPTION_DRIVEN_LCD_AND_FAULTS_SPEC.md` supersedes unconditional page rotation and any older LCD fault-handling guidance. The optional main-controller status extension is now specified in `protocol/CONTROLLER_STATUS_EXTENSION.md`.

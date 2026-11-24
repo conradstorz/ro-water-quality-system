@@ -488,9 +488,22 @@ LCD_ROWS = 4
 LCD_COLS = 20
 #: Width of the right-aligned value field.
 VALUE_WIDTH = 7
-#: Default content of column 20, which every LCD page reserves for a fault/status
-#: indicator (owner decision 2026-11-23; the glyph itself is not yet designed).
+#: Column 20 in normal operation. Every LCD page reserves column 20 for the fault
+#: indicator (owner decision 2026-11-23).
 INDICATOR_BLANK = " "
+#: Column 20 while any WARNING or CRITICAL fault is active (owner decision 2026-11-23).
+INDICATOR_WARNING = "*"
+
+
+def indicator_for(warning_active: bool) -> str:
+    """Return the column-20 character for the current fault state.
+
+    :param warning_active: True while any WARNING or CRITICAL fault is active.
+    :returns: ``"*"`` during warning operation, otherwise a space.
+    """
+    return INDICATOR_WARNING if warning_active else INDICATOR_BLANK
+
+
 if LABEL_MAX_CHARS + 1 + VALUE_WIDTH + 1 != LCD_COLS:  # label, space, value, indicator
     raise RuntimeError(f"label_max_chars {LABEL_MAX_CHARS} does not fit the 20-column row")
 _VALUE_INVALID = "---"
