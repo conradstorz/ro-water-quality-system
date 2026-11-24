@@ -10,11 +10,14 @@ Add a local read-only status display to the ESP32 RS485/Modbus sensor node. LCD 
 - Allocate SDA and SCL only after the actual sensor-node board GPIO pinout is confirmed. Use configurable pin constants; avoid boot strapping pins and conflicts with ADC, pulse counters, HX711, RS485, or flash/PSRAM.
 - Place the LCD where it can be read during maintenance; provide strain relief and moisture protection as appropriate.
 
-## Screens (20 characters maximum per row)
+## Screens (20 characters per row; column 20 reserved)
+**Column 20 rule (owner decision 2026-11-23):** on every page, normal, fault or diagnostic, column 20 of every row is reserved for a fault/status indicator. Page content uses columns 1-19. The indicator glyph and any HOLD marker are not designed yet (`docs/TODO.md`).
+
 Page 1: water quality — feed EC, permeate EC, rejection percentage, permeate temperature.
 Page 2: hydraulics — permeate GPM, concentrate GPM, recovery %, membrane feed PSI (if fitted).
 Page 3: tank — estimated gallons, percent full, trend (filling/draining), weight sensor status.
 Page 4: diagnostics — sensor-node uptime, Modbus communications, sensor validity, fault code.
+Pages 5+: 1-Wire devices (protocol 1.4), after diagnostics; see "1-Wire pages" below.
 
 Only display measurements that the sensor node actually knows. The node does not know the main controller's RO operating state unless the protocol is explicitly extended to report it. Until then show local measurement state, not guessed 'PRODUCTION' or 'STANDBY'. If a value is unavailable, stale, or invalid, display `--` or `ERR` instead of retaining the last good reading without a warning. No page may claim drinking-water safety based solely on EC/TDS.
 
@@ -33,7 +36,7 @@ Only display measurements that the sensor node actually knows. The node does not
 - No changes to existing Modbus measurement addresses or scaling. If main-controller status is later sent to the node, define an explicit backward-compatible protocol extension with versioning.
 
 ## Acceptance tests
-1. Boot and operate with LCD present; all pages fit 20x4 and refresh.
+1. Boot and operate with LCD present; all pages fit 20x4 with content in columns 1-19 (column 20 reserved) and refresh.
 2. Boot and operate with LCD unplugged or wrong I2C address; Modbus and sensor collection remain operational.
 3. Force I2C timeout during active Modbus polling; no material effect on communications or pulse counts.
 4. Inject invalid/stale sensor data; screen shows `--`/`ERR` and never stale unmarked values.
@@ -43,6 +46,23 @@ Only display measurements that the sensor node actually knows. The node does not
 
 ## Open hardware decisions
 Exact sensor ESP32 board and pins; LCD backpack model and voltage; I2C pull-up arrangement; cable length; enclosure mounting; whether a local page-select button is desirable in a later revision.
+
+## 1-Wire pages (protocol 1.4, ADR-0011)
+- **Placement:** 1-Wire pages join NORMAL rotation after the diagnostics page, 4 rows per page, as many pages as the present devices need (at most 4 pages for 8 DS2438s). They never preempt and never appear in fault pages. A 1-Wire bus fault stays an ADVISORY. Names never change fault priority.
+- **Row layout (owner decision 2026-11-23):** label left-aligned in columns 1-11, a space in column 12, a 7-character right-aligned value in columns 13-19, and column 20 reserved for the fault/status indicator. A DS18B20 takes one row. A DS2438 takes two: label + temperature, then 12 spaces + mV value + column 20. Other families: label row with `    ---`.
+- **Values:** temperature with one decimal plus `C` (no degree glyph, so output does not depend on the character ROM), e.g. `  21.5C`, ` -12.3C`; DS2438 voltage ` 3300mV`. Invalid or stale: `    ---`. A value that does not fit in 7 characters: `    ERR`.
+- **Labels:** from the controller's name table (`protocol/ONEWIRE_NAME_TABLE.md`), 1-11 characters. An unnamed device shows `?` + family (2 hex digits) + `-` + the low 16 bits of the serial (4 hex digits), 8 characters: ROM `28FF1B2C3D5F4EDE` shows `?28-1BFF`.
+- **Charset:** labels use printable ASCII 0x20-0x7D except `\` (0x5C) and `~` (0x7E). This assumes the common HD44780 A00 character ROM (the exact LCD is TBD), where 0x5C renders as ¥ and 0x7E as an arrow.
+- **Example page:**
+```
+ 00000000011111111112   column number, tens digit
+ 12345678901234567890   column number, units digit (brackets enclose the 20 columns)
+[?28-7A31        --- ]  stale DS18B20, unnamed (ROM 28317A0000000014)
+[Tank air      22.1C ]  DS2438 "Tank air" (ROM 26D4C3B2A10000DE), temperature
+[             3300mV ]  same DS2438, voltage row
+[Outside air   21.5C ]  DS18B20 "Outside air" (ROM 28FF1B2C3D5F4EDE)
+```
+A fifth row, `[?28-BEEF     -12.3C ]` (unnamed DS18B20, ROM 28EFBE00000000FE), goes to the next page. Column 20 is blank here (no indicator glyph is designed yet). These rows were produced by `render_onewire_rows` in `host_tools/src/ro_tools/onewire_names.py`, not written by hand.
 
 ## Draft 0.4 superseding display policy
 The fault-first behavior in `EXCEPTION_DRIVEN_LCD_AND_FAULTS_SPEC.md` supersedes unconditional page rotation and any older LCD fault-handling guidance. The optional main-controller status extension is now specified in `protocol/CONTROLLER_STATUS_EXTENSION.md`.

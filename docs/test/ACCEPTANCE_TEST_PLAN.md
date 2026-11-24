@@ -22,6 +22,11 @@
 - Unsupported family: ROM ID only, value words zero, `valid` clear.
 - No effect on production gating: with any 1-Wire fault injected, `production_permitted` is identical to the no-fault result, and 1-Wire bits are absent from validity and critical masks.
 - Plug labeling: confirm "1-WIRE" plugs cannot be mistaken for the RJ45 RO BUS and are routed away from 24 V and RS485 wiring.
+## 1-Wire device names (display only, ADR-0011)
+- Push a valid name table, then write an invalid one (bad ROM CRC, all-zero ROM, 12-character label, non-zero unused entry, partial write): each is rejected with a Modbus exception and an FC03 read-back still returns the prior table.
+- Reboot the node: the table reads back empty; the controller sees the `boot_counter` change and re-pushes, and the read-back matches.
+- Against a protocol 1.3 node: the write answers ILLEGAL_DATA_ADDRESS, the controller reports names unsupported (`ro-tools onewire push` exit 4), does not retry until `boot_counter` changes, and `production_permitted` and node health are identical to the no-write case.
+- With names pushed, the LCD shows each label in columns 1-11 with column 20 free; unnamed devices show `?FF-SSSS`.
 
 ## Actuators and safety
 - Bench test with dummy loads. Confirm power-off contactor OFF and flush valve opens. Diversion valve (K3, normally closed) is closed when unpowered; confirm it energizes to drain only while the controller commands a dump.

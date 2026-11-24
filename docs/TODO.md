@@ -14,13 +14,15 @@ Owner decisions (2026-11-23):
 - **No freeze timeout:** the display stays frozen until HOLD or NEXT is pressed.
 - **Faults never steal focus from a held page.** Every screen, held or rotating, shows a fault indicator character or warning text while any fault is active.
 - **Not held:** fault pages preempt rotation as today, and rotation resumes when the fault clears.
+- **Fault indicator position (closed 2026-11-23, option A):** column 20 of every row on every page is reserved for the fault/status indicator; page content uses columns 1-19. 1-Wire rows are label 11 + space + value 7 + column 20 (ADR-0011). Recorded in both LCD specs. The glyph itself is still to be designed.
 
 **Spec conflict to resolve when this is designed:** `docs/specs/EXCEPTION_DRIVEN_LCD_AND_FAULTS_SPEC.md` currently requires a CRITICAL fault to preempt the current page immediately and stay until resolved. Held pages are an owner-approved exception. Amend that spec, its acceptance test 2, and `docs/test/LCD_FAULT_PRIORITY_TESTS.md`.
 
 The change is acceptable because the LCD is not part of any safety mechanism: the main controller and hardwired protections act regardless of what the display shows.
 
 Remaining open questions:
-- **Where the fault indicator goes on every page.** Every layout must reserve space for it, including the 1-Wire rows (label 12 + space + value 7 = 20 columns).
+- **Indicator glyph:** which character(s) mean which fault state in column 20 (must be in the LCD-safe set or a custom CGRAM character).
+- **Existing layouts that do not yet fit columns 1-19:** `STARTING / DATA WAIT` is 20 characters, and `RO STATE: <state>` exceeds 19 for `production` (20), `maintenance` (21), `startup_flush` (23) and `shutdown_flush` (24) if the enum names are shown as-is; the last three already exceeded 20 (`EXCEPTION_DRIVEN_LCD_AND_FAULTS_SPEC.md`). They need shorter wording.
 - **HOLD marker:** should the screen show one while frozen, and where?
 - **Diagnostic pages:** part of the normal sequence, or a separate set reached by a long press or both buttons together?
 

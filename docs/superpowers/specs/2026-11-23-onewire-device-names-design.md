@@ -1,9 +1,11 @@
 # 1-Wire device names — design
 
-Status: draft for owner approval (2026-11-23). Builds on ADR-0009 and `2026-11-13-onewire-input-design.md`.
+Status: approved 2026-11-23; recorded in ADR-0011. Builds on ADR-0009 and `2026-11-13-onewire-input-design.md`.
+
+**Amended 2026-11-23 (owner decision, option A):** column 20 of every LCD row on every page is reserved for a fault/status indicator, so labels are at most 11 characters (was 12) and 1-Wire rows are label 11 + space + value 7 + column 20. The example ROM `28FF4A1B2C3D4E5F` failed its CRC-8 and its unnamed form was wrong; examples now use the CRC-valid `28FF1B2C3D5F4EDE` (unnamed `?28-1BFF`), generated with `parse_rom` / `render_onewire_rows`.
 
 ## Goal
-Every 1-Wire device has a unique 64-bit ROM ID. The owner names each device once ("Outside temp", "Storage tank") and the name appears in host tools/logs, in the main controller, and on the optional sensor-node LCD next to the device's reading.
+Every 1-Wire device has a unique 64-bit ROM ID. The owner names each device once ("Outside air", "Storage") and the name appears in host tools/logs, in the main controller, and on the optional sensor-node LCD next to the device's reading.
 
 ## Unchanged principles (ADR-0009)
 - The main controller owns the ROM-to-name table. A node never decides what a device is; it only displays a name it was given.
@@ -15,15 +17,15 @@ Every 1-Wire device has a unique 64-bit ROM ID. The owner names each device once
 ```yaml
 schema: 1
 devices:
-  - rom: 28FF4A1B2C3D4E5F    # 16 hex digits, family byte first, CRC byte last (wire order)
+  - rom: 28FF1B2C3D5F4EDE    # 16 hex digits, family byte first, CRC byte last (wire order)
     role: outside_temp       # snake_case identifier for code and logs; unique
-    label: Outside temp      # LCD/display text; unique
+    label: Outside air       # LCD/display text; unique
 ```
 
 Validation (host tool, fails the build/CLI on any violation):
 - `rom`: exactly 16 hex digits (case-insensitive), Dallas CRC-8 correct, family known or not (unknown families can be named; the node shows the ROM only, with no value). Unique.
 - `role`: `^[a-z][a-z0-9_]{0,31}$`, unique.
-- `label`: 1-12 characters from the LCD-safe set (below), no leading/trailing space, unique.
+- `label`: 1-11 characters from the LCD-safe set (below), no leading/trailing space, unique.
 - ROM text format is defined once in `onewire.py` (`format_rom` / `parse_rom`) next to `make_rom`, and maps to the same 64-bit integer the input slots carry.
 
 ## 2. Commissioning workflow
@@ -34,11 +36,11 @@ Validation (host tool, fails the build/CLI on any violation):
 5. `ro-tools onewire push --unit-id N` writes that node's name table (section 4) and reads it back. In production the main controller does this automatically.
 
 ## 3. LCD layout (20 × 4, HD44780)
-Row arithmetic: label 12 + space 1 + value 7 = 20.
+Row arithmetic: label 11 + space 1 + value 7 + indicator 1 = 20. Column 20 is reserved on every page for a fault/status indicator (owner decision 2026-11-23; was label 12 + space + value 7). The indicator glyph is not designed yet.
 - Value field is 7 characters, right-aligned. Temperature (DS18B20, DS2438 primary): one decimal plus `C`, e.g. `  21.5C`, ` -12.3C`, ` 125.0C`. DS2438 voltage (secondary): ` 3300mV`. A value that cannot fit in 7 characters shows `    ERR`. Invalid or stale shows `    ---`.
 - Plain `C` (no degree glyph) keeps output independent of the LCD character ROM.
-- A DS18B20 takes one row. A DS2438 takes two rows: `label + temperature`, then 13 spaces + mV.
-- An unnamed device shows `?` + family + `-` + low 16 bits of the serial as its label, e.g. `?28-4E5F`.
+- A DS18B20 takes one row. A DS2438 takes two rows: `label + temperature`, then 12 spaces + mV + column 20.
+- An unnamed device shows `?` + family + `-` + low 16 bits of the serial as its label, e.g. `?28-1BFF` for `28FF1B2C3D5F4EDE` (the serial bytes follow the family byte in wire order, so its low 16 bits are 0x1BFF).
 - 1-Wire pages join NORMAL rotation after the diagnostics page, 4 rows per page, as many pages as the devices need (at most 4 for 8 DS2438s). They never preempt and never appear in fault pages. A 1-Wire bus fault remains an ADVISORY as today.
 - LCD-safe label characters: printable ASCII 0x20-0x7D except `\` (0x5C) and `~` (0x7E). This assumes the common HD44780 A00 character ROM (the exact LCD is TBD), where 0x5C renders as ¥ and 0x7E as an arrow.
 
@@ -52,8 +54,8 @@ Additive minor version (1.3 → 1.4). No existing address, scale, signedness or 
 | 242 | `names_entry_count` | u16, 0-8 |
 | 243 + 10n .. 252 + 10n | entry n (n = 0..7) | `rom0..rom3` (same 4-word ROM encoding as input slots), then `label` in 6 words |
 
-- Label encoding: ASCII, 2 characters per word, high byte first, NUL-padded at the end, no embedded NUL. 12 characters maximum.
-- Write: FC16, all 83 registers 240-322 in one transaction, like the status block (220-227). The node rejects partial writes and any write where `names_schema_major != 1`, `names_entry_count > 8`, a used entry has a bad ROM CRC, a label outside the LCD-safe set, an empty label, or an embedded NUL, a ROM appears twice, or an unused entry is not all zero. It replies ILLEGAL_DATA_VALUE and keeps the previous table.
+- Label encoding: ASCII, 2 characters per word, high byte first, NUL-padded at the end, no embedded NUL. 11 characters maximum (was 12; the 12th byte, the low byte of `label5`, must be NUL). The YAML records this as `label_max_chars: 11`.
+- Write: FC16, all 83 registers 240-322 in one transaction, like the status block (220-227). The node rejects partial writes and any write where `names_schema_major != 1`, `names_entry_count > 8`, a used entry has a bad ROM CRC, an all-zero ROM, a label outside the LCD-safe set, an empty or over-long label, or an embedded NUL, a ROM appears twice, or an unused entry is not all zero. It replies ILLEGAL_DATA_VALUE and keeps the previous table.
 - FC03 read-back of 240-322 is allowed.
 - Storage: RAM only. The table is empty after node boot. Display-only, like the status block. Unlike the status block it has no freshness timeout: names are static.
 - Why a write is allowed: the Modbus spec forbids writable calibration over RS485. The name table is display-only, in the same category as the controller status block, and the node never uses it for anything but rendering.

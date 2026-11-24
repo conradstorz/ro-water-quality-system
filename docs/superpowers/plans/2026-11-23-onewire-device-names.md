@@ -6,14 +6,16 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-23-onewire-device-names-design.md` (approved 2026-11-23). It is normative; read it first.
 
+**Amended 2026-11-23 (owner decision, option A):** column 20 of every LCD row on every page is reserved for a fault/status indicator, so labels are at most 11 characters (was 12) and 1-Wire rows are label 11 + space + value 7 + column 20. The example ROM `28FF4A1B2C3D4E5F` failed its CRC-8 and its unnamed form was wrong; examples now use the CRC-valid `28FF1B2C3D5F4EDE` (unnamed `?28-1BFF`), generated with `parse_rom` / `render_onewire_rows`. All-zero ROMs are rejected too; `onewire push` exits 4 for an unsupported node.
+
 **Tech stack:** Python 3.12 via `uv`, pytest (+hypothesis where useful), ruff, `ro-tools generate` codegen. Run host commands from `host_tools/`: `uv run pytest -q`, `uv run ruff check .`, `uv run ro-tools validate`, `uv run ro-tools generate --check`.
 
 ## Global constraints
 - AGENTS.md rule 2: no existing register address, scale, signedness or access changes. Only additions plus version 1.3 → 1.4.
 - Names are display-only and monitoring-only. They never touch `validity_bits`, `critical_validity_bits`, node health or `production_permitted`.
 - Name table layout (exact): holding 240 `names_schema_major` (u16, equals 1), 241 `names_revision` (u16), 242 `names_entry_count` (u16, 0-8); entry n (0..7) base = 243 + 10n: `names_eN_rom0..rom3` (u16, same 64-bit ROM encoding as input slots `onewire_sN_rom0..3`), `names_eN_label0..label5` (u16, 2 ASCII chars per word, high byte first, NUL-padded). Block is 240-322, 83 registers, FC16 atomic full-block write, FC03 read-back allowed, access `write_multiple_only`.
-- Node validation (reject the whole write, keep the previous table): schema_major != 1; entry_count > 8; for n < count: ROM CRC bad, label empty, a char outside the LCD-safe set, or a NUL followed by a non-NUL; duplicate ROM among used entries; any non-zero word in entries n >= count.
-- LCD-safe set: 0x20-0x7D except 0x5C and 0x7E. Bindings-file labels additionally: 1-12 chars, no leading/trailing space, unique. Roles: `^[a-z][a-z0-9_]{0,31}$`, unique. ROM text: 16 hex digits, family byte first, CRC byte last, CRC checked, unique.
+- Node validation (reject the whole write, keep the previous table): schema_major != 1; entry_count > 8; for n < count: ROM all zero or CRC bad, label empty or longer than 11 (amended 2026-11-23), a char outside the LCD-safe set, or a NUL followed by a non-NUL; duplicate ROM among used entries; any non-zero word in entries n >= count.
+- LCD-safe set: 0x20-0x7D except 0x5C and 0x7E. Bindings-file labels additionally: 1-11 chars (was 1-12, amended 2026-11-23), no leading/trailing space, unique. Roles: `^[a-z][a-z0-9_]{0,31}$`, unique. ROM text: 16 hex digits, family byte first, CRC byte last, CRC checked, unique.
 - Python style: type annotations, Sphinx docstrings, pathlib, Loguru in host tools. Do not chain shell commands with `&&`. Commits end with `Assisted-by: <model actually writing it> (Claude Code)` and no Co-Authored-By line.
 
 ---
@@ -40,7 +42,7 @@
 - [ ] `NameEntry(rom: int, label: str)`; `encode_name_table(entries, revision) -> list[int]` (83 words; raises on > 8 entries or invalid label); `validate_name_table(words) -> list[str]` (node-side rules exactly as Global constraints; empty list means accept); `decode_name_table(words) -> tuple[int, tuple[NameEntry, ...]]` (revision, entries; raises on invalid).
 - [ ] `select_for_node(bindings, slots) -> tuple[NameEntry, ...]`: bindings whose ROM is in the node's present slots, sorted by ROM, at most 8.
 - [ ] `bindings_revision(path) -> int`: CRC-16/MODBUS of the file bytes.
-- [ ] `render_onewire_rows(slots, entries) -> list[str]`: reference LCD rows per spec section 3 (label 12 + space + 7-char value; DS2438 two rows; unnamed `?FF-SSSS`; invalid `    ---`; unfittable `    ERR`; unknown family: label row with `    ---`). Property test: every row is exactly 20 chars and LCD-safe for random slots/labels.
+- [ ] `render_onewire_rows(slots, entries) -> list[str]`: reference LCD rows per spec section 3 (label 11 + space + 7-char value + column 20, amended 2026-11-23 from label 12 + space + value; DS2438 two rows; unnamed `?FF-SSSS`; invalid `    ---`; unfittable `    ERR`; unknown family: label row with `    ---`). Property test: every row is exactly 20 chars and LCD-safe for random slots/labels.
 - [ ] Tests for every reject rule and round-trip (hypothesis). Commit `feat(onewire): name table codec, validation and LCD reference rows`.
 
 ### Task 4: Simulator, client and isolation
