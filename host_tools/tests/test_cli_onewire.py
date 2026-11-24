@@ -32,7 +32,7 @@ from ro_tools.sim.server import Responder, TcpSimServer
 
 _BY_FAMILY = {rom_family(e.rom): e.rom for e in NAMED_ENTRIES}
 TEMP_ROM, DS2438_ROM = _BY_FAMILY[FAMILY_DS18B20], _BY_FAMILY[FAMILY_DS2438]
-ROLES = {TEMP_ROM: ("outside_temp", "Outside temp"), DS2438_ROM: ("tank_air", "Tank air")}
+ROLES = {TEMP_ROM: ("outside_temp", "Outside air"), DS2438_ROM: ("tank_air", "Tank air")}
 
 
 def _write_bindings(path: Path, roms: list[int]) -> Path:
@@ -74,7 +74,7 @@ def test_scan_all_bound(node, tmp_path, capsys):
     temp = next(line for line in lines if line.startswith(format_rom(TEMP_ROM)))
     ds = next(line for line in lines if line.startswith(format_rom(DS2438_ROM)))
     assert "DS18B20" in temp and "21.50 degC" in temp and "outside_temp" in temp
-    assert "'Outside temp'" in temp
+    assert "'Outside air'" in temp
     assert "DS2438" in ds and "22.10 degC" in ds and "3300 mV" in ds and "tank_air" in ds
     assert "UNBOUND" not in out and "TODO" not in out
 
@@ -240,8 +240,8 @@ def test_push_success_with_read_back(node, tmp_path, capsys):
     assert _run("push", *_ep(node), "--bindings", str(path)) == 0
     out = capsys.readouterr().out
     assert "pushed 2 name(s)" in out
-    assert f"Outside temp -> {format_rom(TEMP_ROM)}" in out
-    assert f"Tank air     -> {format_rom(DS2438_ROM)}" in out
+    assert f"Outside air -> {format_rom(TEMP_ROM)}" in out
+    assert f"Tank air    -> {format_rom(DS2438_ROM)}" in out
     revision, entries = decode_name_table(node.responder.bank.name_table_words)
     assert revision == bindings_revision(path)
     assert entries == NAMED_ENTRIES  # sorted by ROM, labels from the file
@@ -251,7 +251,7 @@ def test_push_only_sends_present_roms(node, tmp_path, capsys):
     absent = make_rom(FAMILY_DS18B20, 0x77)
     path = tmp_path / "b.yaml"
     devices = [
-        {"rom": format_rom(TEMP_ROM), "role": "outside_temp", "label": "Outside temp"},
+        {"rom": format_rom(TEMP_ROM), "role": "outside_temp", "label": "Outside air"},
         {"rom": format_rom(absent), "role": "elsewhere", "label": "Elsewhere"},
     ]
     path.write_text(yaml.safe_dump({"schema": 1, "devices": devices}), encoding="utf-8")
@@ -271,14 +271,14 @@ def test_push_no_bound_devices_writes_empty_table(node, tmp_path, capsys):
     )
 
 
-def test_push_to_protocol_13_node_exit_2(tmp_path, capsys):
+def test_push_to_protocol_13_node_exit_4(tmp_path, capsys):
     responder = Responder(RegisterBank(names_supported=False), unit_id=3)
     apply_preset(responder, "onewire_healthy", RO_SKID_PROFILE)
     bus = Bus()
     bus.add(responder)
     path = _write_bindings(tmp_path / "b.yaml", [TEMP_ROM, DS2438_ROM])
     with TcpSimServer(bus) as srv:
-        assert _run("push", *_ep(srv), "--bindings", str(path)) == 2
+        assert _run("push", *_ep(srv), "--bindings", str(path)) == 4
     assert "node does not support names (protocol 1.3?)" in capsys.readouterr().err
 
 

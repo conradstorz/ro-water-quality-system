@@ -28,6 +28,7 @@ from ro_tools.onewire import (
     encode_onewire,
     format_rom,
     make_rom,
+    parse_rom,
     rom_family,
 )
 from ro_tools.onewire_names import (
@@ -158,6 +159,7 @@ def test_duplicate_role() -> None:
         "Tank ",
         "back\\slash",
         "tilde~",
+        "x" * 12,
         "tab\there",
         "café",
         "\x7f",
@@ -170,7 +172,7 @@ def test_bad_label(label: object) -> None:
     assert bad and all("devices[0].label" in v for v in bad), bad
 
 
-@pytest.mark.parametrize("label", ["x", "x" * 12, "A b{}|!", "-12.3 C #1"])
+@pytest.mark.parametrize("label", ["x", "x" * 11, "A b{}|!", "-12.3 C #1"])
 def test_good_label(label: str) -> None:
     assert validate_bindings_data(_data(_dev(label=label))) == []
 
@@ -192,6 +194,12 @@ def test_all_violations_reported() -> None:
     }
     bad = validate_bindings_data(data)
     assert len(bad) == 7, bad
+
+
+def test_all_zero_rom_rejected() -> None:
+    # CRC-8 of seven zero bytes is 0, so parse_rom accepts it; the bindings do not.
+    data = _data({"rom": "0000000000000000", "role": "tank_temp", "label": "Tank temp"})
+    _one_violation(data, "devices[0].rom", "all-zero")
 
 
 def test_lcd_safe_set() -> None:
@@ -282,8 +290,8 @@ def test_real_bindings_file_commented_example_is_valid() -> None:
 E0 = NAMES_ENTRY_BASE - NAMES_START  # table offset of entry 0
 _SAFE_CHARS = "".join(chr(c) for c in range(0x20, 0x7E) if c != 0x5C)
 
-_labels = st.text(alphabet=_SAFE_CHARS, min_size=1, max_size=12)
-_roms = st.builds(make_rom, st.integers(0, 0xFF), st.integers(0, (1 << 48) - 1))
+_labels = st.text(alphabet=_SAFE_CHARS, min_size=1, max_size=11)
+_roms = st.builds(make_rom, st.integers(0, 0xFF), st.integers(0, (1 << 48) - 1)).filter(bool)
 
 
 def _table(n: int = 2) -> list[int]:
@@ -353,14 +361,15 @@ def test_round_trip(entries: list[NameEntry], revision: int) -> None:
         ([NameEntry(make_rom(0x28, i), "a") for i in range(9)], 0, "at most 8"),
         ([], -1, "revision"),
         ([], 0x10000, "revision"),
-        ([NameEntry(ROM_A, "")], 0, "1-12"),
-        ([NameEntry(ROM_A, "x" * 13)], 0, "1-12"),
+        ([NameEntry(ROM_A, "")], 0, "1-11"),
+        ([NameEntry(ROM_A, "x" * 12)], 0, "1-11"),
         ([NameEntry(ROM_A, "a\\b")], 0, "LCD-safe"),
         ([NameEntry(ROM_A, "a~b")], 0, "LCD-safe"),
         ([NameEntry(ROM_A, "a\0b")], 0, "LCD-safe"),
         ([NameEntry(ROM_A, "café")], 0, "LCD-safe"),
         ([NameEntry(ROM_A ^ 1, "a")], 0, "CRC"),
         ([NameEntry(1 << 64, "a")], 0, "64 bits"),
+        ([NameEntry(0, "a")], 0, "all-zero"),
         ([NameEntry(ROM_A, "a"), NameEntry(ROM_A, "b")], 0, "duplicate"),
     ],
 )
@@ -426,10 +435,31 @@ def test_validate_embedded_nul_within_word() -> None:
     assert any("embedded NUL" in b for b in bad), bad
 
 
-def test_validate_full_12_char_label_ok() -> None:
-    words = encode_name_table([NameEntry(ROM_A, "ABCDEFGHIJKL")], revision=0)
-    assert 0 not in words[E0 + 4 : E0 + 10]
+def test_validate_full_11_char_label_ok() -> None:
+    words = encode_name_table([NameEntry(ROM_A, "ABCDEFGHIJK")], revision=0)
+    assert words[E0 + 9] == 0x4B00  # label5: 11th char in the high byte, NUL low byte
     assert validate_name_table(words) == []
+    assert decode_name_table(words)[1] == (NameEntry(ROM_A, "ABCDEFGHIJK"),)
+
+
+def test_validate_12_char_label_rejected() -> None:
+    words = encode_name_table([NameEntry(ROM_A, "ABCDEFGHIJK")], revision=0)
+    words[E0 + 9] = 0x4B4C  # "KL": the 12th byte (low byte of label5) is not NUL
+    _one_table_violation(words, "entry 0", "longer than 11")
+
+
+def test_validate_12th_byte_alone_rejected() -> None:
+    words = _table()
+    words[E0 + 9] = 0x004C  # NUL then "L": too long and an embedded NUL
+    bad = validate_name_table(words)
+    assert any("longer than 11" in b for b in bad), bad
+    assert any("embedded NUL" in b for b in bad), bad
+
+
+def test_validate_all_zero_rom_rejected() -> None:
+    words = _table()
+    words[E0 : E0 + 4] = [0, 0, 0, 0]
+    _one_table_violation(words, "entry 0", "all-zero")
 
 
 def test_validate_accepts_edge_spaces() -> None:
@@ -564,31 +594,31 @@ def test_format_temperature(centi: int, text: str) -> None:
 
 
 def test_unnamed_label() -> None:
-    # Spec section 1 example ROM text; the serial's low 16 bits are 0x4AFF.
-    assert unnamed_label(int.from_bytes(bytes.fromhex("28FF4A1B2C3D4E5F"), "little")) == "?28-4AFF"
+    # Bindings-file example ROM text; the serial's low 16 bits are 0x1BFF.
+    assert unnamed_label(parse_rom(EXAMPLE_ROM_TEXT)) == "?28-1BFF"
     assert unnamed_label(DS24) == "?26-12AB"
 
 
 def test_render_named_ds18b20() -> None:
-    rows = render_onewire_rows([_slot(DS18, primary=2150)], [NameEntry(DS18, "Outside temp")])
-    assert rows == ["Outside temp   21.5C"]
+    rows = render_onewire_rows([_slot(DS18, primary=2150)], [NameEntry(DS18, "Outside air")])
+    assert rows == ["Outside air   21.5C "]
 
 
 def test_render_unnamed_negative() -> None:
     rows = render_onewire_rows([_slot(DS18, primary=-1230)], [])
-    assert rows == ["?28-1B4A      -12.3C"]
+    assert rows == ["?28-1B4A     -12.3C "]
 
 
 def test_render_ds2438_two_rows() -> None:
     rows = render_onewire_rows(
         [_slot(DS24, primary=12500, secondary=3300)], [NameEntry(DS24, "Battery")]
     )
-    assert rows == ["Battery       125.0C", "              3300mV"]
+    assert rows == ["Battery      125.0C ", "             3300mV "]
 
 
 def test_render_ds2438_mv_err() -> None:
     rows = render_onewire_rows([_slot(DS24, primary=0, secondary=-12345)], [])
-    assert rows == ["?26-12AB        0.0C", "                 ERR"]
+    assert rows == ["?26-12AB       0.0C ", "                ERR "]
 
 
 @pytest.mark.parametrize(
@@ -603,16 +633,16 @@ def test_render_ds2438_mv_err() -> None:
 )
 def test_render_unusable_shows_dashes(status: SlotStatus) -> None:
     rows = render_onewire_rows([_slot(DS24, status, 2150, 3300)], [NameEntry(DS24, "Tank")])
-    assert rows == ["Tank" + " " * 13 + "---", " " * 17 + "---"]
+    assert rows == ["Tank" + " " * 12 + "--- ", " " * 16 + "--- "]
 
 
 def test_render_unknown_family_one_row() -> None:
     rom = make_rom(0x10, 0xBEEF)
     status = P | SlotStatus.UNSUPPORTED_FAMILY
     assert render_onewire_rows([_slot(rom, status)], [NameEntry(rom, "Old sensor")]) == [
-        "Old sensor       ---"
+        "Old sensor      --- "
     ]
-    assert render_onewire_rows([_slot(rom, PV)], []) == ["?10-BEEF         ---"]
+    assert render_onewire_rows([_slot(rom, PV)], []) == ["?10-BEEF        --- "]
 
 
 def test_render_skips_not_present_and_keeps_slot_order() -> None:
@@ -629,6 +659,33 @@ def test_render_skips_not_present_and_keeps_slot_order() -> None:
 def test_render_rejects_bad_entry_label() -> None:
     with pytest.raises(ValueError, match="LCD-safe"):
         render_onewire_rows([], [NameEntry(DS18, "a~")])
+    with pytest.raises(ValueError, match="1-11"):
+        render_onewire_rows([], [NameEntry(DS18, "x" * 12)])
+
+
+def test_render_indicator_in_column_20() -> None:
+    rows = render_onewire_rows(
+        [_slot(DS24, primary=2150, secondary=3300)], [NameEntry(DS24, "ABCDEFGHIJK")], "!"
+    )
+    assert rows == ["ABCDEFGHIJK   21.5C!", "             3300mV!"]
+
+
+@pytest.mark.parametrize("indicator", ["", "ab", "~", "\\", "", "°"])
+def test_render_rejects_bad_indicator(indicator: str) -> None:
+    with pytest.raises(ValueError, match="indicator"):
+        render_onewire_rows([], [], indicator)
+
+
+def test_paginated_unnamed_rows_fit() -> None:
+    slots = [
+        _slot(make_rom(FAMILY_DS2438, 0xFFFF00 + i), PV, -32768, -32768, i=i) for i in range(8)
+    ]
+    pages = paginate(render_onewire_rows(slots, [], "*"))
+    assert len(pages) == 4
+    for page in pages:
+        assert len(page) == 4
+        for row in page:
+            assert len(row) == 20 and row[19] == "*", repr(row)
 
 
 def test_paginate() -> None:
@@ -656,17 +713,21 @@ _slot_strategy = st.builds(
     slots=st.lists(_slot_strategy, max_size=8),
     labels=st.lists(_labels, max_size=8),
     named=st.lists(st.booleans(), min_size=8, max_size=8),
+    indicator=st.sampled_from(_SAFE_CHARS),
 )
 def test_render_rows_fit_and_are_lcd_safe(
-    slots: list[SlotReading], labels: list[str], named: list[bool]
+    slots: list[SlotReading], labels: list[str], named: list[bool], indicator: str
 ) -> None:
     entries = [
         NameEntry(s.rom, lbl) for s, lbl, use in zip(slots, labels, named, strict=False) if use
     ]
-    rows = render_onewire_rows(slots, entries)
+    rows = render_onewire_rows(slots, entries, indicator)
     present = [s for s in slots if s.status & SlotStatus.PRESENT]
     expected = sum(2 if rom_family(s.rom) == FAMILY_DS2438 else 1 for s in present)
     assert len(rows) == expected
     for row in rows:
         assert len(row) == 20, repr(row)
         assert all(is_lcd_safe(c) for c in row), repr(row)
+        assert row[19] == indicator, repr(row)
+    for page in paginate(rows):
+        assert 1 <= len(page) <= 4

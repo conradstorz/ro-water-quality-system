@@ -271,6 +271,7 @@ def render(m: RegisterMap) -> str:
         f"NAMES_ENTRY_MAX = {m.names_entry_count_max}",
         f"NAMES_ROM_WORDS = {_NAMES_ROM_WORDS}",
         f"NAMES_LABEL_WORDS = {m.names_label_words}",
+        f"NAMES_LABEL_MAX_CHARS = {m.names_label_max_chars}",
         f"NAMES_ENTRY_STRIDE = {_NAMES_ROM_WORDS + m.names_label_words}",
         f"NAMES_ENTRY_BASE = {m.names_start + _NAMES_HEADER_WORDS}",
         "",

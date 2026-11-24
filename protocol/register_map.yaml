@@ -1298,6 +1298,7 @@ onewire_name_table:
   names_schema_major: 1
   entry_count_max: 8
   label_words: 6
+  label_max_chars: 11
   display_only: true
 enums:
   node_type:

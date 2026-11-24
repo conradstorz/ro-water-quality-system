@@ -38,7 +38,7 @@ _OW_DS2438_ROM = make_rom(FAMILY_DS2438, 0x000000000002)
 #: SIMULATED name table entries for the pair, sorted by ROM as a controller sends them.
 NAMED_ENTRIES: tuple[NameEntry, ...] = tuple(
     sorted(
-        (NameEntry(_OW_DS18B20_ROM, "Outside temp"), NameEntry(_OW_DS2438_ROM, "Tank air")),
+        (NameEntry(_OW_DS18B20_ROM, "Outside air"), NameEntry(_OW_DS2438_ROM, "Tank air")),
         key=lambda entry: entry.rom,
     )
 )

@@ -149,6 +149,15 @@ def _mutations():
     def names_missing_entry_count_max(r):
         del r["onewire_name_table"]["entry_count_max"]
 
+    def names_missing_label_max_chars(r):
+        del r["onewire_name_table"]["label_max_chars"]
+
+    def names_label_max_chars_no_nul(r):
+        r["onewire_name_table"]["label_max_chars"] = 12
+
+    def names_label_max_chars_zero(r):
+        r["onewire_name_table"]["label_max_chars"] = 0
+
     def names_section_missing(r):
         del r["onewire_name_table"]
 
@@ -281,6 +290,19 @@ def test_name_table_count_mismatch_is_named(raw):
     violations = _violations(raw, mutate)
     assert violations == [
         "onewire_name_table.count: 83 must equal 3 + entry_count_max * (4 + label_words) = 73"
+    ]
+
+
+def test_name_table_label_max_chars_leaves_room_for_nul(raw):
+    def mutate(r):
+        r["onewire_name_table"]["label_max_chars"] = 12
+
+    violations = _violations(raw, mutate)
+    assert violations == [
+        (
+            "onewire_name_table.label_max_chars: 12 must be 1..2 * label_words - 1 = 11 "
+            "(the last label byte is always NUL)"
+        )
     ]
 
 

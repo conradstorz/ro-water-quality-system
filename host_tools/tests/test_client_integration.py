@@ -194,7 +194,7 @@ class ScriptedServer:
 
 ENTRIES = (
     NameEntry(make_rom(FAMILY_DS2438, 2), "Tank air"),
-    NameEntry(make_rom(FAMILY_DS18B20, 1), "Outside temp"),
+    NameEntry(make_rom(FAMILY_DS18B20, 1), "Outside air"),
 )
 
 
@@ -375,4 +375,4 @@ def test_preset_onewire_named_reads_back_through_client(client, responder):
     apply_preset(responder, "onewire_named")
     revision, entries = client.read_name_table()
     assert revision != 0
-    assert {e.label for e in entries} == {"Outside temp", "Tank air"}
+    assert {e.label for e in entries} == {"Outside air", "Tank air"}

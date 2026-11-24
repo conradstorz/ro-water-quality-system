@@ -77,6 +77,7 @@ def test_name_table_section_modelled():
     assert m.names_schema_major == 1
     assert m.names_entry_count_max == 8
     assert m.names_label_words == 6
+    assert m.names_label_max_chars == 11
 
 
 def test_write_multiple_only_is_exactly_two_blocks():
@@ -92,6 +93,7 @@ def test_generated_constants():
     assert reg.NAMES_ENTRY_STRIDE == 10
     assert reg.NAMES_ROM_WORDS == 4
     assert reg.NAMES_LABEL_WORDS == 6
+    assert reg.NAMES_LABEL_MAX_CHARS == 11
     assert reg.NAMES_ENTRY_BASE == 243
     assert reg.ADDR_NAMES_SCHEMA_MAJOR == 240
     assert reg.ADDR_NAMES_E7_LABEL5 == 322

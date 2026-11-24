@@ -32,6 +32,7 @@ from ro_tools.onewire import (
 )
 from ro_tools.onewire_names import (
     DEFAULT_BINDINGS_PATH,
+    LABEL_MAX_CHARS,
     BindingsError,
     NameEntry,
     bindings_revision,
@@ -48,7 +49,7 @@ EXIT_FAIL = 1
 EXIT_COMMS = 2
 EXIT_MODBUS = 3
 #: ``onewire push``: the node answered ILLEGAL_DATA_ADDRESS (no name table, protocol 1.3?).
-EXIT_NAMES_UNSUPPORTED = 2
+EXIT_NAMES_UNSUPPORTED = 4
 _ILLEGAL_DATA_ADDRESS = 0x02
 
 
@@ -700,7 +701,7 @@ def _cmd_onewire_push(parser: argparse.ArgumentParser, args: argparse.Namespace)
     logger.debug("unit {}: name table revision 0x{:04X} verified", args.unit_id, revision)
     print(f"unit {args.unit_id}: pushed {len(entries)} name(s), revision 0x{revision:04X}")
     for entry in entries:
-        print(f"  {entry.label:<12} -> {format_rom(entry.rom)}")
+        print(f"  {entry.label:<{LABEL_MAX_CHARS}} -> {format_rom(entry.rom)}")
     return EXIT_OK
 
 

@@ -518,7 +518,7 @@ def test_preset_onewire_named_loads_table_and_devices(responder):
     revision, entries = decode_name_table(responder.bank.name_table_words)
     assert revision != 0
     assert {e.rom: e.label for e in entries} == {
-        make_rom(FAMILY_DS18B20, 1): "Outside temp",
+        make_rom(FAMILY_DS18B20, 1): "Outside air",
         make_rom(FAMILY_DS2438, 2): "Tank air",
     }
     assert {e.rom for e in entries} == roms
@@ -553,7 +553,7 @@ def test_preset_onewire_named_matches_controller_selection(responder):
     apply_preset(responder, "onewire_named")
     bindings = (
         OneWireBinding("tank_air", make_rom(FAMILY_DS2438, 2), "Tank air"),
-        OneWireBinding("outside_temp", make_rom(FAMILY_DS18B20, 1), "Outside temp"),
+        OneWireBinding("outside_temp", make_rom(FAMILY_DS18B20, 1), "Outside air"),
         OneWireBinding("not_on_node", make_rom(FAMILY_DS18B20, 0x77), "Elsewhere"),
     )
     selected = select_for_node(bindings, decode_slots(responder.bank.published()))

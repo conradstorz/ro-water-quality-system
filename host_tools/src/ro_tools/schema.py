@@ -129,6 +129,7 @@ class RegisterMap:
     names_schema_major: int
     names_entry_count_max: int
     names_label_words: int
+    names_label_max_chars: int
     enums: dict[str, dict[int, str]]
     fault_codes: tuple[FaultCode, ...]
 
@@ -514,6 +515,12 @@ def _check_name_table(names: dict, holding: list[Register], bad: list[str]) -> N
                 f"{where}.count: {count} must equal 3 + entry_count_max * (4 + label_words) "
                 f"= {expected}"
             )
+    max_chars = names.get("label_max_chars")
+    if _is_int(label_words) and _is_int(max_chars) and not 1 <= max_chars <= 2 * label_words - 1:
+        bad.append(
+            f"{where}.label_max_chars: {max_chars} must be 1..2 * label_words - 1 "
+            f"= {2 * label_words - 1} (the last label byte is always NUL)"
+        )
 
 
 def parse(raw: dict) -> RegisterMap:
@@ -578,6 +585,7 @@ def parse(raw: dict) -> RegisterMap:
             "names_schema_major",
             "entry_count_max",
             "label_words",
+            "label_max_chars",
             "display_only",
         ),
         bad,
@@ -677,6 +685,7 @@ def parse(raw: dict) -> RegisterMap:
         "names_schema_major": _int_field(names, "onewire_name_table", "names_schema_major", bad),
         "names_entry_count_max": _int_field(names, "onewire_name_table", "entry_count_max", bad),
         "names_label_words": _int_field(names, "onewire_name_table", "label_words", bad),
+        "names_label_max_chars": _int_field(names, "onewire_name_table", "label_max_chars", bad),
     }
     if bad:
         raise SchemaError(bad)

@@ -390,7 +390,7 @@ def test_reboot_below_max_does_not_flag_overflow(bank):
 NAMES = encode_name_table(
     [
         NameEntry(make_rom(FAMILY_DS2438, 2), "Tank air"),
-        NameEntry(make_rom(FAMILY_DS18B20, 1), "Outside temp"),
+        NameEntry(make_rom(FAMILY_DS18B20, 1), "Outside air"),
     ],
     revision=0x1234,
 )

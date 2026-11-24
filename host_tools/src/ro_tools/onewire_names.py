@@ -21,6 +21,7 @@ from ro_tools.generated.registers import (
     NAMES_ENTRY_BASE,
     NAMES_ENTRY_MAX,
     NAMES_ENTRY_STRIDE,
+    NAMES_LABEL_MAX_CHARS,
     NAMES_LABEL_WORDS,
     NAMES_ROM_WORDS,
     NAMES_SCHEMA_MAJOR,
@@ -45,8 +46,9 @@ DEFAULT_BINDINGS_PATH: Path = (
 )
 #: The only bindings-file schema version this module understands.
 BINDINGS_SCHEMA = 1
-#: Longest label, in characters (one LCD row minus the value field).
-LABEL_MAX_CHARS = 12
+#: Longest label, in characters: 20 LCD columns minus a space, the 7-character value
+#: field and the column-20 indicator (``label_max_chars`` in the register map).
+LABEL_MAX_CHARS = NAMES_LABEL_MAX_CHARS
 
 _ROLE = re.compile(r"[a-z][a-z0-9_]{0,31}")
 _DEVICE_KEYS = frozenset({"rom", "role", "label"})
@@ -129,7 +131,9 @@ def _device_violations(
             except ValueError as exc:
                 bad.append(f"{where}.rom: {exc}")
             else:
-                if rom in seen_roms:
+                if rom == 0:
+                    bad.append(f"{where}.rom: all-zero ROM is not a device (its CRC-8 is 0)")
+                elif rom in seen_roms:
                     bad.append(f"{where}.rom: duplicate of {seen_roms[rom]}.rom")
                 else:
                     seen_roms[rom] = where
@@ -163,8 +167,8 @@ def validate_bindings_data(data: object) -> list[str]:
 
     Rules: a top-level mapping with exactly ``schema: 1`` and a ``devices`` list; each
     device a mapping with exactly ``rom``, ``role`` and ``label``; ``rom`` valid per
-    :func:`ro_tools.onewire.parse_rom` and unique; ``role`` matching
-    ``^[a-z][a-z0-9_]{0,31}$`` and unique; ``label`` 1-12 LCD-safe characters with no
+    :func:`ro_tools.onewire.parse_rom`, not all zero, and unique; ``role`` matching
+    ``^[a-z][a-z0-9_]{0,31}$`` and unique; ``label`` 1-11 LCD-safe characters with no
     leading/trailing space, unique. An empty ``devices`` list is valid.
 
     :param data: Result of safe-loading the YAML file.
@@ -237,7 +241,7 @@ class NameEntry:
     """One name-table entry: a ROM and the label the node displays for it.
 
     :ivar rom: 64-bit ROM ID (family in the low byte, CRC-8 in the high byte).
-    :ivar label: Display label, 1-12 LCD-safe characters.
+    :ivar label: Display label, 1-11 LCD-safe characters.
     """
 
     rom: int
@@ -308,11 +312,12 @@ def encode_name_table(entries: Sequence[NameEntry], revision: int) -> list[int]:
     (ASCII, 2 characters per word, high byte first, NUL-padded). Unused entries are zero.
     Entries are written in the order given.
 
-    :param entries: At most 8 entries with distinct, CRC-valid ROMs.
+    :param entries: At most 8 entries with distinct, CRC-valid, non-zero ROMs.
     :param revision: Opaque u16 revision (the controller uses :func:`bindings_revision`).
     :returns: 83 register words.
     :raises ValueError: On more than 8 entries, a revision outside u16, a ROM outside
-        64 bits or with a bad CRC-8, a duplicate ROM, or an invalid label.
+        64 bits, all zero or with a bad CRC-8, a duplicate ROM, or an invalid label
+        (empty, over 11 characters or outside the LCD-safe set).
     """
     if len(entries) > NAMES_ENTRY_MAX:
         raise ValueError(f"{len(entries)} entries; at most {NAMES_ENTRY_MAX} allowed")
@@ -326,6 +331,8 @@ def encode_name_table(entries: Sequence[NameEntry], revision: int) -> list[int]:
     for n, entry in enumerate(entries):
         if not 0 <= entry.rom < 1 << 64:
             raise ValueError(f"entry {n}: rom {entry.rom} outside 64 bits")
+        if entry.rom == 0:
+            raise ValueError(f"entry {n}: all-zero ROM is not a device")
         if not rom_crc_ok(entry.rom):
             raise ValueError(f"entry {n}: ROM {entry.rom:016X} fails its CRC-8")
         if entry.rom in seen:
@@ -352,6 +359,11 @@ def _entry_label_violations(n: int, raw: bytes) -> list[str]:
     bad: list[str] = []
     if raw[0] == 0:
         bad.append(f"entry {n}: label is empty")
+    if any(raw[LABEL_MAX_CHARS:]):
+        bad.append(
+            f"entry {n}: label longer than {LABEL_MAX_CHARS} characters "
+            f"(byte(s) after the {LABEL_MAX_CHARS}th must be NUL)"
+        )
     unsafe = sorted({b for b in raw if b and not is_lcd_safe(chr(b))})
     if unsafe:
         codes = ", ".join(f"0x{b:02X}" for b in unsafe)
@@ -367,8 +379,10 @@ def validate_name_table(words: Sequence[int]) -> list[str]:
 
     The node rejects the whole write (ILLEGAL_DATA_VALUE, previous table kept) when:
     the length is not 83; ``names_schema_major != 1``; ``names_entry_count > 8``; a used
-    entry (n < count) has a bad ROM CRC-8, an empty label, a label byte outside the
-    LCD-safe set, or a NUL followed by a non-NUL; a ROM appears twice among used entries;
+    entry (n < count) has an all-zero ROM (whose CRC-8 is 0, so it would pass the CRC
+    check), a bad ROM CRC-8, an empty label, a label longer than 11 characters (the 12th
+    byte, the low byte of ``label5``, must be NUL), a label byte outside the LCD-safe
+    set, or a NUL followed by a non-NUL; a ROM appears twice among used entries;
     or any word of an unused entry is non-zero. Leading/trailing label spaces are allowed
     here (only the bindings file forbids them). A word outside 0..65535 is also reported
     (it cannot occur on the wire).
@@ -397,7 +411,9 @@ def validate_name_table(words: Sequence[int]) -> list[str]:
                 bad.append(f"entry {n}: unused entry is not all zero")
             continue
         rom = _words_to_rom(entry_words[:NAMES_ROM_WORDS])
-        if not rom_crc_ok(rom):
+        if rom == 0:
+            bad.append(f"entry {n}: all-zero ROM is not a device")
+        elif not rom_crc_ok(rom):
             bad.append(f"entry {n}: ROM {rom:016X} fails its CRC-8")
         if rom in seen:
             bad.append(f"entry {n}: duplicate ROM {rom:016X} (also entry {seen[rom]})")
@@ -468,8 +484,15 @@ def bindings_revision(path: Path = DEFAULT_BINDINGS_PATH) -> int:
 
 #: LCD rows per page.
 LCD_ROWS = 4
+#: LCD columns per row.
+LCD_COLS = 20
 #: Width of the right-aligned value field.
 VALUE_WIDTH = 7
+#: Default content of column 20, which every LCD page reserves for a fault/status
+#: indicator (owner decision 2026-11-23; the glyph itself is not yet designed).
+INDICATOR_BLANK = " "
+if LABEL_MAX_CHARS + 1 + VALUE_WIDTH + 1 != LCD_COLS:  # label, space, value, indicator
+    raise RuntimeError(f"label_max_chars {LABEL_MAX_CHARS} does not fit the 20-column row")
 _VALUE_INVALID = "---"
 _VALUE_ERROR = "ERR"
 
@@ -505,7 +528,7 @@ def unnamed_label(rom: int) -> str:
     """Label shown for a device with no name entry.
 
     ``?`` + family (2 hex digits) + ``-`` + the low 16 bits of the 48-bit serial
-    (4 hex digits), e.g. ``?28-4AFF`` for ROM text ``28FF4A1B2C3D4E5F``.
+    (4 hex digits), e.g. ``?28-1BFF`` for ROM text ``28FF1B2C3D5F4EDE``.
 
     :param rom: 64-bit ROM integer.
     :returns: The label text (8 characters).
@@ -513,23 +536,33 @@ def unnamed_label(rom: int) -> str:
     return f"?{rom_family(rom):02X}-{(rom >> 8) & 0xFFFF:04X}"
 
 
-def render_onewire_rows(slots: Sequence[SlotReading], entries: Sequence[NameEntry]) -> list[str]:
+def render_onewire_rows(
+    slots: Sequence[SlotReading],
+    entries: Sequence[NameEntry],
+    indicator: str = INDICATOR_BLANK,
+) -> list[str]:
     """Render reference 20-column LCD rows for the 1-Wire pages (spec section 3).
 
     For each slot with PRESENT set, in slot order: label (the entry's label, else
-    :func:`unnamed_label`) left-justified to 12, a space, and a 7-character
-    right-aligned value. DS18B20: one row with the temperature. DS2438: the label row
-    with the temperature, then 13 spaces and the mV value (two rows even when not
-    usable). Other families: one label row with ``---``. A slot that is not usable
-    (same rule as :func:`ro_tools.monitor.evaluate_onewire`, so unknown status bits
-    count) shows ``---``; a value longer than 7 characters shows ``ERR``. Paging is left
-    to the caller (see :func:`paginate`).
+    :func:`unnamed_label`) left-justified to 11, a space, a 7-character right-aligned
+    value, and ``indicator`` in column 20. DS18B20: one row with the temperature.
+    DS2438: the label row with the temperature, then 12 spaces, the mV value and the
+    indicator (two rows even when not usable). Other families: one label row with
+    ``---``. A slot that is not usable (same rule as
+    :func:`ro_tools.monitor.evaluate_onewire`, so unknown status bits count) shows
+    ``---``; a value longer than 7 characters shows ``ERR``. Paging is left to the
+    caller (see :func:`paginate`).
 
     :param slots: Decoded slots (:func:`ro_tools.onewire.decode_slots`).
     :param entries: Name entries, e.g. from :func:`decode_name_table`.
+    :param indicator: One LCD-safe character for column 20 (default a space). Column 20
+        is reserved on every page for a fault/status indicator.
     :returns: Every row, each exactly 20 characters.
-    :raises ValueError: If an entry's label breaks the node-side label rules.
+    :raises ValueError: If ``indicator`` is not one LCD-safe character, or an entry's
+        label breaks the node-side label rules.
     """
+    if not isinstance(indicator, str) or len(indicator) != 1 or not is_lcd_safe(indicator):
+        raise ValueError(f"indicator {indicator!r} must be one LCD-safe character")
     labels: dict[int, str] = {}
     for entry in entries:
         problems = _node_label_problems(entry.label)
@@ -547,10 +580,10 @@ def render_onewire_rows(slots: Sequence[SlotReading], entries: Sequence[NameEntr
             primary = _fit(format_temperature(slot.primary))
         else:
             primary = _fit(_VALUE_INVALID)
-        rows.append(f"{label} {primary}")
+        rows.append(f"{label} {primary}{indicator}")
         if family == FAMILY_DS2438:
             secondary = _fit(format_millivolts(slot.secondary) if usable else _VALUE_INVALID)
-            rows.append(" " * (LABEL_MAX_CHARS + 1) + secondary)
+            rows.append(" " * (LABEL_MAX_CHARS + 1) + secondary + indicator)
     return rows
 
 
