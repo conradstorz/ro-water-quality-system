@@ -45,7 +45,9 @@ Only display measurements that the sensor node actually knows. The node does not
 7. Confirm LCD uses no control authority: removing it does not change safety or RO logic.
 
 ## Open hardware decisions
-Exact sensor ESP32 board and pins; LCD backpack model and voltage; I2C pull-up arrangement; cable length; enclosure mounting; whether a local page-select button is desirable in a later revision.
+Settled by ADR-0012: board (ESP32-S3-DevKitC-1-N16R8) and pins (I2C on GPIO8/9, `hardware/sensor-node/pinout.yaml`), I2C pull-ups and a PCA9306 level shifter for a 5 V backpack. Two diagnostic buttons (NEXT on GPIO10, HOLD on GPIO47) replace the page-select question; their behavior is in `docs/TODO.md`.
+
+Still open: LCD backpack model and character ROM; LCD cable length (I2C rise time, bench check); enclosure mounting.
 
 ## 1-Wire pages (protocol 1.4, ADR-0011)
 - **Placement:** 1-Wire pages join NORMAL rotation after the diagnostics page, 4 rows per page, as many pages as the present devices need (at most 4 pages for 8 DS2438s). They never preempt and never appear in fault pages. A 1-Wire bus fault stays an ADVISORY. Names never change fault priority.

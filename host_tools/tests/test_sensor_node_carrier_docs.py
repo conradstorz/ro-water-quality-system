@@ -326,7 +326,7 @@ def test_adr_is_proposed_and_monitoring_only() -> None:
     assert "**Status:** Proposed" in text
     assert "monitoring hardware" in text
     for part in (
-        "ESP32-S3-DevKitC-1-N8",
+        "ESP32-S3-DevKitC-1-N16R8",
         "LMR36015",
         "SGM2212",
         "THVD1450",

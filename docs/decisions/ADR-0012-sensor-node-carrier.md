@@ -2,7 +2,7 @@
 
 **Status:** Proposed (2026-11-23). Pending owner review and Stage D bench verification.
 
-**Decision:** Every sensor node is one carrier board that holds an **Espressif ESP32-S3-DevKitC-1-N8** on headers. The DevKitC carries an **ESP32-S3-WROOM-1-N8** module (8 MB quad flash, no PSRAM). The carrier provides:
+**Decision:** Every sensor node is one carrier board that holds an **Espressif ESP32-S3-DevKitC-1-N16R8** on headers (owner decision 2026-11-24, replacing the end-of-life DevKitC-1-N8). The DevKitC carries an **ESP32-S3-WROOM-1-N16R8** module (16 MB flash, 8 MB octal PSRAM; GPIO35-37 are taken by the PSRAM and never assigned). The carrier provides:
 - the 24 V trunk input stage and a 5 V buck converter;
 - RS485;
 - the pulse, 1-Wire, ADS1115, HX711, pressure, DIP-switch, button and LCD front ends.
@@ -20,7 +20,7 @@ Each value below cites a datasheet table or page, or shows its arithmetic. `host
 
 ### Board facts (cited)
 **DevKitC-1 user guide v1.1** (`https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html`):
-- **Ordering table:** "ESP32-S3-DevKitC-1-N8 (EOL) | ESP32-S3-WROOM-1-N8 | 8 MB | —". The guide marks the N8 board **end of life**. The map below also fits the in-production "ESP32-S3-DevKitC-1-N16R8 | ESP32-S3-WROOM-1 | 16 MB | 8 MB".
+- **Ordering table:** "ESP32-S3-DevKitC-1-N8 (EOL) | ESP32-S3-WROOM-1-N8 | 8 MB | —". The guide marks the N8 board **end of life**, so this design uses the in-production "ESP32-S3-DevKitC-1-N16R8 | ESP32-S3-WROOM-1 | 16 MB | 8 MB".
 - **RGB LED:** "the initial version uses GPIO48, whereas v1.1 uses GPIO38". Both versions are on the market, so neither pin is assigned.
 - **Headers:** J1 is 3V3, 3V3, RST, 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, 5V, G. J3 is G, TX, RX, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19, G, G. Every pin assigned below is on a header.
 - **Header note:** GPIO35, GPIO36 and GPIO37 are used for "communication between ESP32-S3 and SPI flash/PSRAM memory" on octal-PSRAM modules.
@@ -38,7 +38,7 @@ Each value below cites a datasheet table or page, or shows its arithmetic. `host
 - **Strapping pins** (section 3.3, Table 4): GPIO0, 3, 45, 46.
 - **JTAG:** MTCK, MTDO, MTDI and MTMS are GPIO39-42 (Table 3).
 - **USB:** USB_D-/D+ are GPIO19/20 (Table 3).
-- **GPIO47/48 voltage:** S3 DS Table 2-1, note 5, says they run at 1.8 V only on the **ESP32-S3R8V** chip. WROOM-1 v1.2 Table 1 lists no R8V variant, so GPIO47 is a 3.3 V pin on N8 and on R8 modules.
+- **GPIO47/48 voltage:** S3 DS Table 2-1, note 5, says they run at 1.8 V only on the **ESP32-S3R8V** chip. WROOM-1 v1.2 Table 1 lists no R8V variant, so GPIO47 is a 3.3 V pin on the N16R8 module.
 
 **Power-up glitches (S3 DS Table 2-2):**
 - GPIO1-14, XTAL_32K_P/N (GPIO15/16) and GPIO17 show a 60 µs low-level glitch at power-up.
@@ -83,7 +83,7 @@ That leaves 19 usable pins: GPIO1, 2, 4-18, 21 and 47. The map uses 18 of them a
 | 17 | RS485_TX | out | UART1 TXD (IO MUX default, WROOM-1 DS Table 3) |
 | 18 | RS485_RX | in | UART1 RXD; the high glitch is an input-side concern only (section 3) |
 | 21 | RS485_DE_RE | out | not in Table 2-2; 10 kΩ pull-down keeps the driver off at boot |
-| 47 | BTN_HOLD | in | diagnostic button 2; 3.3 V on WROOM-1 N8/R8 |
+| 47 | BTN_HOLD | in | diagnostic button 2; 3.3 V on WROOM-1-N16R8 |
 
 - **Analog signals:** the only analog signals are on ADC1 (GPIO1, and the spare GPIO2). EC and thermistors use the ADS1115s, so no ADC2 pin is needed while Wi-Fi is active.
 - **Status LED:** the DevKitC's own RGB LED is the status LED. Firmware drives GPIO38 or GPIO48 according to the board revision. The carrier adds no LED pin.
@@ -286,7 +286,7 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
 ## 8. Carrier BOM (per node)
 | Ref | Part number | Value / rating | Purpose |
 |---|---|---|---|
-| A1 | Espressif ESP32-S3-DevKitC-1-N8 (EOL; drop-in ESP32-S3-DevKitC-1-N16R8) | ESP32-S3-WROOM-1-N8 | MCU board on headers |
+| A1 | Espressif ESP32-S3-DevKitC-1-N16R8 | ESP32-S3-WROOM-1-N16R8 | MCU board on headers |
 | J1, J3 | 2 × 22-pin 2.54 mm female header | to match DevKitC J1/J3 | DevKitC socket |
 | F1 | Bourns MF-R065 | 0.65 A hold, 1.30 A trip, 60 V | node fuse |
 | D1 | onsemi MBRS3100T3G | 100 V 3 A Schottky | reverse polarity |

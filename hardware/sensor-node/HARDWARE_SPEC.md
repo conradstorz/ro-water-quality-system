@@ -1,7 +1,7 @@
 # Sensor node hardware specification
 ## Carrier board (ADR-0012)
 Decision record, circuits, BOM, current budget and citations: `docs/decisions/ADR-0012-sensor-node-carrier.md`. GPIO map: `hardware/sensor-node/pinout.yaml`. Datasheets: `hardware/sensor-node/datasheets/`.
-- Board: Espressif ESP32-S3-DevKitC-1-N8 (ESP32-S3-WROOM-1-N8, 8 MB flash, no PSRAM) on headers. The user guide marks it EOL; the ESP32-S3-DevKitC-1-N16R8 is a drop-in, because the map avoids the octal-PSRAM pins 35-37.
+- Board: Espressif ESP32-S3-DevKitC-1-N16R8 (ESP32-S3-WROOM-1-N16R8, 16 MB flash, 8 MB octal PSRAM) on headers (owner decision 2026-11-24; the DevKitC-1-N8 is EOL). The octal PSRAM uses GPIO35-37, which are never assigned.
 - GPIO map avoids strapping (0, 3, 45, 46), USB (19/20), JTAG (39-42), UART0 (43/44), PSRAM (35-37) and the DevKitC RGB LED (38, 48). Analog inputs are on ADC1 only (GPIO1 pressure, GPIO2 spare). The DevKitC RGB LED is the status LED.
 - 24 V trunk input via two parallel RJ45 jacks (IN/OUT, `hardware/interconnect/NODE_BUS_INTERCONNECT.md`): Bourns MF-R065 PTC, MBRS3100 reverse-polarity Schottky, SMBJ33A TVS, TI LMR36015 buck to 5 V. The 3.3 V regulator is the DevKitC's SGM2212-3.3, fed through its 5V pin by a 1N5819HW. Budget: 286.0 mA from 24 V per node. Production firmware keeps Wi-Fi off or at low duty (LDO thermal limit).
 - RS485: TI THVD1450 (3.3 V, failsafe receivers), non-isolated (GND rides the trunk), SM712 TVS on A/B, 120 ohm termination on jumper J_TERM, fitted only on the far-end node; the controller keeps its own termination on. UART1 on GPIO17/18, DE/RE on GPIO21 with a pull-down.

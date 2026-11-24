@@ -64,7 +64,7 @@
 - Checked by `test_lcd_texts_docs.py`.
 
 ## Sensor-node carrier board and ADR-0012 — 2026-11-23
-- ADR-0012 (proposed): an ESP32-S3-DevKitC-1-N8 on headers. The user guide marks it EOL; the DevKitC-1-N16R8 is a drop-in.
+- ADR-0012 (proposed): an ESP32-S3-DevKitC-1-N16R8 on headers (owner decision 2026-11-24; the DevKitC-1-N8 is EOL). GPIO35-37 belong to the octal PSRAM.
   - GPIO map in `hardware/sensor-node/pinout.yaml`. It avoids strapping, USB, JTAG, UART0, octal-PSRAM and RGB-LED pins; GPIO1 stays pressure; buttons on GPIO10 and GPIO47.
   - Trunk input: MF-R065 PTC, MBRS3100, SMBJ33A, LMR36015 buck to 5 V, and the DevKitC SGM2212 for 3.3 V.
   - Per-node budget: 286.0 mA from 24 V, replacing the 200 mA assumption.

@@ -1,7 +1,7 @@
 # Normative GPIO map of the sensor-node carrier (ADR-0012).
 # Test: host_tools/tests/test_sensor_node_carrier_docs.py
-board: Espressif ESP32-S3-DevKitC-1-N8  # user guide marks it EOL; ESP32-S3-DevKitC-1-N16R8 is the drop-in
-module: ESP32-S3-WROOM-1-N8  # 8 MB quad flash, no PSRAM
+board: Espressif ESP32-S3-DevKitC-1-N16R8  # owner decision 2026-11-24 (the DevKitC-1-N8 is EOL)
+module: ESP32-S3-WROOM-1-N16R8  # 16 MB flash, 8 MB octal PSRAM on GPIO35-37
 # Pins never assigned, with the reason (WROOM-1 datasheet v1.2 Tables 3-4, DevKitC-1 user guide v1.1).
 excluded:
   strapping: [0, 3, 45, 46]
