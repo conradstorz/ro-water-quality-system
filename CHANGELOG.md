@@ -62,3 +62,16 @@
 - Row 4 of critical pages shows `RO: <text>` from a fixed per-state table (`START FLUSH`, `STOP FLUSH`, `MAINTENANCE`, ...) instead of raw enum names.
 - Fault page header: `!! CRITICAL` / `! WARNING` with `n/m` right-aligned to column 19; counts above 99 show `99+`.
 - Checked by `test_lcd_texts_docs.py`.
+
+## Sensor-node carrier board and ADR-0012 — 2026-11-23
+- ADR-0012 (proposed): an ESP32-S3-DevKitC-1-N8 on headers. The user guide marks it EOL; the DevKitC-1-N16R8 is a drop-in.
+  - GPIO map in `hardware/sensor-node/pinout.yaml`. It avoids strapping, USB, JTAG, UART0, octal-PSRAM and RGB-LED pins; GPIO1 stays pressure; buttons on GPIO10 and GPIO47.
+  - Trunk input: MF-R065 PTC, MBRS3100, SMBJ33A, LMR36015 buck to 5 V, and the DevKitC SGM2212 for 3.3 V.
+  - Per-node budget: 279.1 mA from 24 V, replacing the 200 mA assumption.
+  - THVD1450 failsafe RS485 with SM712. Termination: controller cap on, far-end node J_TERM. Conditional controller bias values.
+  - Universal pulse front end. DS2482-100 1-Wire master (0x18) with MF-R010 and TPD1E10B06.
+  - ADS1115 at 0x48/0x49 with divider and clamp. HX711 with DVDD on 3.3 V (SparkFun board, SJ2 open). PCA9306 for the LCD.
+  - BOM, and datasheets in `hardware/sensor-node/datasheets/`.
+- Corrected the 1-Wire ROM notation line in `NODE_BUS_INTERCONNECT.md`: the CLI prints wire order, family byte first and CRC last.
+- HX711 excitation is 4.30 V AVDD, not 5 V.
+- ADR-0008/0009 TBD lines, interconnect, power and controller wiring docs updated. Checked by `test_sensor_node_carrier_docs.py`. The 1-Wire guards in `test_interconnect_docs.py` now require ADR-0012 values instead of TBD for the closed keys.

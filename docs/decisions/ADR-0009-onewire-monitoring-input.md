@@ -19,4 +19,6 @@
 - A v1.3 controller polling a v1.2 node gets ILLEGAL_ADDRESS for the longer window; the node reads MISSING and production is inhibited (fail closed).
 - Unsupported families are reported by ROM ID only; no value is guessed.
 
-**TBD (do not guess):** connector cavity numbering and voltage/current rating; pull-up value; GPIO; polyfuse rating; maximum cable length and device count; rescan interval; supported DS2438 variants and other families.
+**Resolved in ADR-0012 (2026-11-23):** bus master DS2482S-100+ on I2C at 0x18 (no GPIO); internal pull-up (RWPU 1000-1675 ohm) with active pullup; 33 ohm series resistor; polyfuse Bourns MF-R010; TPD1E10B06 ESD on DATA and +5V.
+
+**TBD (do not guess):** connector cavity numbering and voltage/current rating; maximum cable length and device count; rescan interval; supported DS2438 variants and other families.

@@ -41,8 +41,8 @@ To define:
   
   Whether any maintenance action (for example, entering calibration mode) is ever allowed needs its own safety review.
 - **Hardware:**
-  - GPIO assignment, avoiding strapping pins, ADC1 (GPIO1 is used by pressure, ADR-0010), PCNT, I2C, RS485 and 1-Wire pins.
-  - Pull-up/pull-down choice, debounce (hardware RC or firmware), ESD protection.
+  - GPIO assignment: NEXT on GPIO10, HOLD on GPIO47 (ADR-0012).
+  - Pull-up, debounce and ESD: 10 kohm pull-up, 100 nF, 1 kohm, TPD1E10B06; firmware debounce 20 ms (ADR-0012, section 7).
   - Panel-mount, waterproof button type, enclosure position and labeling.
 - **Firmware:** nonblocking button service, debounce timing, stuck-button detection (a stuck button must not lock the display), host-side tests with a mock input.
 - **Docs to update when defined:** sensor-node hardware spec, both LCD specs, `LCD_FAULT_PRIORITY_TESTS.md`, acceptance test plan, CHANGELOG.
@@ -65,14 +65,15 @@ Added 2026-11-23. Replace every hardware TBD with a specific part, value or meas
 - [ ] **Trunk cable and 1-Wire connector:** RJ45 cable type, and the Nilight connector's cavity numbering and ratings.
 
 ### Claude to design (sensor-node carrier board; no owner facts needed)
-- [ ] Full GPIO map for the ESP32-S3 carrier: avoid strapping pins (0, 3, 45, 46), USB (19/20) and JTAG (39-42); keep GPIO1 for pressure (ADR-0010); reserve two GPIOs for the diagnostic buttons (section above). Recorded in `hardware/interconnect/pinout.yaml`.
-- [ ] Trunk input stage: fuse, reverse-polarity protection, TVS, 24→5 V buck, 3.3 V regulator, per-node current budget.
-- [ ] RS485: transceiver part, bias resistor values at the controller, termination plan including the controller's jumper (ADR-0008).
-- [ ] Pulse inputs: level conditioning and protection into PCNT (finalize after the flow-meter output type is known).
-- [ ] 1-Wire front end: GPIO, series resistor, pull-up, polyfuse rating, ESD/TVS (ADR-0009).
-- [ ] ADS1115 (EC and thermistors) and HX711 wiring, I²C addresses, input protection.
-- [ ] DIP-switch node-ID input; LCD I²C connection; push-button inputs and debounce.
-- [ ] Carrier BOM with part numbers; DIN-rail enclosure and connectors.
+Designed 2026-11-23 in `docs/decisions/ADR-0012-sensor-node-carrier.md` (Proposed). Where a design part is done but an owner fact remains, the box is ticked and the remaining fact is noted.
+- [x] Full GPIO map for the ESP32-S3 carrier: avoid strapping pins (0, 3, 45, 46), USB (19/20) and JTAG (39-42); keep GPIO1 for pressure (ADR-0010); reserve two GPIOs for the diagnostic buttons (section above). Recorded in `hardware/sensor-node/pinout.yaml` (DevKitC-1-N8; buttons on GPIO10 and GPIO47).
+- [x] Trunk input stage: fuse, reverse-polarity protection, TVS, 24→5 V buck, 3.3 V regulator, per-node current budget. Budget 279.1 mA from 24 V; confirm by measurement in Stage D.
+- [x] RS485: transceiver part, bias resistor values at the controller, termination plan including the controller's jumper (ADR-0008). Whether bias is fitted depends on the Stage D idle-bus check.
+- [x] Pulse inputs: level conditioning and protection into PCNT. Universal front end done. **Remaining owner fact:** flow-meter output type, voltage and supply, which set the two jumpers.
+- [x] 1-Wire front end: DS2482-100 master (no GPIO), series resistor, pull-up, polyfuse rating, ESD/TVS (ADR-0009). **Remaining owner fact:** Nilight connector cavity numbering and ratings.
+- [x] ADS1115 (EC and thermistors) and HX711 wiring, I²C addresses, input protection. **Remaining owner facts:** EC module output range (the divider covers up to 5.5 V), thermistor nominal resistance (sets Rref), load-cell bridge resistance.
+- [x] DIP-switch node-ID input; LCD I²C connection; push-button inputs and debounce. Panel button model and position stay with the enclosure layout.
+- [x] Carrier BOM with part numbers; DIN-rail enclosure and connectors. **Remaining:** the enclosure model and dimensions, and terminal-block catalog numbers, chosen at layout.
 
 ### Bench measurements (Stage D)
 - [ ] Maximum trunk length, voltage drop, per-node current.

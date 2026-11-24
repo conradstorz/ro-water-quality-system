@@ -13,7 +13,8 @@ pins:
   8: GND
 shell: SHIELD
 
-# 1-Wire monitoring bus. NOT part of the RJ45 trunk. Nothing here is verified; every TBD stays TBD (AGENTS.md rule 5).
+# 1-Wire monitoring bus. NOT part of the RJ45 trunk. Carrier-side values are designed in ADR-0012;
+# connector, cable and device-count items stay TBD (owner part or bench, AGENTS.md rule 5).
 onewire:
   connector: Nilight 3-pin waterproof male/female harness connector
   form: inline wire-to-wire (not panel mount); one male-end and one female-end pigtail per node, through a cable gland
@@ -28,9 +29,11 @@ onewire:
   rating_voltage: TBD
   rating_current: TBD
   power: node 5V rail, non-parasitic
-  polyfuse: TBD
-  pull_up: TBD
-  gpio: TBD
+  polyfuse: Bourns MF-R010, 0.10 A hold, 0.20 A trip at 23 C, 60 V (ADR-0012)
+  pull_up: DS2482-100 internal RWPU 1000-1675 ohm to 3.3 V with active pullup; external pull-up unfitted (ADR-0012)
+  gpio: none; DS2482S-100+ I2C 1-Wire master at 0x18 on the shared I2C bus (ADR-0012)
+  series_resistor: 33 ohm between DS2482 IO and DATA (ADR-0012)
+  esd: TI TPD1E10B06 on DATA and on +5V (ADR-0012)
   max_length: TBD
   shield: continuous along the chain, bonded at one point only; bonding location TBD
   max_devices: TBD  # electrical limit; the protocol slot limit is 8 (not an electrical rating)

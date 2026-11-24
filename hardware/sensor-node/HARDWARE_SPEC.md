@@ -1,19 +1,23 @@
 # Sensor node hardware specification
-## Proposed modules
-- ESP32-S3 dev board with adequate exposed GPIO, UART and I2C; exact board TBD.
-- 3.3V-compatible RS485 transceiver; isolation preferred if budget permits; check bus reference, grounding, termination, bias.
-- 2 × HX711 interfaces, each with separate data; shared clock optional after testing.
-- 2 × conditioned conductivity modules; low-EC range must be verified for permeate; probes are not directly connected to ADC.
-- External ADC proposed (ADS1115 or better as justified), correct voltage ranges and protection. ADC resolution does not equal sensor accuracy.
-- 2 pulse inputs with level conditioning, input protection, and hardware pulse counting where possible.
-- 2 temperature sensor channels, interface TBD until flow meters selected.
+## Carrier board (ADR-0012)
+Decision record, circuits, BOM, current budget and citations: `docs/decisions/ADR-0012-sensor-node-carrier.md`. GPIO map: `hardware/sensor-node/pinout.yaml`. Datasheets: `hardware/sensor-node/datasheets/`.
+- Board: Espressif ESP32-S3-DevKitC-1-N8 (ESP32-S3-WROOM-1-N8, 8 MB flash, no PSRAM) on headers. The user guide marks it EOL; the ESP32-S3-DevKitC-1-N16R8 is a drop-in, because the map avoids the octal-PSRAM pins 35-37.
+- GPIO map avoids strapping (0, 3, 45, 46), USB (19/20), JTAG (39-42), UART0 (43/44), PSRAM (35-37) and the DevKitC RGB LED (38, 48). Analog inputs are on ADC1 only (GPIO1 pressure, GPIO2 spare). The DevKitC RGB LED is the status LED.
+- 24 V trunk input via two parallel RJ45 jacks (IN/OUT, `hardware/interconnect/NODE_BUS_INTERCONNECT.md`): Bourns MF-R065 PTC, MBRS3100 reverse-polarity Schottky, SMBJ33A TVS, TI LMR36015 buck to 5 V. The 3.3 V regulator is the DevKitC's SGM2212-3.3, fed through its 5V pin by a 1N5819HW. Budget: 279.1 mA from 24 V per node. Production firmware keeps Wi-Fi off or at low duty (LDO thermal limit).
+- RS485: TI THVD1450 (3.3 V, failsafe receivers), non-isolated (GND rides the trunk), SM712 TVS on A/B, 120 ohm termination on jumper J_TERM, fitted only on the far-end node; the controller keeps its own termination on. UART1 on GPIO17/18, DE/RE on GPIO21 with a pull-down.
+- 2 × HX711 (GPIO11-14), separate DOUT and SCK each. DVDD on 3.3 V, VSUP on 5 V, AVDD 4.30 V from the HX711 regulator. Approved board: SparkFun Load Cell Amplifier HX711 with solder jumper SJ2 (VCC-VDD) open. Boards that tie VCC and VDD would put 5 V on DOUT and are not allowed.
+- 2 × conditioned conductivity modules; low-EC range must be verified for permeate; probes are not directly connected to ADC. Outputs into ADS1115 #1 (0x48) through a fitted 10 k/10 k divider and BAT54S clamp, so any output up to 5.5 V stays below the ADS1115 3.3 V supply. ADC resolution does not equal sensor accuracy.
+- 2 thermistor channels on ADS1115 #2 (0x49), ratiometric against the 3.3 V rail. The reference resistor equals the thermistor nominal value, which is an owner fact.
+- 2 pulse inputs (GPIO15/16, PCNT units 0/1): one front end for open-collector or 5-24 V push-pull outputs; 10 k/22 k divider, BAT54S clamp, SN74LVC2G17 Schmitt buffer, SMAJ33A TVS; jumpers for the open-collector pull-up and for a 5 V or 24 V meter supply.
 - 1 optional analog RO pressure transducer (RO feed: LFT2000 0-16 bar 4-20 mA, ADR-0010); independent hardwired pressure cutoff remains mandatory.
-- 24V trunk input via RJ45 (see `hardware/interconnect/NODE_BUS_INTERCONNECT.md`): fuse, reverse-polarity protection, TVS, 5V buck, 3.3V regulated logic; verify each sensor supply. Two parallel RJ45 jacks (IN/OUT).
-- Node ID: 4-position DIP switch read at boot, IDs 1-15; duplicate or out-of-range ID leaves the node silent.
+- Node ID: 4-position DIP switch on GPIO4-7 with 10 kohm pull-ups, read at boot, IDs 1-15; duplicate or out-of-range ID leaves the node silent.
+- LCD: I2C through a TI PCA9306 level translator (3.3 V to 5 V), because the PCF8574 backpack needs VIH 0.7 × VCC. The I2C bus runs at 100 kHz.
+- Diagnostic buttons: NEXT on GPIO10, HOLD on GPIO47. Each has a 10 kohm pull-up, 100 nF and 1 kohm (1 ms RC), and TPD1E10B06 ESD protection; firmware debounces at 20 ms. Display-only.
+- Owner facts still open: flow-meter output type and supply, EC module output range, thermistor nominal resistance, load-cell bridge resistance, LCD module, 1-Wire connector cavities.
 ## Node types
 One carrier board serves all node types; the firmware profile selects the front end.
 - RO skid (unit 1, `node_type` 0): 2 × ADS1115 (EC on one, thermistors on the other), 2 pulse inputs on ESP32 PCNT, 2 EC modules, 2 thermistors, RO feed pressure on ESP32 GPIO1 (ADR-0010).
-- Tank (unit 2, `node_type` 1): 2 × HX711 (load cells, 5V excitation), optional pressure on ESP32 GPIO1, same front end as the RO skid; no ADS1115 (ADR-0010).
+- Tank (unit 2, `node_type` 1): 2 × HX711 (load cells, 4.30 V AVDD excitation from a 5 V supply), optional pressure on ESP32 GPIO1, same front end as the RO skid; no ADS1115 (ADR-0010).
 ## Optional pressure channel (all nodes)
 - Decision record and schematic: ADR-0010. Monitoring only; the independent hardwired pressure cutoff remains mandatory. Not installed (`installed_mask` bit 6 clear) is not a fault; installed but implausible or lost is.
 - RO feed transmitter: Lefoo LFT2000, 0-16 bar (232.1 psi full scale), 2-wire 4-20 mA. 4-20 mA is the only supported pressure signal.
@@ -24,10 +28,10 @@ One carrier board serves all node types; the firmware profile selects the front 
 ## 1-Wire front end (all nodes, optional population)
 - Monitoring only; never an interlock. See `hardware/interconnect/NODE_BUS_INTERCONNECT.md` and ADR-0009.
 - Connector: Nilight 3-pin waterproof male/female harness connector (inline, pigtail through a cable gland). Cavity numbering TBD; voltage and current rating TBD.
-- Power: node 5 V rail, non-parasitic, through a polyfuse. Rating TBD.
-- Bus driver: one ESP32 GPIO (TBD), series resistor (value TBD), pull-up to 3.3 V (value TBD), ESD/TVS protection on DATA.
+- Power: node 5 V rail, non-parasitic, through a Bourns MF-R010 polyfuse (0.10 A hold at 23 °C, ADR-0012).
+- Bus driver: DS2482S-100+ I2C 1-Wire master at 0x18, no ESP32 GPIO; 33 ohm series resistor; internal pull-up to 3.3 V (RWPU 1000-1675 ohm) with active pullup; TPD1E10B06 ESD on DATA and +5V (ADR-0012). DATA stays at 3.3 V logic.
 - Maximum cable length and device count TBD.
 ## Wiring
 Use terminal blocks, labeled signal/ground/supply, strain relief, sensor cable separation from AC motor conductors, and a documented shield/ground scheme. RS485 twisted pair plus suitable reference conductor. No unverified 5V signal into ESP32 3.3V GPIO.
 ## Mechanical
-DIN rail prototype carrier/enclosure with accessible USB programming port and service loop. Waterproofing and condensation mitigation appropriate to utility room.
+DIN rail prototype carrier/enclosure with accessible USB programming port and service loop. Enclosure model and dimensions TBD (ADR-0012, section 9). Waterproofing and condensation mitigation appropriate to utility room.

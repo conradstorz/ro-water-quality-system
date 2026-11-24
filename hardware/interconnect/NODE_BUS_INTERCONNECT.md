@@ -27,16 +27,18 @@ Shielded Cat5e or Cat6, T568B wiring, **red** cable and red jacks. Shielded RJ45
 Daisy chain: controller -> node 1 -> node 2 -> ... Every node has two RJ45 jacks, IN and OUT, wired in parallel on the board. Stubs must be short (only the on-board trace to the transceiver). No star or tee wiring.
 
 ## Termination and bias
-- Termination: switchable 120 ohm at the two end devices of the chain only. Any other device leaves it off.
-- Bias: at the controller only (one point). Bias resistor values are TBD pending the transceiver choice and a bench check of the idle bus.
-- The controller has its own 120 ohm jumper cap (`hardware/main-controller/WIRING.md`); account for it when deciding which devices terminate. TBD.
+Decided in ADR-0012, section 3.
+- Termination: 120 ohm at the two end devices of the chain only. The controller is the head of the chain, so its own 120 ohm jumper cap (`hardware/main-controller/WIRING.md`) stays on. The far-end node fits its J_TERM jumper (120 ohm 1 %, 0.25 W). Every other node leaves it off.
+- Node transceiver: TI THVD1450, 3.3 V, with open, short and idle-bus failsafe receivers. The nodes need no bias.
+- Bias: only if the Stage D idle-bus check shows the controller's receiver needs it, and then at the controller only: 390 ohm pull-up on A and 390 ohm pull-down on B from 3.3 V (236 mV idle), or 680 ohm each from 5 V (211 mV). Fit nothing before that check.
 
 ## Shield
 Shell and shield wire bonded to chassis at the controller end only. At nodes the shield is carried through IN to OUT but not bonded to the node ground.
 
 ## Power
 - One 24 V supply feeds the controller (accepts 7-36 V) and all nodes through the trunk. Fuse per node.
-- Per-node current under 200 mA is an **ASSUMPTION**, not a measurement.
+- Per-node budget: 279.1 mA from 24 V, with every front end populated and owner parts carried as stated allowances (ADR-0012, section 2.1). This is a computed budget, not a measurement; confirm it in Stage D.
+- Node fuse: Bourns MF-R065 resettable PTC, 0.47 A hold at 50 °C (ADR-0012). Input: MBRS3100 reverse-polarity Schottky, SMBJ33A TVS, LMR36015 buck to 5 V; 3.3 V comes from the DevKitC's SGM2212.
 - Maximum trunk length and voltage drop are TBD. Measure in Stage D; do not rely on any figure before then.
 
 ## Ethernet hazard
@@ -60,18 +62,19 @@ This connector is not for the RJ45 RO BUS. It is a separate, local sensor bus on
 - Label every plug "1-WIRE".
 - Keep 1-WIRE wiring away from the 24 V trunk and RS485 wiring.
 - Hazard: generic 3-pin automotive plugs mate with each other. Only the label and routing prevent a wrong mating.
-- Power: node 5 V rail, non-parasitic, through a polyfuse (rating TBD).
+- Power: node 5 V rail, non-parasitic, through a Bourns MF-R010 polyfuse (0.10 A hold at 23 °C, ADR-0012).
 - Shield, if used, is continuous along the chain and bonded at one point only; the bonding location is TBD.
-- ROM notation: the `ro-tools` CLI prints a ROM as a 16-hex-digit integer with the CRC byte first and the family byte last (the reverse of the usual 1-Wire byte-array notation, which lists family first). Controller bindings use that same integer form.
+- ROM notation: the `ro-tools` CLI prints a ROM as 16 hex digits in wire order, family byte first and CRC byte last (`format_rom` in `host_tools/src/ro_tools/onewire.py`). Controller bindings use that same text.
 - rating_voltage: TBD
 - rating_current: TBD
-- Pull-up value, GPIO, maximum cable length and device count: TBD (measure in Stage D).
+- Bus master: DS2482S-100+ I2C 1-Wire master at 0x18, so no GPIO is used; internal pull-up (RWPU 1000-1675 ohm) with active pullup; 33 ohm series resistor; TPD1E10B06 ESD on DATA and +5V (ADR-0012).
+- Maximum cable length and device count: TBD (measure in Stage D).
 
 ## Open TBDs
-- Termination and bias resistor values; transceiver part.
-- Maximum trunk length, voltage drop and per-node current (measure in Stage D).
-- Isolated versus non-isolated transceiver, ground scheme (verify in Stage D).
-- Controller RS485 A/B polarity versus the vendor labels; whether the controller biases the bus.
-- Whether the controller's built-in 120 ohm termination is at a chain end.
-- ESP32-S3 board model and GPIO assignments (not defined here).
-- 1-Wire (all TBD): connector cavity numbering, connector voltage/current rating, polyfuse rating, pull-up value, GPIO, maximum cable length and device count.
+- Whether the controller needs the bias above (Stage D idle-bus check).
+- Maximum trunk length, voltage drop and measured per-node current (Stage D).
+- Ground scheme with non-isolated node transceivers (verify in Stage D).
+- Controller RS485 A/B polarity versus the vendor labels.
+- 1-Wire: connector cavity numbering, connector voltage/current rating, maximum cable length and device count.
+
+Closed by ADR-0012: transceiver part, termination plan (controller cap on, far-end node J_TERM), bias values, per-node current budget, board model and GPIO map (`hardware/sensor-node/pinout.yaml`), 1-Wire polyfuse, pull-up, series resistor and bus master.
