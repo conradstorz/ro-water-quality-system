@@ -29,7 +29,7 @@ Each value below cites a datasheet table or page, or shows its arithmetic. `host
 - **Boot:** the Boot button is the download button, on GPIO0 (a strapping pin).
 - **Schematic:** `SCH_ESP32-S3-DevKitC-1_V1.1_20221130.pdf`.
   - The 3.3 V regulator is **U2 SGM2212-3.3XKC3G/TR**.
-  - Each USB VBUS reaches VCC_5V through a **1N5819HW-7-F** Schottky diode (D1, D7).
+  - Each USB VBUS reaches VCC_5V through a **1N5819HW-7-F** Schottky diode (D1, D7). This was read from the extracted schematic text; confirm the diode orientation and that J1 pin 21 is VCC_5V with a meter (Stage D).
   - No 32.768 kHz crystal is fitted, so GPIO15 and GPIO16 are free.
 
 **Module facts (WROOM-1 DS):**
@@ -45,6 +45,7 @@ Each value below cites a datasheet table or page, or shows its arithmetic. `host
 - GPIO18 shows a 60 µs **high**-level glitch.
 - GPIO19/20 also glitch.
 - GPIO21 and GPIO47 are not listed.
+- Footnote 1: a low-level glitch means the pin is a low-level output for that time. Any glitching pin that a push-pull source drives gets a 1 kΩ series resistor, limiting the contention current to 3.3 mA: GPIO11/13 (HX711 DOUT), GPIO15/16 (LVC2G17 outputs) and GPIO18 (THVD1450 R).
 
 **Pulse counters:** S3 TRM chapter 38 says the PCNT "has four independent pulse counters called units", each with two channels and a glitch filter. Two units are used.
 
@@ -73,12 +74,12 @@ That leaves 19 usable pins: GPIO1, 2, 4-18, 21 and 47. The map uses 18 of them a
 | 8 | I2C_SDA | open drain | ADS1115 ×2, DS2482-100, PCA9306 to LCD |
 | 9 | I2C_SCL | open drain | same bus, 100 kHz |
 | 10 | BTN_NEXT | in | diagnostic button 1 |
-| 11 | HX711_A_DOUT | in | tank load cell A |
+| 11 | HX711_A_DOUT | in | tank load cell A; 1 kΩ series (power-up low glitch vs push-pull DOUT) |
 | 12 | HX711_A_SCK | out | low glitch only (Table 2-2), harmless |
-| 13 | HX711_B_DOUT | in | tank load cell B |
+| 13 | HX711_B_DOUT | in | tank load cell B; 1 kΩ series |
 | 14 | HX711_B_SCK | out | low glitch only, harmless |
-| 15 | PULSE_PERMEATE | in | PCNT unit 0 |
-| 16 | PULSE_CONCENTRATE | in | PCNT unit 1 |
+| 15 | PULSE_PERMEATE | in | PCNT unit 0; 1 kΩ series from the LVC2G17 output |
+| 16 | PULSE_CONCENTRATE | in | PCNT unit 1; 1 kΩ series |
 | 17 | RS485_TX | out | UART1 TXD (IO MUX default, WROOM-1 DS Table 3) |
 | 18 | RS485_RX | in | UART1 RXD; the high glitch is an input-side concern only (section 3) |
 | 21 | RS485_DE_RE | out | not in Table 2-2; 10 kΩ pull-down keeps the driver off at boot |
@@ -97,18 +98,19 @@ RJ45 IN/OUT +24V (pins 1,2) -- F1 Bourns MF-R065 PTC -- D1 onsemi MBRS3100T3G (a
                                                                        TVS1 Bourns SMBJ33A to GND
 24V_PROT -> pressure loop LM317 (ADR-0010), flow-meter supply jumper (section 4)
 24V_PROT -> U1 TI LMR36015ARNXR buck, 400 kHz, 5.0 V:
-            RFBT 100 kΩ / RFBB 24.9 kΩ, L 10 µH, COUT 3 × 22 µF, CIN 4.7 µF + 2 × 220 nF, CFF 20 pF
-            (LMR36015 Table 10-1 and section 10.2 design example, 5 V / 400 kHz row)
+            RFBT 100 kΩ / RFBB 24.9 kΩ, L 15 µH, COUT 3 × 22 µF, CIN 4.7 µF + 2 × 220 nF, CFF 20 pF
+            (LMR36015 Table 10-1, 400 kHz / 5 V row)
 5V_CARRIER -> LCD, EC modules, HX711 VCC, 1-Wire +5V, pulse pull-ups, PCA9306 5 V side
 5V_CARRIER -- D2 Diodes 1N5819HW-7 -- DevKitC 5V pin -> SGM2212-3.3 (on DevKitC) -> 3V3 pin
-3V3 (from DevKitC 3V3 pin) -> RS485, ADS1115, DS2482, HX711 DVDD, LVC2G17, PCA9306 3.3 V side, pull-ups
+3V3 (from DevKitC 3V3 pin) -> RS485, ADS1115, DS2482, HX711 DVDD, LVC2G17, PCA9306 3.3 V side, pull-ups,
+                               R_BLEED 120 Ω 1 % 0.25 W to GND (sinks fault injection; the LDO cannot sink)
 ```
 - **Fuse:** F1 is a Bourns **MF-R065** resettable PTC, rated 60 V Vmax, 0.65 A hold and 1.30 A trip at 23 °C (MF-R datasheet Rev. AR, electrical table). At 50 °C ambient it is rated 0.47 A hold, at 60 °C 0.41 A (thermal derating table). Sizing is in section 2.1.
 - **Reverse polarity:** D1 is an onsemi **MBRS3100T3G**, a series Schottky: 100 V VRRM, 3.0 A, VF max 0.79 V at 3 A and 25 °C (datasheet Rev. 8, Maximum Ratings and Electrical Characteristics). A reversed supply is blocked, not crowbarred.
 - **TVS:** TVS1 is a Bourns **SMBJ33A** (SMBJ datasheet Rev. 09/20): VRWM 33 V, VBR 36.7-40.6 V, VC 53.3 V at IPP 11.3 A (10/1000 µs), 600 W.
   - The LMR36015's VIN absolute maximum is 66 V (Absolute Maximum Ratings), which is above 53.3 V.
   - Recorded gap: the ADR-0010 LM317 has a 40 V input-to-output absolute maximum (LM317 datasheet SLVS044Z, Absolute Maximum Ratings). With the pressure terminals shorted and a full surge at the same time, it would see 53.3 − 2.9 = 50.4 V. Normal shorted-loop operation is 24 − 2.9 = 21.1 V. This double fault is accepted for a monitoring channel; a 60 V-rated limiter is the upgrade path.
-- **Buck converter:** U1 is a TI **LMR36015ARNXR**: 4.2-60 V input, 1.5 A, "90% efficiency at 400 kHz (24 VIN, 5 VOUT, 1 A)" (Features). With RFBT 100 kΩ and RFBB 24.9 kΩ (Table 10-1), it gives 5.0 V.
+- **Buck converter:** U1 is a TI **LMR36015ARNXR**: 4.2-60 V input, 1.5 A, "90% efficiency at 400 kHz (24 VIN, 5 VOUT, 1 A)" (Features). With RFBT 100 kΩ and RFBB 24.9 kΩ (Table 10-1) and VFB 0.985-1.015 V (Electrical Characteristics), VOUT = VFB × (1 + 100 / 24.9) = 4.94-5.09 V, nominal 5.02 V.
 - **3.3 V regulator:** the regulator is the DevKitC's **SGM2212-3.3**, rated 800 mA output (SGM2212 datasheet Rev. A.2, Features).
   - Its dropout at 800 mA is at most 450 mV (Electrical Characteristics), and its SOT-223 θJA is 117 °C/W (Package Thermal Resistance).
   - WROOM-1 DS Table 10 requires an external supply able to deliver at least 0.5 A. 800 mA meets that.
@@ -117,10 +119,16 @@ RJ45 IN/OUT +24V (pins 1,2) -- F1 Bourns MF-R065 PTC -- D1 onsemi MBRS3100T3G (a
   - The DevKitC's own D1/D7 stop the carrier back-feeding the PC.
   - D2 stops USB-only power (bench flashing) from back-feeding the buck output and the field loads.
   - LDO headroom: 5.0 − 0.45 = 4.55 V ≥ 3.3 + 0.45 = 3.75 V.
-  - Whether USB and the 5V pin may be live together is left as a bench check, because the user guide calls the supply options mutually exclusive (Stage D).
+  - Whether USB and the 5V pin may be live together is left as a bench check, because the user guide calls the supply options mutually exclusive (Stage D). Until then, flash over USB with the trunk unplugged; D2 keeps USB power off the carrier's 5 V loads.
+- **3V3 fault injection and bleeder:** the SGM2212 is a linear regulator and cannot sink current, so 24 V field faults through the clamps must not lift the 3V3 rail. Worst case, with every field input at 24 V at once:
+  - pulse 2 × 1.86 = 3.72 mA (section 4);
+  - EC clamps 2 × 2.03 = 4.06 mA and thermistor clamps 2 × 2.03 = 4.06 mA (section 6, (24 − 3.7) / 10 kΩ);
+  - thermistor Rref 2 × (24 − 3.3) / 3.3 kΩ = 12.55 mA (section 6);
+  - pressure clamp 2.0 mA (ADR-0010).
+  - Total 26.39 mA. No minimum ESP32 load is specified (WROOM-1 DS Table 13 gives typical values only), so R_BLEED = 120 Ω sinks 3.3 / 120 = 27.5 mA by itself (91 mW, within 0.25 W).
 - **LDO thermal limit:** the worst case ignores D2's drop, so the SGM2212 input is 5.0 V.
-  - With Wi-Fi off, the 3V3 load is 208.1 mA: 355.0 is replaced by 107.9 mA, the WROOM-1 DS Table 13 maximum at 240 MHz, dual core, all peripheral clocks on. The LDO then dissipates (5.0 − 3.3) × 0.2081 = 0.354 W, a 41.4 °C rise.
-  - With continuous Wi-Fi TX (455.2 mA) it would dissipate 0.774 W, a 90.5 °C rise.
+  - With Wi-Fi off, the 3V3 load is 235.6 mA: 355.0 is replaced by 107.9 mA, the largest typical figure in WROOM-1 DS Table 13 (240 MHz, dual core, all peripheral clocks on). The LDO then dissipates (5.0 − 3.3) × 0.2356 = 0.401 W, a 46.9 °C rise.
+  - With continuous Wi-Fi TX (482.7 mA) it would dissipate 0.821 W, a 96.0 °C rise.
   - **Rule:** production firmware keeps Wi-Fi off, or at a low duty cycle that a Stage D thermal check confirms. The Wi-Fi peak is used only for fuse and regulator sizing.
 
 ### 2.1 Per-node current budget
@@ -139,23 +147,24 @@ All front ends are counted as populated, which is conservative for both node typ
 | Thermistor reference resistors, 2 × 1.0 (allowance, Rref ≥ 3.3 kΩ) | 3V3 | 2.0 | allowance |
 | 3V3 reference divider on ADS1115 #2, 3.3 V / 20 kΩ | 3V3 | 0.2 | arithmetic |
 | DevKitC on-board LEDs and bridge (allowance) | 3V3 | 25.0 | allowance |
-| **3V3 total** | 3V3 | 455.2 | sum |
-| DevKitC 5V pin: the 3V3 total through the SGM2212 | 5V | 455.2 | linear regulator: I_in ≈ I_out |
+| 3V3 bleeder, 3.3 V / 120 Ω | 3V3 | 27.5 | arithmetic (sinks fault injection) |
+| **3V3 total** | 3V3 | 482.7 | sum |
+| DevKitC 5V pin: the 3V3 total through the SGM2212 | 5V | 482.7 | linear regulator: I_in ≈ I_out |
 | LCD module with backlight (allowance; owner part) | 5V | 150.0 | allowance |
 | HX711 analog supply ×2, 1.4 mA each | 5V | 2.8 | HX711 Table 2, analog supply current incl. regulator |
 | Load-cell excitation ×2, 4.30 V / 350 Ω (allowance; bridge resistance is an owner fact) | 5V | 24.6 | allowance |
 | EC modules ×2, 50 mA each (allowance; owner part) | 5V | 100.0 | allowance |
 | 1-Wire devices (allowance; DS18B20 IDD is 1.5 mA max, 8 × 1.5 = 12) | 5V | 50.0 | allowance |
 | Pulse open-collector pull-ups, 2 × 5 V / 4.7 kΩ | 5V | 2.1 | arithmetic |
-| **5V total** | 5V | 784.7 | sum |
-| Buck input: 5.0 V × 0.7847 A / 0.85 / (24 − 0.79) V | 24V | 198.9 | η 0.85 is below the cited 90 % point; D1 VF 0.79 V |
+| **5V total** | 5V | 812.2 | sum |
+| Buck input: 5.0 V × 0.8122 A / 0.85 / (24 − 0.79) V | 24V | 205.8 | η 0.85 is below the cited 90 % point; D1 VF 0.79 V |
 | Pressure loop, 1.30 V / 43 Ω | 24V | 30.2 | ADR-0010, LM317 Vref max |
 | Flow-meter supply, 2 × 25 mA (allowance; owner part) | 24V | 50.0 | allowance |
-| **24V total** | 24V | 279.1 | sum |
+| **24V total** | 24V | 286.0 | sum |
 
-- **Per node:** 279.1 mA from 24 V. The earlier "<200 mA" assumption is replaced. At an 18 V node input, the buck draws 4.616 W / 17.21 V = 268.2 mA, so the total is 348.4 mA.
-- **Fuse margin:** the MF-R065 holds 0.47 A at 50 °C, which is 0.47 / 0.2791 = 1.68 × the 24 V budget. At 60 °C it holds 0.41 A (1.47 ×). It also exceeds the 18 V case. The design ambient of 50 °C inside the enclosure is a design choice; check it in Stage D.
-- **Controller trunk fuse F4:** size it for the sum of the node budgets (two nodes: 558.2 mA). F4 itself is outside this ADR.
+- **Per node:** 286.0 mA from 24 V. The earlier "<200 mA" assumption is replaced. At an 18 V node input, the buck draws 4.778 W / 17.21 V = 277.6 mA, so the total is 357.8 mA.
+- **Fuse margin:** the MF-R065 holds 0.47 A at 50 °C, which is 0.47 / 0.2860 = 1.64 × the 24 V budget. At 60 °C it holds 0.41 A (1.43 ×). It also exceeds the 18 V case. The design ambient of 50 °C inside the enclosure is a design choice; check it in Stage D.
+- **Controller trunk fuse F4:** size it for the sum of the node budgets (two nodes: 572.0 mA). F4 itself is outside this ADR.
 
 ## 3. RS485 (non-isolated; GND rides the trunk, ADR-0008)
 ```
@@ -205,7 +214,7 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
 - **Maximum push-pull low:** 0.8 / 0.6875 = 1.16 V.
 - **Open collector with JP_OC fitted:** high is 5 × 22 / 36.7 = 3.00 V. With the 5 V rail at 4.75 V it is 2.85 V. Both are above 2.22 V. The output must sink 5 V / 4.7 kΩ = 1.06 mA.
 - **24 V push-pull:** N would be 16.5 V unclamped. It is clamped at 3.3 + 0.40 = 3.70 V; BAT54S VF max is 400 mV at 10 mA (DS11005 Electrical Characteristics). 3.70 V is below VI max 5.5 V.
-  - Clamp current is (24 − 3.70) / 10 k − 3.70 / 22 k = 1.86 mA, well under BAT54S IO 200 mA. The 3V3 rail's load, at least 107.9 mA, absorbs it.
+  - Clamp current is (24 − 3.70) / 10 k − 3.70 / 22 k = 1.86 mA, well under BAT54S IO 200 mA. R_BLEED guarantees the 3V3 rail absorbs it (section 2).
   - At the TVS working voltage of 33 V: 2.93 mA, and R1 dissipates 86 mW.
 - **24 V on SIG with JP_OC fitted (miswire):** (24 − 5) / 4.7 kΩ = 4.0 mA back into the 5 V rail, which its load absorbs.
 - **Filtering:** RC 6.9 kΩ × 1 nF = 6.9 µs. The PCNT glitch filter (S3 TRM chapter 38) is set in firmware.
@@ -220,7 +229,7 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
   - An ESP32 GPIO is limited to VDD + 0.3 V (WROOM-1 DS Table 11, VIH max). A 5 V DATA line on a GPIO would exceed it.
 - **Other benefits:** timing is done in hardware, so there is no bit-banging under Wi-Fi or RTOS interrupts. The DS2482 also frees one GPIO; the map in section 1 has no spare for a 1-Wire pin otherwise.
 - **Circuit:**
-  - DS2482S-100+: VCC 3V3 (the 3.3 V option is 2.9-3.7 V), AD0 = AD1 = GND (**0x18**), SLPZ to VCC, PCTLZ not connected. It sits on the shared I²C bus.
+  - DS2482S-100+: VCC 3V3 (the 3.3 V option is 2.9-3.7 V), AD0 = AD1 = GND (**0x18**), PCTLZ not connected. It sits on the shared I²C bus.
   - IO goes through a **33 Ω** series resistor to connector DATA.
   - **Pull-up:** the internal RWPU of 1000-1675 Ω, with APU enabled in firmware. An external pull-up footprint is left unfitted.
   - **ESD:** a TI **TPD1E10B06DPYR** from DATA to GND at the connector, operating ±5.5 V, IEC 61000-4-2 ±30 kV (SLLSEB1G, ESD Ratings and Recommended Operating Conditions). A second TPD1E10B06 goes from +5V to GND.
@@ -248,7 +257,7 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
 - **Thermistor inputs (#2 AIN0, AIN1):**
   - Circuit: Rref from 3V3 to terminal T+, thermistor from T+ to T− (GND), and 10 kΩ from T+ to AIN, with a BAT54S clamp and 100 nF at AIN.
   - #2 AIN2 reads the 3V3 rail through a 10 kΩ / 10 kΩ divider (1.65 V), so firmware computes the thermistor ratiometrically.
-  - A 24 V fault on T+ gives (24 − 3.7) / 10 k = 2.0 mA into the clamp.
+  - A 24 V fault on T+ gives (24 − 3.7) / 10 k = 2.0 mA into the clamp, plus (24 − 3.3) / Rref back into 3V3 through Rref itself (6.3 mA at 3.3 kΩ). R_BLEED absorbs both (section 2).
   - Rref equals the thermistor's nominal resistance, which is an owner fact. The budget allows 1 mA per channel (Rref ≥ 3.3 kΩ).
 - **HX711, digital supply:** the datasheet allows the digital supply DVDD to be 2.6-5.5 V and VSUP 2.7-5.5 V (Pin Description). It says "Digital power supply (DVDD) should be the same power supply as the MCU power supply" (Power Supply Options). **DVDD = 3V3**, so DOUT never exceeds 3.3 V.
 - **HX711, analog supply:** VSUP = 5 V. AVDD comes from the on-chip regulator: "VAVDD = VBG × (R1 + R2) / R1 … designed with a minimum of 100 mV below VSUP voltage".
@@ -283,12 +292,14 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
 | D1 | onsemi MBRS3100T3G | 100 V 3 A Schottky | reverse polarity |
 | TVS1 | Bourns SMBJ33A | VRWM 33 V, 600 W | trunk surge |
 | U1 | TI LMR36015ARNXR | 60 V 1.5 A buck, 400 kHz | 24 V to 5 V |
-| L1, C, R | per LMR36015 Table 10-1 | 10 µH; 3 × 22 µF; 4.7 µF + 2 × 220 nF; 100 kΩ / 24.9 kΩ; 20 pF | buck components |
+| L1, C, R | per LMR36015 Table 10-1 | 15 µH; 3 × 22 µF; 4.7 µF + 2 × 220 nF; 100 kΩ / 24.9 kΩ; 20 pF | buck components |
 | D2 | Diodes 1N5819HW-7 | 40 V 1 A Schottky | 5 V to DevKitC 5V pin, no back-feed |
 | U2 | TI THVD1450DR | 3.3 V RS485, failsafe | transceiver |
 | TVS2 | Littelfuse SM712-02HTG | −7/+12 V | RS485 A/B protection |
 | R_T, J_TERM | 120 Ω 1 % 0.25 W + 2-pin jumper | 120 Ω | switchable termination |
 | R | 10 kΩ (DE pull-down, RX pull-up), 1 kΩ (RX series) | | RS485 logic |
+| R | 1 kΩ ×4 | | series on GPIO11, 13, 15, 16 (power-up glitch contention) |
+| R_BLEED | 120 Ω 1 % 0.25 W | 27.5 mA | 3V3 bleeder for fault injection |
 | U3 | TI SN74LVC2G17DBVR | dual Schmitt buffer | pulse inputs |
 | TVS3, TVS4 | Bourns SMAJ33A | VRWM 33 V | pulse SIG surge |
 | R | 10 kΩ 0.25 W, 22 kΩ, 4.7 kΩ + JP_OC, 1 nF | | pulse dividers and pull-ups |
@@ -349,7 +360,7 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
 - **Bench (Stage D):**
   - idle-bus bias at the controller, and the A/B polarity;
   - trunk voltage drop and per-node current against this budget;
-  - USB plus 5V-pin coexistence on the DevKitC;
+  - USB plus 5V-pin coexistence on the DevKitC, and the D1/D7 orientation;
   - SGM2212 temperature with the production firmware;
   - 1-Wire maximum length and device count;
   - I²C rise time with the LCD cable;

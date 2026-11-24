@@ -27,6 +27,14 @@ PCNT_UNITS = 4  # S3 TRM v1.2 chapter 38
 DEVKITC_HEADERS = {4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14}  # J1
 DEVKITC_HEADERS |= {43, 44, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19}  # J3
 HIGH_GLITCH_AT_POWER_UP = {18}  # S3 datasheet Table 2-2
+GLITCH_AT_POWER_UP = set(range(1, 19))  # GPIO1-18 (15/16 as XTAL_32K_P/N), Table 2-2
+PUSH_PULL_DRIVEN = {
+    "HX711_A_DOUT",
+    "HX711_B_DOUT",
+    "PULSE_PERMEATE",
+    "PULSE_CONCENTRATE",
+    "RS485_RX",
+}
 
 
 class _UniqueKeyLoader(yaml.SafeLoader):
@@ -113,6 +121,13 @@ def test_outputs_that_matter_at_boot_avoid_high_glitch_pins() -> None:
     for p, e in pins.items():
         if e["signal"] in {"RS485_DE_RE", "RS485_TX", "HX711_A_SCK", "HX711_B_SCK"}:
             assert p not in HIGH_GLITCH_AT_POWER_UP, e["signal"]
+
+
+def test_push_pull_driven_glitch_pins_have_series_resistor() -> None:
+    for p, e in gpio().items():
+        if e["signal"] in PUSH_PULL_DRIVEN and p in GLITCH_AT_POWER_UP:
+            assert e.get("series_ohm", 0) >= 1000, e["signal"]
+            assert 3.3 / e["series_ohm"] * 1000 <= 3.3  # contention current, mA
 
 
 def test_i2c_addresses_are_unique() -> None:
@@ -263,6 +278,27 @@ def test_onewire_pullup_current_within_driver_limits() -> None:
     assert DATA_HIGH_V >= DS18B20_VIH_MIN  # 3.3 V DATA works with 5 V device power
 
 
+FIELD_FAULT_V = 24.0
+RREF_MIN_KOHM = 3.3
+PRESSURE_CLAMP_MA = 2.0  # ADR-0010
+R_BLEED_OHM = 120
+
+
+def test_bleeder_sinks_worst_case_fault_injection() -> None:
+    clamp_v = 3.3 + BAT54S_VF_10MA
+    pulse = 2 * ((FIELD_FAULT_V - clamp_v) / 10 - clamp_v / 22)
+    ec = 2 * (FIELD_FAULT_V - clamp_v) / 10
+    thermistor_clamp = 2 * (FIELD_FAULT_V - clamp_v) / 10
+    rref = 2 * (FIELD_FAULT_V - 3.3) / RREF_MIN_KOHM
+    total = pulse + ec + thermistor_clamp + rref + PRESSURE_CLAMP_MA
+    assert total == pytest.approx(26.39, abs=0.01)
+    bleed_ma = 3.3 / R_BLEED_OHM * 1000
+    assert bleed_ma >= total
+    assert 3.3**2 / R_BLEED_OHM <= 0.25
+    bleed_row = next(v for name, r, v in _budget() if name.startswith("3V3 bleeder"))
+    assert bleed_row == pytest.approx(bleed_ma, abs=0.05)
+
+
 def test_rs485_bias_and_termination_arithmetic() -> None:
     term = 120 * 120 / (120 + 120)
     assert 3.3 * term / (2 * 390 + term) >= 0.2
@@ -332,7 +368,7 @@ def test_interconnect_doc_rom_notation_and_budget() -> None:
     assert "CRC byte first" not in text
     assert "family byte first and CRC byte last" in text
     assert "ASSUMPTION" not in text
-    assert "279.1 mA" in text
+    assert "286.0 mA" in text
 
 
 def test_hardware_spec_names_adr_and_no_5v_excitation() -> None:

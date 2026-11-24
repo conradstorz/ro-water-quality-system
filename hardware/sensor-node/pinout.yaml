@@ -14,6 +14,7 @@ excluded:
 adc1_gpios: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]  # ADC1_CH0..CH9 (WROOM-1 datasheet Table 3)
 pcnt_units: 4  # ESP32-S3 TRM v1.2 chapter 38
 i2c_bus_khz: 100  # PCF8574 fSCL max
+# series_ohm: resistor between a push-pull source and a pin that glitches at power-up (S3 datasheet Table 2-2).
 gpio:
   1: {signal: PRESSURE_ADC, kind: analog, note: "ADC1_CH0, ADR-0010"}
   2: {signal: SPARE_ADC, kind: analog, note: "ADC1_CH1, test pad only"}
@@ -24,14 +25,14 @@ gpio:
   8: {signal: I2C_SDA, kind: i2c}
   9: {signal: I2C_SCL, kind: i2c}
   10: {signal: BTN_NEXT, kind: button}
-  11: {signal: HX711_A_DOUT, kind: hx711}
+  11: {signal: HX711_A_DOUT, kind: hx711, series_ohm: 1000}
   12: {signal: HX711_A_SCK, kind: hx711}
-  13: {signal: HX711_B_DOUT, kind: hx711}
+  13: {signal: HX711_B_DOUT, kind: hx711, series_ohm: 1000}
   14: {signal: HX711_B_SCK, kind: hx711}
-  15: {signal: PULSE_PERMEATE, kind: pcnt}
-  16: {signal: PULSE_CONCENTRATE, kind: pcnt}
+  15: {signal: PULSE_PERMEATE, kind: pcnt, series_ohm: 1000}
+  16: {signal: PULSE_CONCENTRATE, kind: pcnt, series_ohm: 1000}
   17: {signal: RS485_TX, kind: rs485, note: "UART1 TXD"}
-  18: {signal: RS485_RX, kind: rs485, note: "UART1 RXD"}
+  18: {signal: RS485_RX, kind: rs485, series_ohm: 1000, note: "UART1 RXD, 10 kohm pull-up"}
   21: {signal: RS485_DE_RE, kind: rs485, note: "10 kohm pull-down, driver off at boot"}
   47: {signal: BTN_HOLD, kind: button}
 i2c_addresses:

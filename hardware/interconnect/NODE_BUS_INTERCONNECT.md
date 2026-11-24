@@ -37,7 +37,7 @@ Shell and shield wire bonded to chassis at the controller end only. At nodes the
 
 ## Power
 - One 24 V supply feeds the controller (accepts 7-36 V) and all nodes through the trunk. Fuse per node.
-- Per-node budget: 279.1 mA from 24 V, with every front end populated and owner parts carried as stated allowances (ADR-0012, section 2.1). This is a computed budget, not a measurement; confirm it in Stage D.
+- Per-node budget: 286.0 mA from 24 V, with every front end populated and owner parts carried as stated allowances (ADR-0012, section 2.1). This is a computed budget, not a measurement; confirm it in Stage D.
 - Node fuse: Bourns MF-R065 resettable PTC, 0.47 A hold at 50 °C (ADR-0012). Input: MBRS3100 reverse-polarity Schottky, SMBJ33A TVS, LMR36015 buck to 5 V; 3.3 V comes from the DevKitC's SGM2212.
 - Maximum trunk length and voltage drop are TBD. Measure in Stage D; do not rely on any figure before then.
 

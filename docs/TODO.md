@@ -67,7 +67,7 @@ Added 2026-11-23. Replace every hardware TBD with a specific part, value or meas
 ### Claude to design (sensor-node carrier board; no owner facts needed)
 Designed 2026-11-23 in `docs/decisions/ADR-0012-sensor-node-carrier.md` (Proposed). Where a design part is done but an owner fact remains, the box is ticked and the remaining fact is noted.
 - [x] Full GPIO map for the ESP32-S3 carrier: avoid strapping pins (0, 3, 45, 46), USB (19/20) and JTAG (39-42); keep GPIO1 for pressure (ADR-0010); reserve two GPIOs for the diagnostic buttons (section above). Recorded in `hardware/sensor-node/pinout.yaml` (DevKitC-1-N8; buttons on GPIO10 and GPIO47).
-- [x] Trunk input stage: fuse, reverse-polarity protection, TVS, 24→5 V buck, 3.3 V regulator, per-node current budget. Budget 279.1 mA from 24 V; confirm by measurement in Stage D.
+- [x] Trunk input stage: fuse, reverse-polarity protection, TVS, 24→5 V buck, 3.3 V regulator, per-node current budget. Budget 286.0 mA from 24 V; confirm by measurement in Stage D.
 - [x] RS485: transceiver part, bias resistor values at the controller, termination plan including the controller's jumper (ADR-0008). Whether bias is fitted depends on the Stage D idle-bus check.
 - [x] Pulse inputs: level conditioning and protection into PCNT. Universal front end done. **Remaining owner fact:** flow-meter output type, voltage and supply, which set the two jumpers.
 - [x] 1-Wire front end: DS2482-100 master (no GPIO), series resistor, pull-up, polyfuse rating, ESD/TVS (ADR-0009). **Remaining owner fact:** Nilight connector cavity numbering and ratings.
