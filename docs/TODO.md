@@ -22,7 +22,6 @@ Owner decisions (2026-11-23):
 The change is acceptable because the LCD is not part of any safety mechanism: the main controller and hardwired protections act regardless of what the display shows.
 
 Remaining open questions:
-- **Existing layouts that do not yet fit columns 1-19:** `STARTING / DATA WAIT` is 20 characters, and `RO STATE: <state>` exceeds 19 for `production` (20), `maintenance` (21), `startup_flush` (23) and `shutdown_flush` (24) if the enum names are shown as-is; the last three already exceeded 20 (`EXCEPTION_DRIVEN_LCD_AND_FAULTS_SPEC.md`). They need shorter wording.
 - **HOLD marker:** should the screen show one while frozen, and where?
 - **Diagnostic pages:** part of the normal sequence, or a separate set reached by a long press or both buttons together?
 

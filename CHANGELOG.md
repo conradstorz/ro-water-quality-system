@@ -56,3 +56,9 @@
 - Owner decision (option A): column 20 of every LCD row on every page is reserved for a fault indicator: a space in normal operation, `*` while any WARNING or CRITICAL fault is active. Labels are 1-11 characters (`label_max_chars: 11`); 1-Wire rows are label + space + 7-character value + column 20. 1-Wire pages join NORMAL rotation after diagnostics and never preempt. Both LCD specs, LCD fault tests and the acceptance plan updated.
 - Host tools: bindings validation, name-table codec and node-side validation (including all-zero ROM rejection), simulator support, reference LCD renderer with a column-20 indicator, `ro-tools onewire scan | validate | push` (`push` exits 4 for an unsupported node). Docs checked by `test_onewire_names_docs.py`.
 - `protocol/examples/sample_snapshot.json` and the README `validate` example now say protocol 1.4.
+
+## LCD texts fit columns 1-19 — 2026-11-23
+- `STARTING / DATA WAIT` becomes `STARTING: DATA WAIT`.
+- Row 4 of critical pages shows `RO: <text>` from a fixed per-state table (`START FLUSH`, `STOP FLUSH`, `MAINTENANCE`, ...) instead of raw enum names.
+- Fault page header: `!! CRITICAL` / `! WARNING` with `n/m` right-aligned to column 19; counts above 99 show `99+`.
+- Checked by `test_lcd_texts_docs.py`.

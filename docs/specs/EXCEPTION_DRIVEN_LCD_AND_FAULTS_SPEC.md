@@ -26,8 +26,23 @@ Use deterministic ordering: severity ascending, then oldest active first, then n
 
 ## Display content
 - **Column 20 is reserved on every page** (owner decision 2026-11-23) for a fault/status indicator: normal, fault, advisory, diagnostic and 1-Wire pages alike. Page content uses columns 1-19. Column 20 is blank (space) in normal operation and `*` while any WARNING or CRITICAL fault is active (owner decision 2026-11-23); ADVISORY alone leaves it blank. It is shown on every page, including a held page, so a fault is visible without stealing focus. Any HOLD marker is not designed yet (`docs/TODO.md`).
-- Each row max 19 content characters plus column 20, 4 rows total. Critical template: row 1 `!! CRITICAL  1/2 !!`, row 2 short fault description, row 3 affected measurement and current value or `---`, row 4 `RO STATE: <state>` only if controller status is fresh; otherwise `CTRL STATUS UNKNOWN`.
-- Warning template: row 1 `! WARNING    1/2 !`, row 2 description, row 3 affected measurement, row 4 recommended action or source.
+- Each row max 19 content characters plus column 20, 4 rows total. Critical template: row 1 header (below), row 2 short fault description, row 3 affected measurement and current value or `---`, row 4 `RO: <state text>` (table below) only if controller status is fresh; otherwise `CTRL STATUS UNKNOWN`.
+- **Fault page header (row 1):** `!! CRITICAL` or `! WARNING`, left-aligned, then the fault position `n/m` right-aligned so it ends in column 19 (columns 13-19 hold it). A count above 99 shows as `99+`, so the widest is `99+/99+`. Examples: `!! CRITICAL     1/2`, `!! CRITICAL   10/12`, `! WARNING       1/3`.
+- Warning template: row 1 header (above), row 2 description, row 3 affected measurement, row 4 recommended action or source.
+- **RO state text** (row 4, `RO: ` + text, at most 19 characters). Raw enum names are never shown.
+
+  | `ro_state` | Enum name | LCD text |
+  |---|---|---|
+  | 0 | `unknown` | `UNKNOWN` |
+  | 1 | `standby` | `STANDBY` |
+  | 2 | `startup_flush` | `START FLUSH` |
+  | 3 | `divert` | `DIVERT` |
+  | 4 | `production` | `PRODUCTION` |
+  | 5 | `shutdown_flush` | `STOP FLUSH` |
+  | 6 | `fault` | `FAULT` |
+  | 7 | `maintenance` | `MAINTENANCE` |
+
+  A value not in the table shows `RO: UNKNOWN`.
 - Advisory: show summary with frequency configurable; do not permanently hide normal readings for a minor notice.
 - Normal pages: quality, flow/recovery, storage, diagnostics, then 1-Wire pages. Rejection and recovery calculations are displayed only when all required input values are valid and denominator is nonzero.
 - Invalid or stale values must display `---` or `ERR`, not the previous good reading without qualification. Last-good readings may appear only with an explicit `LAST GOOD` label.
@@ -37,7 +52,7 @@ Use deterministic ordering: severity ascending, then oldest active first, then n
 ## Scheduling and robustness
 - Display refresh target 1 Hz; event-driven critical preemption on next display service iteration (target <= 250 ms if LCD responsive). Page rotation default 5 s, configurable.
 - Nonblocking cooperative update; bounded I²C transactions, no display sleeps in acquisition or Modbus handling. LCD absence, I²C lockup, or backlight failure must not prevent reporting.
-- On restart show `STARTING / DATA WAIT` until real measurements are valid. If main-controller status never arrives, diagnostics must make that clear.
+- On restart show `STARTING: DATA WAIT` until real measurements are valid. If main-controller status never arrives, diagnostics must make that clear.
 - Local LCD page cycling does not modify any Modbus register or change controller state.
 
 ## Testing / acceptance
