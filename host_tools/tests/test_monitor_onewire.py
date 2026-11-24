@@ -30,8 +30,8 @@ from ro_tools.sim.presets import FULL_PROFILE, RO_SKID_PROFILE, TANK_PROFILE
 ROM_A = make_rom(FAMILY_DS18B20, 0x1001)
 ROM_B = make_rom(FAMILY_DS2438, 0x1002)
 ROM_C = make_rom(FAMILY_DS18B20, 0x1003)
-BIND_A = OneWireBinding("tank_temp", ROM_A)
-BIND_B = OneWireBinding("feed_temp", ROM_B)
+BIND_A = OneWireBinding("tank_temp", ROM_A, "Tank temp")
+BIND_B = OneWireBinding("feed_temp", ROM_B, "Feed temp")
 MAX_AGE = 1000  # test-local value; the real limit is controller config (TBD)
 
 
@@ -85,7 +85,9 @@ def test_unusable_slot_is_missing_with_no_value(kw):
 
 def test_unsupported_family_bound_is_missing():
     rom = make_rom(0x10, 0x55)
-    h = evaluate_onewire(with_bus([dev(rom)]), [OneWireBinding("odd", rom)], max_age_ms=MAX_AGE)
+    h = evaluate_onewire(
+        with_bus([dev(rom)]), [OneWireBinding("odd", rom, "Odd")], max_age_ms=MAX_AGE
+    )
     assert h.state is OneWireState.DEGRADED
     assert h.missing_roles == ("odd",)
     assert not h.values
@@ -136,10 +138,12 @@ def test_fault_bit_10_degrades():
 def test_duplicate_role_or_rom_raises():
     with pytest.raises(ValueError):
         evaluate_onewire(
-            with_bus([]), [BIND_A, OneWireBinding("tank_temp", ROM_B)], max_age_ms=MAX_AGE
+            with_bus([]), [BIND_A, OneWireBinding("tank_temp", ROM_B, "Other")], max_age_ms=MAX_AGE
         )
     with pytest.raises(ValueError):
-        evaluate_onewire(with_bus([]), [BIND_A, OneWireBinding("other", ROM_A)], max_age_ms=MAX_AGE)
+        evaluate_onewire(
+            with_bus([]), [BIND_A, OneWireBinding("other", ROM_A, "Other")], max_age_ms=MAX_AGE
+        )
 
 
 def test_garbage_words_never_yield_values():

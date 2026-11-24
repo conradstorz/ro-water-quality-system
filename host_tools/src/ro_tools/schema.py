@@ -33,6 +33,7 @@ REQUIRED_TOP_LEVEL: tuple[str, ...] = (
     "input_registers",
     "holding_registers",
     "controller_status_extension",
+    "onewire_name_table",
     "enums",
     "controller_flags_bits",
     "fault_codes",
@@ -123,6 +124,12 @@ class RegisterMap:
     status_timeout_ms: int
     status_schema_major: int
     status_require_sequence_progress: bool
+    names_start: int
+    names_count: int
+    names_schema_major: int
+    names_entry_count_max: int
+    names_label_words: int
+    names_label_max_chars: int
     enums: dict[str, dict[int, str]]
     fault_codes: tuple[FaultCode, ...]
 
@@ -432,6 +439,45 @@ def _parse_faults(raw: dict, severities: dict[int, str], bad: list[str]) -> tupl
     return tuple(out[c] for c in sorted(out))
 
 
+def _check_display_block(sec: dict, where: str, bad: list[str]) -> None:
+    """Validate the write contract shared by display-only written blocks.
+
+    :param sec: The block's section (status extension or name table).
+    :param where: Section name used in messages.
+    :param bad: Violation list to append to.
+    """
+    for key, expected in (
+        ("function_code_write", 16),
+        ("write_mode", "atomic_full_block_only"),
+    ):
+        if key in sec and (sec[key] != expected or isinstance(sec[key], bool)):
+            bad.append(f"{where}.{key}: must be {expected!r}, got {sec[key]!r}")
+    if "display_only" in sec and sec["display_only"] is not True:
+        bad.append(f"{where}.display_only: must be true, got {sec['display_only']!r}")
+
+
+def _check_schema_major(
+    sec: dict, where: str, key: str, holding: list[Register], bad: list[str]
+) -> None:
+    """Require a block's schema-major register and match its ``equals``.
+
+    :param sec: The block's section.
+    :param where: Section name used in messages.
+    :param key: Name of both the section field and the holding register.
+    :param holding: Parsed holding registers.
+    :param bad: Violation list to append to.
+    """
+    schema_reg = next((r for r in holding if r.name == key), None)
+    declared = sec.get(key)
+    if schema_reg is None:
+        bad.append(f"holding_registers: {key} register is required")
+    elif _is_int(declared) and schema_reg.equals != declared:
+        bad.append(
+            f"holding_registers.{key}: equals {schema_reg.equals!r} "
+            f"must match {where}.{key} {declared!r}"
+        )
+
+
 def _check_status_extension(ext: dict, holding: list[Register], bad: list[str]) -> bool:
     """Validate the fixed properties of the controller status extension.
 
@@ -441,27 +487,40 @@ def _check_status_extension(ext: dict, holding: list[Register], bad: list[str]) 
     :returns: The value of ``require_sequence_progress`` (False when invalid).
     """
     where = "controller_status_extension"
-    for key, expected in (
-        ("function_code_write", 16),
-        ("write_mode", "atomic_full_block_only"),
-    ):
-        if key in ext and (ext[key] != expected or isinstance(ext[key], bool)):
-            bad.append(f"{where}.{key}: must be {expected!r}, got {ext[key]!r}")
-    if "display_only" in ext and ext["display_only"] is not True:
-        bad.append(f"{where}.display_only: must be true, got {ext['display_only']!r}")
+    _check_display_block(ext, where, bad)
     progress = ext.get("require_sequence_progress")
     if "require_sequence_progress" in ext and not isinstance(progress, bool):
         bad.append(f"{where}.require_sequence_progress: must be a boolean, got {progress!r}")
-    schema_reg = next((r for r in holding if r.name == "status_schema_major"), None)
-    declared = ext.get("status_schema_major")
-    if schema_reg is None:
-        bad.append("holding_registers: status_schema_major register is required")
-    elif _is_int(declared) and schema_reg.equals != declared:
-        bad.append(
-            f"holding_registers.status_schema_major: equals {schema_reg.equals!r} "
-            f"must match {where}.status_schema_major {declared!r}"
-        )
+    _check_schema_major(ext, where, "status_schema_major", holding, bad)
     return progress is True
+
+
+def _check_name_table(names: dict, holding: list[Register], bad: list[str]) -> None:
+    """Validate the fixed properties of the 1-Wire name table.
+
+    :param names: The ``onewire_name_table`` section.
+    :param holding: Parsed holding registers.
+    :param bad: Violation list to append to.
+    """
+    where = "onewire_name_table"
+    _check_display_block(names, where, bad)
+    _check_schema_major(names, where, "names_schema_major", holding, bad)
+    count, entry_max, label_words = (
+        names.get(k) for k in ("count", "entry_count_max", "label_words")
+    )
+    if _is_int(count) and _is_int(entry_max) and _is_int(label_words):
+        expected = 3 + entry_max * (4 + label_words)
+        if count != expected:
+            bad.append(
+                f"{where}.count: {count} must equal 3 + entry_count_max * (4 + label_words) "
+                f"= {expected}"
+            )
+    max_chars = names.get("label_max_chars")
+    if _is_int(label_words) and _is_int(max_chars) and not 1 <= max_chars <= 2 * label_words - 1:
+        bad.append(
+            f"{where}.label_max_chars: {max_chars} must be 1..2 * label_words - 1 "
+            f"= {2 * label_words - 1} (the last label byte is always NUL)"
+        )
 
 
 def parse(raw: dict) -> RegisterMap:
@@ -515,6 +574,22 @@ def parse(raw: dict) -> RegisterMap:
         ),
         bad,
     )
+    names = _section(
+        raw,
+        "onewire_name_table",
+        (
+            "start",
+            "count",
+            "function_code_write",
+            "write_mode",
+            "names_schema_major",
+            "entry_count_max",
+            "label_words",
+            "label_max_chars",
+            "display_only",
+        ),
+        bad,
+    )
     if not _is_int(raw["unit_id"]):
         bad.append(f"unit_id: must be an integer, got {raw['unit_id']!r}")
 
@@ -565,19 +640,30 @@ def parse(raw: dict) -> RegisterMap:
 
     status_start = _int_field(ext, "controller_status_extension", "start", bad)
     status_count = _int_field(ext, "controller_status_extension", "count", bad)
+    names_start = _int_field(names, "onewire_name_table", "start", bad)
+    names_count = _int_field(names, "onewire_name_table", "count", bad)
+    status_range = set(range(status_start, status_start + status_count))
+    names_range = set(range(names_start, names_start + names_count))
+    if status_range & names_range:
+        bad.append(
+            f"onewire_name_table {names_start}..{names_start + names_count - 1} overlaps "
+            f"controller_status_extension {status_start}..{status_start + status_count - 1}"
+        )
     write_addrs = {
         a
         for r in tables["holding_registers"]
         if r.access == "write_multiple_only"
         for a in range(r.address, r.address + r.words)
     }
-    if write_addrs != set(range(status_start, status_start + status_count)):
+    if write_addrs != status_range | names_range:
         bad.append(
             "holding_registers: write_multiple_only addresses must equal "
-            f"controller_status_extension {status_start}..{status_start + status_count - 1}"
+            f"controller_status_extension {status_start}..{status_start + status_count - 1} "
+            f"plus onewire_name_table {names_start}..{names_start + names_count - 1}"
         )
 
     require_progress = _check_status_extension(ext, tables["holding_registers"], bad)
+    _check_name_table(names, tables["holding_registers"], bad)
 
     fault_codes = _parse_faults(raw, enums.get("fault_severity", {}), bad)
     if "fault_severity" not in enums:
@@ -596,6 +682,10 @@ def parse(raw: dict) -> RegisterMap:
         "status_schema_major": _int_field(
             ext, "controller_status_extension", "status_schema_major", bad
         ),
+        "names_schema_major": _int_field(names, "onewire_name_table", "names_schema_major", bad),
+        "names_entry_count_max": _int_field(names, "onewire_name_table", "entry_count_max", bad),
+        "names_label_words": _int_field(names, "onewire_name_table", "label_words", bad),
+        "names_label_max_chars": _int_field(names, "onewire_name_table", "label_max_chars", bad),
     }
     if bad:
         raise SchemaError(bad)
@@ -615,6 +705,8 @@ def parse(raw: dict) -> RegisterMap:
         status_start=status_start,
         status_count=status_count,
         status_require_sequence_progress=require_progress,
+        names_start=names_start,
+        names_count=names_count,
         enums=enums,
         fault_codes=fault_codes,
         **ints,

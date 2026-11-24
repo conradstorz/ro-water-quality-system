@@ -1,0 +1,16 @@
+# 1-Wire device names: one file for the whole bus (ROM IDs are globally unique).
+# Display-only and monitoring-only: names never affect validity or production.
+# Spec: docs/superpowers/specs/2026-11-23-onewire-device-names-design.md
+#
+# rom:   16 hex digits, family byte first, CRC byte last (wire order); CRC checked; unique
+#        (quote it, e.g. "2801100000000055", if it is all digits; YAML would read a number)
+# role:  ^[a-z][a-z0-9_]{0,31}$, unique
+# label: 1-11 LCD-safe chars (ASCII 0x20-0x7D except \), no leading/trailing space, unique
+#
+# Example entry (replace "devices: []" with a list like this):
+# devices:
+#   - rom: 28FF1B2C3D5F4EDE
+#     role: outside_temp
+#     label: Outside air
+schema: 1
+devices: []

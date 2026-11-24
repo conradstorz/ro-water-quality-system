@@ -17,6 +17,8 @@ from ro_tools.generated.registers import (
     INPUT_START,
     METADATA_COUNT,
     METADATA_START,
+    NAMES_COUNT,
+    NAMES_START,
     PROTOCOL_MAJOR,
     PROTOCOL_MINOR,
     SNAPSHOT_LAYOUT,
@@ -34,10 +36,14 @@ from ro_tools.generated.registers import (
     validate_status,
 )
 from ro_tools.onewire import NO_BUS_STATUS, BusStatus, OneWireDevice, encode_onewire
+from ro_tools.onewire_names import validate_name_table
 
 EXC_ILLEGAL_FUNCTION = 0x01
 EXC_ILLEGAL_ADDRESS = 0x02
 EXC_ILLEGAL_VALUE = 0x03
+
+#: ``protocol_minor`` published by a bank emulating a protocol 1.3 node (no name table).
+LEGACY_PROTOCOL_MINOR = 3
 
 _TYPES: dict[str, str] = {name: typ for name, typ, _ in SNAPSHOT_LAYOUT}
 
@@ -66,9 +72,12 @@ def _check_identity(node_type: int, installed_mask: int) -> None:
 
 
 class RegisterBank:
-    """Double-buffered snapshot plus controller-status mailbox.
+    """Double-buffered snapshot plus controller-status and name-table mailboxes.
 
     Setters change a pending copy; :meth:`commit` publishes it atomically.
+    The 1-Wire name table (holding 240-322, protocol 1.4) is display-only: it is
+    written whole with FC16, read back with FC03, cleared only by construction and
+    :meth:`reboot`, and never touches the snapshot, validity, faults or status.
     All public methods are thread-safe.
     """
 
@@ -78,6 +87,8 @@ class RegisterBank:
         metadata: tuple[int, int, int] = (1, 0, 1),
         node_type: int = int(NodeType.RO_SKID),
         installed_mask: int = ALL_SENSORS,
+        *,
+        names_supported: bool = True,
     ) -> None:
         """Create a bank that publishes nothing as valid.
 
@@ -86,13 +97,18 @@ class RegisterBank:
         :param node_type: A :class:`NodeType` value; defaults to the full RO skid.
         :param installed_mask: Validity bits that are physically fitted; defaults to every
             sensor.
+        :param names_supported: False emulates a protocol 1.3 node: it publishes
+            ``protocol_minor`` 3 and has no name table, so FC03/FC16 on 240-322 get
+            ILLEGAL_DATA_ADDRESS.
         :raises ValueError: If ``node_type`` or ``installed_mask`` is impossible.
         """
         self._lock = threading.Lock()
         self._clock = clock
         self._pending: dict[str, int] = {name: 0 for name in _TYPES}
         self._pending["protocol_major"] = PROTOCOL_MAJOR
-        self._pending["protocol_minor"] = PROTOCOL_MINOR
+        self._pending["protocol_minor"] = (
+            PROTOCOL_MINOR if names_supported else LEGACY_PROTOCOL_MINOR
+        )
         self._pending["sample_interval_ms"] = 1000
         _check_identity(node_type, installed_mask)
         self._pending["node_type"] = node_type
@@ -106,6 +122,8 @@ class RegisterBank:
         self._status_rx_ms: int | None = None
         self._status_progress_ms: int | None = None
         self._last_rejection: str | None = None
+        self._names_supported = names_supported
+        self._name_words = [0] * NAMES_COUNT
 
     def set_field(self, name: str, raw: int) -> None:
         """Set a pending snapshot field.
@@ -242,7 +260,9 @@ class RegisterBank:
             self._published = Snapshot(**self._pending)
 
     def reboot(self) -> None:
-        """Simulate a node reboot: bump boot counter, reset sequence and status mailbox.
+        """Simulate a node reboot: bump boot counter, reset sequence and both mailboxes.
+
+        The status mailbox and the 1-Wire name table (RAM only on the node) are cleared.
 
         The boot counter saturates at its u32 maximum instead of wrapping, and
         ``OVERFLOW_OR_SATURATION`` is then flagged in the module status.
@@ -265,6 +285,7 @@ class RegisterBank:
             self._status = None
             self._status_rx_ms = None
             self._status_progress_ms = None
+            self._name_words = [0] * NAMES_COUNT
             self._published = Snapshot(**self._pending)
 
     def published(self) -> Snapshot:
@@ -297,6 +318,38 @@ class RegisterBank:
         """
         with self._lock:
             return self._status_progress_ms
+
+    @property
+    def names_supported(self) -> bool:
+        """True for a protocol 1.4 node with a name table, False for a 1.3 emulation."""
+        return self._names_supported
+
+    @property
+    def name_table_words(self) -> tuple[int, ...]:
+        """The stored 83-word name table (all zero after construction or reboot)."""
+        with self._lock:
+            return tuple(self._name_words)
+
+    def load_name_table(self, words: Sequence[int]) -> None:
+        """Store a name table directly, as an accepted FC16 write would.
+
+        For presets and tests; the same validation as the FC16 path applies.
+
+        :param words: 83 register words for holding 240-322.
+        :raises ValueError: If this bank emulates a 1.3 node, ``words`` is not 83 u16
+            words, or :func:`~ro_tools.onewire_names.validate_name_table` reports a
+            violation. The stored table is unchanged in that case.
+        """
+        if not self._names_supported:
+            raise ValueError("this node emulates protocol 1.3 and has no name table")
+        values = list(words)
+        if len(values) != NAMES_COUNT or any(not 0 <= w <= 0xFFFF for w in values):
+            raise ValueError(f"name table must be {NAMES_COUNT} u16 words")
+        violations = validate_name_table(values)
+        if violations:
+            raise ValueError(f"name table rejected: {'; '.join(violations)}")
+        with self._lock:
+            self._name_words = values
 
     @property
     def last_rejection(self) -> str | None:
@@ -360,13 +413,20 @@ class RegisterBank:
                 words = self._metadata[addr - METADATA_START : end - METADATA_START]
             elif STATUS_START <= addr and end <= STATUS_START + STATUS_COUNT:
                 words = self._status_words[addr - STATUS_START : end - STATUS_START]
+            elif self._names_supported and NAMES_START <= addr and end <= NAMES_START + NAMES_COUNT:
+                words = self._name_words[addr - NAMES_START : end - NAMES_START]
             else:
+                names = (
+                    f" or name table {NAMES_START}..{NAMES_START + NAMES_COUNT - 1}"
+                    if self._names_supported
+                    else ""
+                )
                 return self._reject(
                     fc,
                     EXC_ILLEGAL_ADDRESS,
                     f"{span} not within metadata block "
-                    f"{METADATA_START}..{METADATA_START + METADATA_COUNT - 1} or status block "
-                    f"{STATUS_START}..{STATUS_START + STATUS_COUNT - 1}",
+                    f"{METADATA_START}..{METADATA_START + METADATA_COUNT - 1}, status block "
+                    f"{STATUS_START}..{STATUS_START + STATUS_COUNT - 1}{names}",
                 )
             return bytes([fc, 2 * len(words)]) + struct.pack(f">{len(words)}H", *words)
         # fc == 16
@@ -379,14 +439,27 @@ class RegisterBank:
                 EXC_ILLEGAL_VALUE,
                 f"FC16 inconsistent quantity {count}, byte count {byte_count}, length {len(pdu)}",
             )
+        values = list(struct.unpack(f">{count}H", pdu[6:]))
+        if self._names_supported and (addr, count) == (NAMES_START, NAMES_COUNT):
+            violations = validate_name_table(values)
+            if violations:
+                return self._reject(
+                    fc, EXC_ILLEGAL_VALUE, f"name table rejected: {'; '.join(violations)}"
+                )
+            self._name_words = values
+            return struct.pack(">BHH", 16, addr, count)
         if (addr, count) != (STATUS_START, STATUS_COUNT):
+            names = (
+                f" or the full name table {NAMES_START}+{NAMES_COUNT}"
+                if self._names_supported
+                else ""
+            )
             return self._reject(
                 fc,
                 EXC_ILLEGAL_ADDRESS,
                 f"FC16 write {addr}+{count} is not the full status block "
-                f"{STATUS_START}+{STATUS_COUNT}",
+                f"{STATUS_START}+{STATUS_COUNT}{names}",
             )
-        values = list(struct.unpack(f">{count}H", pdu[6:]))
         try:
             validate_status(values)
         except StatusValidationError as exc:

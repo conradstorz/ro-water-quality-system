@@ -6,3 +6,5 @@ Enums, controller-flag bits and the fault-code catalog are machine-readable in r
 Protocol 1.2 adds node identity for multi-node buses: `node_type` (register 133) and `installed_mask` (register 134). No existing address changed. `validity_mask` must be a subset of `installed_mask`: a validity bit set for a sensor that is not installed is invalid.
 
 Protocol 1.3 adds the 1-Wire block (registers 140-199, polling window now 100-199) and fault bit 10. No existing address changed; 1-Wire data is monitoring-only and never affects validity or production permission.
+
+Protocol 1.4 adds the display-only 1-Wire name table (holding registers 240-322, FC16 full-block write, FC03 read-back; `ONEWIRE_NAME_TABLE.md`). No existing address changed; like the controller status block, the node only displays it and never uses it as a command or for validity.

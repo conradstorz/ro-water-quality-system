@@ -19,7 +19,7 @@ from loguru import logger
 from ro_tools import codegen, schema
 from ro_tools.client import CommsError, ModbusExceptionError, SensorNodeClient
 from ro_tools.generated import registers as reg
-from ro_tools.monitor import critical_required
+from ro_tools.monitor import OneWireBinding, _slot_unusable_cause, critical_required
 from ro_tools.onewire import (
     FAMILY_DS18B20,
     FAMILY_DS2438,
@@ -27,7 +27,17 @@ from ro_tools.onewire import (
     SlotReading,
     SlotStatus,
     decode_slots,
+    format_rom,
     rom_family,
+)
+from ro_tools.onewire_names import (
+    DEFAULT_BINDINGS_PATH,
+    LABEL_MAX_CHARS,
+    BindingsError,
+    NameEntry,
+    bindings_revision,
+    load_bindings,
+    select_for_node,
 )
 from ro_tools.sim.bus import Bus
 from ro_tools.sim.presets import PRESETS, RO_SKID_PROFILE, TANK_PROFILE, NodeProfile, apply_preset
@@ -38,6 +48,9 @@ EXIT_OK = 0
 EXIT_FAIL = 1
 EXIT_COMMS = 2
 EXIT_MODBUS = 3
+#: ``onewire push``: the node answered ILLEGAL_DATA_ADDRESS (no name table, protocol 1.3?).
+EXIT_NAMES_UNSUPPORTED = 4
+_ILLEGAL_DATA_ADDRESS = 0x02
 
 
 def _names(enum_cls: type) -> list[str]:
@@ -121,7 +134,7 @@ def _positive_float(text: str) -> float:
 def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser.
 
-    :returns: Parser with the five sub-commands.
+    :returns: Parser with the six sub-commands.
     """
     parser = argparse.ArgumentParser(prog="ro-tools", description="RO protocol host tools")
     parser.add_argument(
@@ -160,6 +173,20 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--fault-count", type=int, default=0)
     p.add_argument("--sequence", type=int, default=0)
     p.add_argument("--timeout", type=_positive_float, default=1.0, metavar="S")
+
+    p = sub.add_parser("onewire", help="1-Wire device names (bindings file and name table)")
+    ow = p.add_subparsers(dest="onewire_command", required=True)
+    for name, text in (
+        ("scan", "list a node's 1-Wire devices and print YAML stubs for unbound ROMs"),
+        ("push", "write a node's display-only name table and read it back"),
+    ):
+        q = ow.add_parser(name, help=text)
+        _endpoint(q)
+        q.add_argument("--unit-id", type=_unit_id, default=reg.UNIT_ID, metavar="N")
+        q.add_argument("--timeout", type=_positive_float, default=1.0, metavar="S")
+        q.add_argument("--bindings", type=Path, default=DEFAULT_BINDINGS_PATH, metavar="PATH")
+    q = ow.add_parser("validate", help="check the 1-Wire bindings file")
+    q.add_argument("--bindings", type=Path, default=DEFAULT_BINDINGS_PATH, metavar="PATH")
     return parser
 
 
@@ -497,6 +524,201 @@ def _cmd_publish_status(parser: argparse.ArgumentParser, args: argparse.Namespac
     return EXIT_OK
 
 
+def _load_bindings_or_report(path: Path) -> tuple[OneWireBinding, ...] | None:
+    """Load a bindings file, printing every problem on stderr.
+
+    :param path: Bindings file.
+    :returns: The bindings, or None if the file cannot be read or is invalid.
+    """
+    try:
+        return load_bindings(path)
+    except BindingsError as exc:
+        print(f"{path}: invalid 1-Wire bindings:", file=sys.stderr)
+        for violation in exc.violations:
+            print(f"  {violation}", file=sys.stderr)
+    except OSError as exc:
+        print(f"cannot read bindings file {path}: {exc}", file=sys.stderr)
+    return None
+
+
+def _scan_family(rom: int) -> str:
+    """Name the 1-Wire family of a ROM for ``onewire scan``.
+
+    :param rom: 64-bit ROM id.
+    :returns: ``DS18B20``, ``DS2438`` or ``unknown 0xNN``.
+    """
+    family = rom_family(rom)
+    if family == FAMILY_DS18B20:
+        return "DS18B20"
+    if family == FAMILY_DS2438:
+        return "DS2438"
+    return f"unknown 0x{family:02X}"
+
+
+def _scan_reading(reading: SlotReading) -> str:
+    """Format a slot's reading(s), or ``---`` when it is not usable.
+
+    Usability follows the monitor/LCD rule (unknown status bits make a slot unusable).
+
+    :param reading: A present slot.
+    :returns: e.g. ``21.50 degC`` or ``22.10 degC  3300 mV``.
+    """
+    family = rom_family(reading.rom)
+    if family not in (FAMILY_DS18B20, FAMILY_DS2438) or _slot_unusable_cause(reading):
+        return "---"
+    text = f"{reading.primary / 100:.2f} degC"
+    if family == FAMILY_DS2438:
+        text += f"  {reading.secondary} mV"
+    return text
+
+
+def yaml_stub(rom: int) -> str:
+    """Bindings-file entry to paste for an unbound ROM; the ROM is always quoted.
+
+    Quoting keeps an all-digit ROM a string (YAML would otherwise read a number).
+
+    :param rom: 64-bit ROM id.
+    :returns: Three lines: ``- rom: "..."``, ``  role: TODO``, ``  label: TODO``.
+    """
+    return f'- rom: "{format_rom(rom)}"\n  role: TODO\n  label: TODO'
+
+
+def _read_snapshot_or_report(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> reg.Snapshot | int:
+    """Read one snapshot, mapping a failure to an exit status.
+
+    :param parser: Parser for usage errors.
+    :param args: Parsed arguments.
+    :returns: The snapshot, or the exit status after printing the failure.
+    """
+    client = _open_client(parser, args)
+    try:
+        with client:
+            return client.read_snapshot()
+    except CommsError as exc:
+        print(f"communication failure: {exc}", file=sys.stderr)
+        return EXIT_COMMS
+    except ModbusExceptionError as exc:
+        print(f"modbus exception: {exc}", file=sys.stderr)
+        return EXIT_MODBUS
+
+
+def _cmd_onewire_scan(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    """List a node's present 1-Wire devices with their bindings (reads the snapshot only).
+
+    :param parser: Parser for usage errors.
+    :param args: Parsed arguments.
+    :returns: Exit status.
+    """
+    path: Path = args.bindings
+    if path.exists():
+        loaded = _load_bindings_or_report(path)
+        if loaded is None:
+            return EXIT_FAIL
+        bindings = {b.rom: b for b in loaded}
+    else:
+        print(f"bindings file {path} not found; treating every device as unbound")
+        bindings = {}
+    snap = _read_snapshot_or_report(parser, args)
+    if isinstance(snap, int):
+        return snap
+    present = [s for s in decode_slots(snap) if s.status & SlotStatus.PRESENT]
+    if not present:
+        print(f"unit {args.unit_id}: no 1-Wire devices present")
+        return EXIT_OK
+    print(f"{'rom':<18}{'family':<13}{'reading':<22}binding")
+    unbound: list[int] = []
+    for slot in present:
+        binding = bindings.get(slot.rom)
+        if binding is None:
+            unbound.append(slot.rom)
+            bound = "UNBOUND"
+        else:
+            bound = f"{binding.role}  {binding.label!r}"
+        print(
+            f"{format_rom(slot.rom):<18}{_scan_family(slot.rom):<13}"
+            f"{_scan_reading(slot):<22}{bound}"
+        )
+    if unbound:
+        print()
+        print(f"# {len(unbound)} unbound device(s): paste under 'devices:', fill role and label")
+        for rom in unbound:
+            print(yaml_stub(rom))
+    return EXIT_OK
+
+
+def _cmd_onewire_validate(args: argparse.Namespace) -> int:
+    """Validate a bindings file.
+
+    :param args: Parsed arguments.
+    :returns: Exit status.
+    """
+    bindings = _load_bindings_or_report(args.bindings)
+    if bindings is None:
+        return EXIT_FAIL
+    print(f"OK: {len(bindings)} 1-Wire device(s) in {args.bindings}")
+    return EXIT_OK
+
+
+def _cmd_onewire_push(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    """Write a node's name table from the bindings file and verify it by read-back.
+
+    The bindings are loaded and validated before any connection is opened.
+
+    :param parser: Parser for usage errors.
+    :param args: Parsed arguments.
+    :returns: Exit status (:data:`EXIT_NAMES_UNSUPPORTED` if the node has no name table).
+    """
+    path: Path = args.bindings
+    bindings = _load_bindings_or_report(path)
+    if bindings is None:
+        return EXIT_FAIL
+    try:
+        revision = bindings_revision(path)
+    except OSError as exc:
+        print(f"cannot read bindings file {path}: {exc}", file=sys.stderr)
+        return EXIT_FAIL
+    client = _open_client(parser, args)
+    try:
+        with client:
+            entries = select_for_node(bindings, decode_slots(client.read_snapshot()))
+            client.write_name_table(entries, revision)
+            back = client.read_name_table()
+    except CommsError as exc:
+        print(f"communication failure: {exc}", file=sys.stderr)
+        return EXIT_COMMS
+    except ModbusExceptionError as exc:
+        if exc.code == _ILLEGAL_DATA_ADDRESS:
+            print("node does not support names (protocol 1.3?)", file=sys.stderr)
+            return EXIT_NAMES_UNSUPPORTED
+        print(f"modbus exception: {exc}", file=sys.stderr)
+        return EXIT_MODBUS
+    expected: tuple[int, tuple[NameEntry, ...]] = (revision, entries)
+    if back != expected:
+        print(f"read-back mismatch: wrote {expected!r}, read back {back!r}", file=sys.stderr)
+        return EXIT_FAIL
+    logger.debug("unit {}: name table revision 0x{:04X} verified", args.unit_id, revision)
+    print(f"unit {args.unit_id}: pushed {len(entries)} name(s), revision 0x{revision:04X}")
+    for entry in entries:
+        print(f"  {entry.label:<{LABEL_MAX_CHARS}} -> {format_rom(entry.rom)}")
+    return EXIT_OK
+
+
+def _cmd_onewire(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+    """Dispatch the ``onewire`` sub-commands.
+
+    :param parser: Parser for usage errors.
+    :param args: Parsed arguments.
+    :returns: Exit status.
+    """
+    if args.onewire_command == "scan":
+        return _cmd_onewire_scan(parser, args)
+    if args.onewire_command == "validate":
+        return _cmd_onewire_validate(args)
+    return _cmd_onewire_push(parser, args)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI.
 
@@ -516,6 +738,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_sim(parser, args)
         if args.command == "read":
             return _cmd_read(parser, args)
+        if args.command == "onewire":
+            return _cmd_onewire(parser, args)
         return _cmd_publish_status(parser, args)
     finally:
         logger.remove()

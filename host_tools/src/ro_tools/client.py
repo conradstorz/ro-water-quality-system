@@ -10,7 +10,7 @@ retries and no cached or default data. Decoding makes no validity judgement.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any, Self
 
 from pymodbus.client import ModbusSerialClient, ModbusTcpClient
@@ -22,6 +22,8 @@ from ro_tools.generated.registers import (
     METADATA_COUNT,
     METADATA_LAYOUT,
     METADATA_START,
+    NAMES_COUNT,
+    NAMES_START,
     SERIAL_BAUD,
     SERIAL_PARITY,
     SERIAL_STOP_BITS,
@@ -35,6 +37,12 @@ from ro_tools.generated.registers import (
     decode_status,
     encode_status,
     validate_status,
+)
+from ro_tools.onewire_names import (
+    NameEntry,
+    NameTableError,
+    decode_name_table,
+    encode_name_table,
 )
 
 # pymodbus logs every timeout and skipped frame itself; this module reports
@@ -50,7 +58,7 @@ class ProtocolError(CommsError):
     """A reply arrived but is not a valid answer to the request that was sent.
 
     Raised for a mismatched function code, a wrong register count, a wrong
-    FC16 echo, a mismatched exception code or a status block that fails
+    FC16 echo, a mismatched exception code, or a status block or name table that fails
     validation. The connection is closed first, as for any transport failure.
     """
 
@@ -161,6 +169,7 @@ class SensorNodeClient:
         fn: Callable[..., Any],
         *args: Any,
         words: int | None = None,
+        echo: tuple[int, int] = (STATUS_START, STATUS_COUNT),
         **kwargs: Any,
     ) -> Any:
         """Issue exactly one request and map every failure to an exception.
@@ -173,6 +182,7 @@ class SensorNodeClient:
         :param fc: Function code of the request being sent.
         :param fn: pymodbus client method to call.
         :param words: Register count a read reply must carry, or None for a write.
+        :param echo: ``(address, count)`` an FC16 reply must echo; ignored for reads.
         :returns: The successful, verified pymodbus response.
         :raises CommsError: On timeout, no response or lost connection.
         :raises ProtocolError: If the reply does not answer the request.
@@ -193,7 +203,7 @@ class SensorNodeClient:
                     )
                 code = rr.exception_code
             else:
-                self._verify(fc, rr, words)
+                self._verify(fc, rr, words, echo)
         except (ModbusException, OSError) as exc:
             self._client.close()
             raise CommsError(str(exc)) from exc
@@ -205,12 +215,13 @@ class SensorNodeClient:
         return rr
 
     @staticmethod
-    def _verify(fc: int, rr: Any, words: int | None) -> None:
+    def _verify(fc: int, rr: Any, words: int | None, echo: tuple[int, int]) -> None:
         """Check a non-exception reply against the request it answers.
 
         :param fc: Function code of the request.
         :param rr: pymodbus response.
         :param words: Expected register count for a read, None for an FC16 write.
+        :param echo: Expected FC16 echo ``(address, count)``.
         :raises ProtocolError: On any mismatch.
         """
         if rr.function_code != fc:
@@ -218,10 +229,9 @@ class SensorNodeClient:
         if words is not None:
             if len(rr.registers) != words:
                 raise ProtocolError(f"expected {words} registers, got {len(rr.registers)}")
-        elif (rr.address, rr.count) != (STATUS_START, STATUS_COUNT):
+        elif (rr.address, rr.count) != echo:
             raise ProtocolError(
-                f"FC16 echo address={rr.address} count={rr.count}, "
-                f"expected {STATUS_START}/{STATUS_COUNT}"
+                f"FC16 echo address={rr.address} count={rr.count}, expected {echo[0]}/{echo[1]}"
             )
 
     def read_snapshot(self) -> Snapshot:
@@ -290,3 +300,49 @@ class SensorNodeClient:
         :raises ModbusExceptionError: On a Modbus exception response.
         """
         self._call(16, self._client.write_registers, STATUS_START, encode_status(status))
+
+    def write_name_table(self, entries: Sequence[NameEntry], revision: int) -> None:
+        """Write the display-only 1-Wire name table (holding 240-322) with one FC16 request.
+
+        :param entries: At most 8 entries (see :func:`~ro_tools.onewire_names.encode_name_table`).
+        :param revision: Opaque u16 revision.
+        :raises ValueError: If the entries or revision cannot be encoded (nothing is sent).
+        :raises CommsError: On transport failure.
+        :raises ProtocolError: If the echo does not match the request.
+        :raises ModbusExceptionError: On a Modbus exception response (ILLEGAL_DATA_VALUE
+            for a table the node rejects, ILLEGAL_DATA_ADDRESS from a protocol 1.3 node).
+        """
+        words = encode_name_table(entries, revision)
+        self._call(
+            16,
+            self._client.write_registers,
+            NAMES_START,
+            words,
+            echo=(NAMES_START, NAMES_COUNT),
+        )
+
+    def read_name_table(self) -> tuple[int, tuple[NameEntry, ...]] | None:
+        """Read back the 1-Wire name table with one FC03 request.
+
+        :returns: ``(revision, entries)``, or None if every word is zero (no table
+            accepted since node boot).
+        :raises CommsError: On transport failure.
+        :raises ProtocolError: If the reply is malformed, or the non-zero table fails
+            :func:`~ro_tools.onewire_names.validate_name_table`.
+        :raises ModbusExceptionError: On a Modbus exception response (ILLEGAL_DATA_ADDRESS
+            from a protocol 1.3 node).
+        """
+        rr = self._call(
+            3,
+            self._client.read_holding_registers,
+            NAMES_START,
+            count=NAMES_COUNT,
+            words=NAMES_COUNT,
+        )
+        if not any(rr.registers):
+            return None
+        try:
+            return decode_name_table(rr.registers)
+        except NameTableError as exc:
+            self._client.close()
+            raise ProtocolError(f"name table read back is invalid: {exc}") from exc

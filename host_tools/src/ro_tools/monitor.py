@@ -166,10 +166,12 @@ class OneWireBinding:
 
     :ivar role: Role name, unique within a binding list.
     :ivar rom: 64-bit ROM ID, unique within a binding list.
+    :ivar label: Display text for host tools and the LCD (display-only).
     """
 
     role: str
     rom: int
+    label: str
 
 
 @dataclass(frozen=True)

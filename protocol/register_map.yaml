@@ -1,7 +1,7 @@
 protocol: Modbus RTU
 version:
   major: 1
-  minor: 3
+  minor: 4
 unit_id: 1
 serial:
   baud: 19200
@@ -782,6 +782,505 @@ holding_registers:
   words: 1
   access: write_multiple_only
   note: Display-only controller status; atomic full-block FC16 write
+- address: 240
+  name: names_schema_major
+  type: u16
+  words: 1
+  access: write_multiple_only
+  equals: 1
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 241
+  name: names_revision
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 242
+  name: names_entry_count
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 243
+  name: names_e0_rom0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 244
+  name: names_e0_rom1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 245
+  name: names_e0_rom2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 246
+  name: names_e0_rom3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 247
+  name: names_e0_label0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 248
+  name: names_e0_label1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 249
+  name: names_e0_label2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 250
+  name: names_e0_label3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 251
+  name: names_e0_label4
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 252
+  name: names_e0_label5
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 253
+  name: names_e1_rom0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 254
+  name: names_e1_rom1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 255
+  name: names_e1_rom2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 256
+  name: names_e1_rom3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 257
+  name: names_e1_label0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 258
+  name: names_e1_label1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 259
+  name: names_e1_label2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 260
+  name: names_e1_label3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 261
+  name: names_e1_label4
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 262
+  name: names_e1_label5
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 263
+  name: names_e2_rom0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 264
+  name: names_e2_rom1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 265
+  name: names_e2_rom2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 266
+  name: names_e2_rom3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 267
+  name: names_e2_label0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 268
+  name: names_e2_label1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 269
+  name: names_e2_label2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 270
+  name: names_e2_label3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 271
+  name: names_e2_label4
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 272
+  name: names_e2_label5
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 273
+  name: names_e3_rom0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 274
+  name: names_e3_rom1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 275
+  name: names_e3_rom2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 276
+  name: names_e3_rom3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 277
+  name: names_e3_label0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 278
+  name: names_e3_label1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 279
+  name: names_e3_label2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 280
+  name: names_e3_label3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 281
+  name: names_e3_label4
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 282
+  name: names_e3_label5
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 283
+  name: names_e4_rom0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 284
+  name: names_e4_rom1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 285
+  name: names_e4_rom2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 286
+  name: names_e4_rom3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 287
+  name: names_e4_label0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 288
+  name: names_e4_label1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 289
+  name: names_e4_label2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 290
+  name: names_e4_label3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 291
+  name: names_e4_label4
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 292
+  name: names_e4_label5
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 293
+  name: names_e5_rom0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 294
+  name: names_e5_rom1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 295
+  name: names_e5_rom2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 296
+  name: names_e5_rom3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 297
+  name: names_e5_label0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 298
+  name: names_e5_label1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 299
+  name: names_e5_label2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 300
+  name: names_e5_label3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 301
+  name: names_e5_label4
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 302
+  name: names_e5_label5
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 303
+  name: names_e6_rom0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 304
+  name: names_e6_rom1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 305
+  name: names_e6_rom2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 306
+  name: names_e6_rom3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 307
+  name: names_e6_label0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 308
+  name: names_e6_label1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 309
+  name: names_e6_label2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 310
+  name: names_e6_label3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 311
+  name: names_e6_label4
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 312
+  name: names_e6_label5
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 313
+  name: names_e7_rom0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 314
+  name: names_e7_rom1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 315
+  name: names_e7_rom2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 316
+  name: names_e7_rom3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 317
+  name: names_e7_label0
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 318
+  name: names_e7_label1
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 319
+  name: names_e7_label2
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 320
+  name: names_e7_label3
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 321
+  name: names_e7_label4
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
+- address: 322
+  name: names_e7_label5
+  type: u16
+  words: 1
+  access: write_multiple_only
+  note: Display-only 1-Wire name table; atomic full-block FC16 write
 controller_status_extension:
   start: 220
   count: 8
@@ -791,6 +1290,16 @@ controller_status_extension:
   status_schema_major: 1
   display_only: true
   require_sequence_progress: true
+onewire_name_table:
+  start: 240
+  count: 83
+  function_code_write: 16
+  write_mode: atomic_full_block_only
+  names_schema_major: 1
+  entry_count_max: 8
+  label_words: 6
+  label_max_chars: 11
+  display_only: true
 enums:
   node_type:
     0: ro_skid

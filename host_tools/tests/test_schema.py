@@ -20,9 +20,10 @@ def _reg(raw: dict, table: str, name: str) -> dict:
 
 def test_real_map_loads():
     m = schema.load()
-    assert (m.version_major, m.version_minor) == (1, 3)
+    assert (m.version_major, m.version_minor) == (1, 4)
     assert (m.input_start, m.input_count) == (100, 100)
     assert (m.status_start, m.status_count) == (220, 8)
+    assert (m.names_start, m.names_count) == (240, 83)
     assert m.critical_validity_bits == (0, 1, 2, 3, 7)
     assert m.enums["ro_state"][4] == "production"
     assert m.enums["pump_commanded"] == {0: "off", 1: "on", 2: "unknown"}
@@ -112,6 +113,53 @@ def _mutations():
         r["holding_registers"] = [
             x for x in r["holding_registers"] if x["name"] != "status_schema_major"
         ]
+
+    def names_overlap_status(r):
+        r["onewire_name_table"]["start"] = 225
+
+    def names_gap(r):
+        r["holding_registers"] = [
+            x for x in r["holding_registers"] if x["name"] != "names_e7_label5"
+        ]
+
+    def names_read_only_inside_block(r):
+        _reg(r, "holding_registers", "names_e3_rom2")["access"] = "read_only"
+
+    def names_count_mismatch(r):
+        r["onewire_name_table"]["count"] = 82
+
+    def names_label_words_mismatch(r):
+        r["onewire_name_table"]["label_words"] = 5
+
+    def names_schema_major_mismatch(r):
+        r["onewire_name_table"]["names_schema_major"] = 2
+
+    def names_schema_register_missing(r):
+        _reg(r, "holding_registers", "names_schema_major")["name"] = "names_header0"
+
+    def names_write_fc(r):
+        r["onewire_name_table"]["function_code_write"] = 6
+
+    def names_write_mode(r):
+        r["onewire_name_table"]["write_mode"] = "partial_ok"
+
+    def names_not_display_only(r):
+        r["onewire_name_table"]["display_only"] = False
+
+    def names_missing_entry_count_max(r):
+        del r["onewire_name_table"]["entry_count_max"]
+
+    def names_missing_label_max_chars(r):
+        del r["onewire_name_table"]["label_max_chars"]
+
+    def names_label_max_chars_no_nul(r):
+        r["onewire_name_table"]["label_max_chars"] = 12
+
+    def names_label_max_chars_zero(r):
+        r["onewire_name_table"]["label_max_chars"] = 0
+
+    def names_section_missing(r):
+        del r["onewire_name_table"]
 
     def bad_access(r):
         _reg(r, "holding_registers", "device_id")["access"] = "read_write"
@@ -204,6 +252,70 @@ def test_each_rule_rejects(raw, mutate):
     with pytest.raises(schema.SchemaError) as exc:
         schema.parse(broken)
     assert exc.value.violations
+
+
+def _violations(raw: dict, mutate) -> list[str]:
+    broken = copy.deepcopy(raw)
+    mutate(broken)
+    with pytest.raises(schema.SchemaError) as exc:
+        schema.parse(broken)
+    return exc.value.violations
+
+
+def test_name_table_overlap_is_named(raw):
+    def mutate(r):
+        r["onewire_name_table"]["start"] = 225
+
+    assert any("overlaps controller_status_extension" in v for v in _violations(raw, mutate))
+
+
+def test_name_table_gap_is_named(raw):
+    def mutate(r):
+        r["holding_registers"] = [
+            x for x in r["holding_registers"] if x["name"] != "names_e0_label0"
+        ]
+
+    assert _violations(raw, mutate) == [
+        (
+            "holding_registers: write_multiple_only addresses must equal "
+            "controller_status_extension 220..227 plus onewire_name_table 240..322"
+        )
+    ]
+
+
+def test_name_table_count_mismatch_is_named(raw):
+    def mutate(r):
+        r["onewire_name_table"]["entry_count_max"] = 7
+
+    violations = _violations(raw, mutate)
+    assert violations == [
+        "onewire_name_table.count: 83 must equal 3 + entry_count_max * (4 + label_words) = 73"
+    ]
+
+
+def test_name_table_label_max_chars_leaves_room_for_nul(raw):
+    def mutate(r):
+        r["onewire_name_table"]["label_max_chars"] = 12
+
+    violations = _violations(raw, mutate)
+    assert violations == [
+        (
+            "onewire_name_table.label_max_chars: 12 must be 1..2 * label_words - 1 = 11 "
+            "(the last label byte is always NUL)"
+        )
+    ]
+
+
+def test_name_table_schema_major_mismatch_is_named(raw):
+    def mutate(r):
+        _reg(r, "holding_registers", "names_schema_major")["equals"] = 2
+
+    assert _violations(raw, mutate) == [
+        (
+            "holding_registers.names_schema_major: equals 2 "
+            "must match onewire_name_table.names_schema_major 1"
+        )
+    ]
 
 
 def test_all_violations_reported_together(raw):

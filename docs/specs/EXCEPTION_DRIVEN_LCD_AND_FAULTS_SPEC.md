@@ -9,7 +9,7 @@ The sensor-node ESP32 owns a **read-only 20×4 LCD**. The display presents the m
 | 0 | CRITICAL | Main controller reports latched RO fault; confirmed invalid critical sensor while production is active; pressure/flow unsafe per main controller | Preempt current page immediately; remain on critical fault pages until resolved; cycle equal-severity faults every 5 seconds; show fault count |
 | 1 | WARNING | Quality rejection below configured threshold; anomalous pressure/flow trend; sensor degraded but not required in current mode | Preempt normal pages; cycle active warning pages every 5 seconds |
 | 2 | ADVISORY | Calibration due; repeated transient communications error; low-priority diagnostics | Show periodically, ahead of normal pages, without obscuring higher severity |
-| 3 | NORMAL | No active higher priority conditions | Rotate quality, hydraulics, tank, and diagnostics pages every 5 seconds |
+| 3 | NORMAL | No active higher priority conditions | Rotate quality, hydraulics, tank, and diagnostics pages, then any 1-Wire pages (protocol 1.4), every 5 seconds |
 
 **All thresholds, debounce intervals, and which sensors are critical by RO state are commissioning configuration, not hardcoded guesses.** The node can independently flag sensor invalidity, staleness, ADC errors, and disconnected probes. It must NOT infer main-controller pump state from measured flow. If no current controller status is available, show `CTRL STATUS UNKNOWN` and never claim `PUMP STOPPED` or `SYSTEM SAFE`.
 
@@ -20,17 +20,19 @@ The sensor-node ESP32 owns a **read-only 20×4 LCD**. The display presents the m
 - When the main controller itself cannot communicate with the node, it must implement its own critical-data timeout and fail-safe shutdown. The LCD is not part of this safety mechanism.
 
 ## Fault record model
-Every active fault record has: `code`, `source` (`sensor` or `controller`), `severity`, `first_seen_monotonic_ms`, `last_seen_monotonic_ms`, `active`, `acknowledged` (informational only), `measurement_id` (optional), and a bounded `display_message` (20 characters per row). Main controller faults additionally have `fault_code` from the controller status block. No free-form Modbus strings are required in v1: local lookup tables map codes to text.
+Every active fault record has: `code`, `source` (`sensor` or `controller`), `severity`, `first_seen_monotonic_ms`, `last_seen_monotonic_ms`, `active`, `acknowledged` (informational only), `measurement_id` (optional), and a bounded `display_message` (19 characters per row; column 20 is reserved, see Display content). Main controller faults additionally have `fault_code` from the controller status block. No free-form Modbus strings are required in v1: local lookup tables map codes to text.
 
 Use deterministic ordering: severity ascending, then oldest active first, then numeric fault code. Coalesce duplicate reports of the same source+code. Deactivation is driven by verified recovery or explicit main-controller fault-state change, never by LCD page rotation or acknowledgement. Never infer controller fault cleared merely because its status update went stale.
 
 ## Display content
-- Each row max 20 visible characters, 4 rows total. Critical template: row 1 `!! CRITICAL  1/2 !!`, row 2 short fault description, row 3 affected measurement and current value or `---`, row 4 `RO STATE: <state>` only if controller status is fresh; otherwise `CTRL STATUS UNKNOWN`.
+- **Column 20 is reserved on every page** (owner decision 2026-11-23) for a fault/status indicator: normal, fault, advisory, diagnostic and 1-Wire pages alike. Page content uses columns 1-19. Column 20 is blank (space) in normal operation and `*` while any WARNING or CRITICAL fault is active (owner decision 2026-11-23); ADVISORY alone leaves it blank. It is shown on every page, including a held page, so a fault is visible without stealing focus. Any HOLD marker is not designed yet (`docs/TODO.md`).
+- Each row max 19 content characters plus column 20, 4 rows total. Critical template: row 1 `!! CRITICAL  1/2 !!`, row 2 short fault description, row 3 affected measurement and current value or `---`, row 4 `RO STATE: <state>` only if controller status is fresh; otherwise `CTRL STATUS UNKNOWN`.
 - Warning template: row 1 `! WARNING    1/2 !`, row 2 description, row 3 affected measurement, row 4 recommended action or source.
 - Advisory: show summary with frequency configurable; do not permanently hide normal readings for a minor notice.
-- Normal pages: quality, flow/recovery, storage, diagnostics. Rejection and recovery calculations are displayed only when all required input values are valid and denominator is nonzero.
+- Normal pages: quality, flow/recovery, storage, diagnostics, then 1-Wire pages. Rejection and recovery calculations are displayed only when all required input values are valid and denominator is nonzero.
 - Invalid or stale values must display `---` or `ERR`, not the previous good reading without qualification. Last-good readings may appear only with an explicit `LAST GOOD` label.
 - Never display drinking-water safety claims from conductivity alone.
+- 1-Wire pages (ADR-0011): NORMAL rank only, after diagnostics; they never preempt and never appear in fault pages. Device names from the controller's name table never change fault priority, severity or ordering. A 1-Wire bus fault stays an ADVISORY. Row layout: label (max 11) + space + 7-character right-aligned value + column 20; a DS2438's second row is 12 spaces + mV value + column 20. Unnamed devices show `?FF-SSSS` (family, low 16 bits of the serial). Labels assume the HD44780 A00 character ROM. Details: `docs/specs/SENSOR_NODE_LCD_SPEC.md`, "1-Wire pages".
 
 ## Scheduling and robustness
 - Display refresh target 1 Hz; event-driven critical preemption on next display service iteration (target <= 250 ms if LCD responsive). Page rotation default 5 s, configurable.
@@ -46,8 +48,9 @@ Use deterministic ordering: severity ascending, then oldest active first, then n
 5. Stop controller status updates: after 3 s show `CTRL STATUS UNKNOWN`; retain local sensor faults and never assert pump state.
 6. Inject unknown controller fault code: display `CTRL FAULT <code>` rather than dropping the fault.
 7. Disconnect LCD or force I²C timeouts: sensor acquisition, flow counting, and Modbus continue.
-8. Validate all display strings fit 20 columns; no flicker due to full-screen clearing every second.
+8. Validate all display strings fit columns 1-19 with column 20 reserved; no flicker due to full-screen clearing every second.
 9. Confirm Modbus write validation rejects incomplete, unauthorized, or out-of-range controller-status writes.
+10. With 1-Wire pages present and named, inject a fault of each severity: the fault pages preempt as without names, and 1-Wire pages never preempt or appear among fault pages.
 
 ## Implementation interfaces (suggested)
 - `firmware/sensor_node/services/fault_manager.py`: merge and prioritize faults, no hardware access.

@@ -49,3 +49,10 @@
 - Same front end on every node; 4-20 mA is the only pressure signal. The solder jumper, the 0.5-4.5 V option and the tank node ADS1115 are removed.
 - No protocol change: `pressure_raw_adc` keeps u16/counts and documents ESP32 12-bit counts. Full scale 232.1 psi fits `ro_feed_pressure_psi_x10`.
 - Updated sensor-node hardware spec, Modbus spec, register reference, calibration and acceptance plan; checked by `test_pressure_docs.py`.
+
+## 1-Wire device names, protocol 1.4 and ADR-0011 — 2026-11-23
+- ADR-0011 (proposed): the owner names 1-Wire devices by ROM in `config/onewire_bindings.yaml`; the main controller sends each node the bound ROMs it reports as a display-only name table. Per-value entries, node-side NVS names and names in the input block rejected; controller firmware embedding deferred.
+- Protocol 1.4, additive: holding 240-322 (83 registers, `write_multiple_only`, one FC16 write, FC03 read-back), `protocol/ONEWIRE_NAME_TABLE.md`. Invalid writes are rejected whole and the previous table is kept; RAM only; a 1.3 node answers ILLEGAL_DATA_ADDRESS. Names never affect validity, health or `production_permitted`. No existing address, scale, signedness or access changed.
+- Owner decision (option A): column 20 of every LCD row on every page is reserved for a fault indicator: a space in normal operation, `*` while any WARNING or CRITICAL fault is active. Labels are 1-11 characters (`label_max_chars: 11`); 1-Wire rows are label + space + 7-character value + column 20. 1-Wire pages join NORMAL rotation after diagnostics and never preempt. Both LCD specs, LCD fault tests and the acceptance plan updated.
+- Host tools: bindings validation, name-table codec and node-side validation (including all-zero ROM rejection), simulator support, reference LCD renderer with a column-20 indicator, `ro-tools onewire scan | validate | push` (`push` exits 4 for an unsupported node). Docs checked by `test_onewire_names_docs.py`.
+- `protocol/examples/sample_snapshot.json` and the README `validate` example now say protocol 1.4.

@@ -35,7 +35,7 @@ def test_status_extension_table_matches_yaml():
     m = schema.load()
     text = (REPO / "protocol/CONTROLLER_STATUS_EXTENSION.md").read_text(encoding="utf-8")
     doc = {int(r[0]): r[1] for r in _table_rows(text) if r[0].isdigit()}
-    ext = {r.address: r.name for r in m.holding_registers if r.access == "write_multiple_only"}
+    ext = {r.address: r.name for r in m.holding_registers if 220 <= r.address <= 227}
     assert doc == ext
 
 

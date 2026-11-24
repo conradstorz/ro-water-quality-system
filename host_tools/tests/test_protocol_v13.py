@@ -34,9 +34,9 @@ def _by_name() -> dict:
 
 def test_version_and_window():
     m = schema.load()
-    assert (m.version_major, m.version_minor) == (1, 3)
+    assert (m.version_major, m.version_minor) == (1, 4)
     assert (m.input_start, m.input_count) == (100, 100)
-    assert reg.PROTOCOL_MINOR == 3
+    assert reg.PROTOCOL_MINOR == 4
     assert (reg.INPUT_START, reg.INPUT_COUNT) == (100, 100)
 
 

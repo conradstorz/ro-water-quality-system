@@ -17,6 +17,9 @@ from ro_tools.schema import Register, RegisterMap
 GENERATED_PATH: Path = Path(__file__).resolve().parent / "generated" / "registers.py"
 
 _PARITY: dict[str, str] = {"even": "E", "odd": "O", "none": "N"}
+# Fixed name-table geometry; schema.py validates count against these.
+_NAMES_HEADER_WORDS = 3
+_NAMES_ROM_WORDS = 4
 _REQUIRED_STATUS_FIELDS: tuple[str, ...] = (
     "controller_fault_code",
     "controller_fault_severity",
@@ -212,7 +215,12 @@ def render(m: RegisterMap) -> str:
     """
     holding = list(m.holding_registers)
     meta = [r for r in holding if r.access == "read_only"]
-    status = [r for r in holding if r.access == "write_multiple_only"]
+    status_end = m.status_start + m.status_count
+    status = [
+        r
+        for r in holding
+        if r.access == "write_multiple_only" and m.status_start <= r.address < status_end
+    ]
     inputs = list(m.input_registers)
     missing = [f for f in _REQUIRED_STATUS_FIELDS if f not in {r.name for r in status}]
     if missing:
@@ -256,6 +264,16 @@ def render(m: RegisterMap) -> str:
         f"STATUS_TIMEOUT_MS = {m.status_timeout_ms}",
         f"STATUS_SCHEMA_MAJOR = {m.status_schema_major}",
         f"STATUS_REQUIRE_SEQUENCE_PROGRESS = {m.status_require_sequence_progress!r}",
+        "",
+        f"NAMES_START = {m.names_start}",
+        f"NAMES_COUNT = {m.names_count}",
+        f"NAMES_SCHEMA_MAJOR = {m.names_schema_major}",
+        f"NAMES_ENTRY_MAX = {m.names_entry_count_max}",
+        f"NAMES_ROM_WORDS = {_NAMES_ROM_WORDS}",
+        f"NAMES_LABEL_WORDS = {m.names_label_words}",
+        f"NAMES_LABEL_MAX_CHARS = {m.names_label_max_chars}",
+        f"NAMES_ENTRY_STRIDE = {_NAMES_ROM_WORDS + m.names_label_words}",
+        f"NAMES_ENTRY_BASE = {m.names_start + _NAMES_HEADER_WORDS}",
         "",
         f"METADATA_START = {min(r.address for r in meta)}",
         f"METADATA_COUNT = {len(meta)}",

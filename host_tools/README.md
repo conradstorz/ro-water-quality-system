@@ -23,7 +23,7 @@ uv run ro-tools read (--tcp HOST:PORT | --serial DEVICE) [--unit-id N] [--timeou
 uv run ro-tools publish-status (--tcp HOST:PORT | --serial DEVICE) --state NAME [options]
 ```
 
-- `validate`: check the register map; prints `OK: protocol 1.3, 100 input words`, or one violation per line on stderr (exit 1).
+- `validate`: check the register map; prints `OK: protocol 1.4, 100 input words`, or one violation per line on stderr (exit 1).
   `uv run ro-tools validate`
 - `generate`: rewrite `generated/registers.py`; `--check` writes nothing and exits 1 on drift.
   `uv run ro-tools generate --check`
@@ -35,6 +35,35 @@ uv run ro-tools publish-status (--tcp HOST:PORT | --serial DEVICE) --state NAME 
   `uv run ro-tools read --tcp 127.0.0.1:5020 --unit-id 2`
 - `publish-status`: write one display-only controller status block (exit 2 / 3 as for `read`). Options: `--pump off|on|unknown` (default `unknown`), `--fault-code`, `--severity`, `--fault-count`, `--sequence`. Range errors exit 1 before any connection is opened. Consistency is not checked locally: the simulator rejects inconsistent fault code/severity/count with a Modbus exception (exit 3) and logs the reason at WARNING.
   `uv run ro-tools publish-status --tcp 127.0.0.1:5020 --state production --pump on --sequence 1`
+
+## 1-Wire device names
+
+`config/onewire_bindings.yaml` (repo root, the default for `--bindings PATH`) maps each 1-Wire ROM to a `role` and a display `label` (1-11 LCD-safe characters; column 20 of every LCD row is reserved for a fault/status indicator). Names are display-only: they never affect validity, node health or `production_permitted`.
+
+```
+uv run ro-tools onewire scan (--tcp HOST:PORT | --serial DEVICE) [--unit-id N] [--timeout S] [--bindings PATH]
+uv run ro-tools onewire validate [--bindings PATH]
+uv run ro-tools onewire push (--tcp HOST:PORT | --serial DEVICE) [--unit-id N] [--timeout S] [--bindings PATH]
+```
+
+Commissioning workflow:
+
+1. `onewire scan --unit-id N` reads one snapshot and lists each present device: ROM text, family, reading(s) (`---` when unusable) and its role/label or `UNBOUND`. It then prints a YAML stub per unbound ROM. A missing bindings file means everything is unbound; an invalid one prints its violations and exits 1.
+2. Paste the stubs under `devices:` (replace `devices: []` with `devices:`) and replace each `TODO` with a role (`^[a-z][a-z0-9_]{0,31}$`) and a label.
+3. `onewire validate` prints every violation (exit 1) or `OK: N 1-Wire device(s)`.
+4. `onewire push --unit-id N` writes that node's name table (only the bound ROMs it reports, sorted, at most 8) with one FC16 write, reads it back and compares. Exit codes:
+
+   | Exit | Meaning |
+   |---|---|
+   | 0 | Written and verified by read-back |
+   | 1 | Invalid or missing bindings file (nothing written), or read-back mismatch |
+   | 2 | Communication failure |
+   | 3 | Any other Modbus exception, e.g. a table the node rejects (ILLEGAL_DATA_VALUE) |
+   | 4 | The node has no name table: it answered ILLEGAL_DATA_ADDRESS (`node does not support names (protocol 1.3?)`) |
+
+Keep the ROM quoted, as the stub prints it: `rom: "2801100000000055"`. An unquoted all-digit ROM is read by YAML as a number and fails validation.
+
+In production the main controller pushes automatically; `NamePushPolicy` in `onewire_names.py` models when (first contact, or a change of `boot_counter`, `onewire_scan_generation` or bindings revision; a node that answers ILLEGAL_DATA_ADDRESS is skipped until its `boot_counter` changes).
 
 ## Safeguards
 

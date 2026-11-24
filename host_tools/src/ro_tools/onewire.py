@@ -8,6 +8,7 @@ byte, the 48-bit serial in bytes 1-6 and the CRC-8 in the HIGH byte (bits 63..56
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import IntFlag
@@ -19,6 +20,7 @@ FAMILY_DS18B20 = 0x28
 FAMILY_DS2438 = 0x26
 _SUPPORTED_FAMILIES = frozenset({FAMILY_DS18B20, FAMILY_DS2438})
 _U16_MAX = 65535
+_ROM_TEXT = re.compile(r"[0-9A-Fa-f]{16}")
 
 
 class SlotStatus(IntFlag):
@@ -72,6 +74,37 @@ def make_rom(family: int, serial: int) -> int:
         raise ValueError(f"serial {serial} outside 48 bits")
     low = family | (serial << 8)
     return low | (dallas_crc8(low.to_bytes(7, "little")) << 56)
+
+
+def format_rom(rom: int) -> str:
+    """Render a ROM ID as 16 uppercase hex digits in wire order.
+
+    The first byte printed is the family code (the integer's low byte) and the last is
+    the CRC-8 (the high byte), e.g. ``make_rom(0x28, 0x0123456789AB)`` gives
+    ``"28AB89674523015A"``.
+
+    :param rom: 64-bit ROM integer.
+    :returns: The ROM text.
+    :raises ValueError: If ``rom`` is not a 64-bit value.
+    """
+    if not 0 <= rom < 1 << 64:
+        raise ValueError(f"rom {rom} outside 64 bits")
+    return rom.to_bytes(8, "little").hex().upper()
+
+
+def parse_rom(text: str) -> int:
+    """Parse ROM text written by :func:`format_rom` (case-insensitive).
+
+    :param text: Exactly 16 hex digits, family byte first, CRC byte last.
+    :returns: The 64-bit ROM integer (family in the low byte).
+    :raises ValueError: If ``text`` is not 16 hex digits or its CRC-8 is wrong.
+    """
+    if not isinstance(text, str) or not _ROM_TEXT.fullmatch(text):
+        raise ValueError(f"ROM text {text!r} is not exactly 16 hex digits")
+    rom = int.from_bytes(bytes.fromhex(text), "little")
+    if not rom_crc_ok(rom):
+        raise ValueError(f"ROM text {text!r} fails its CRC-8")
+    return rom
 
 
 def rom_family(rom: int) -> int:

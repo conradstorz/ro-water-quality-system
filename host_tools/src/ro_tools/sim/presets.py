@@ -13,6 +13,7 @@ from ro_tools.onewire import (
     OneWireDevice,
     make_rom,
 )
+from ro_tools.onewire_names import NameEntry, encode_name_table
 from ro_tools.sim.register_bank import ALL_SENSORS, RegisterBank
 from ro_tools.sim.server import Responder
 
@@ -27,11 +28,22 @@ PRESETS: tuple[str, ...] = (
     "onewire_lost",
     "onewire_crc_error",
     "onewire_overflow",
+    "onewire_named",
 )
 
 # SIMULATED 1-Wire devices; serials and readings are illustrative only.
 _OW_DS18B20_ROM = make_rom(FAMILY_DS18B20, 0x000000000001)
 _OW_DS2438_ROM = make_rom(FAMILY_DS2438, 0x000000000002)
+
+#: SIMULATED name table entries for the pair, sorted by ROM as a controller sends them.
+NAMED_ENTRIES: tuple[NameEntry, ...] = tuple(
+    sorted(
+        (NameEntry(_OW_DS18B20_ROM, "Outside air"), NameEntry(_OW_DS2438_ROM, "Tank air")),
+        key=lambda entry: entry.rom,
+    )
+)
+#: SIMULATED, opaque name table revision used by ``onewire_named``.
+NAMED_REVISION = 1
 
 
 def _ow_devices(
@@ -171,14 +183,20 @@ def apply_preset(responder: Responder, name: str, profile: NodeProfile = FULL_PR
     :param responder: Responder whose bank and drop flag are set.
     :param name: One of :data:`PRESETS`.
     :param profile: Which node is being simulated; defaults to the legacy full node.
-    :raises ValueError: If ``name`` is unknown, or ``pressure_failed`` is requested for a
-        profile with no pressure channel (the bank is left untouched).
+    :raises ValueError: If ``name`` is unknown, ``pressure_failed`` is requested for a
+        profile with no pressure channel, or ``onewire_named`` is requested for a bank that
+        emulates a protocol 1.3 node (the bank is left untouched).
+
+    No preset clears the 1-Wire name table; only construction and reboot do. Every
+    preset except ``onewire_named`` leaves it as it was.
     """
     if name not in PRESETS:
         raise ValueError(f"unknown preset {name!r}; choose from {PRESETS}")
     if name == "pressure_failed" and not profile.installed & int(ValidityBits.RO_FEED_PRESSURE):
         raise ValueError(f"profile {profile.name!r} has no pressure channel")
     bank = responder.bank
+    if name == "onewire_named" and not bank.names_supported:
+        raise ValueError("onewire_named needs a protocol 1.4 node with a name table")
     responder.drop_responses = False
     bank.freeze_sequence(False)
     _healthy(bank, profile)
@@ -198,6 +216,9 @@ def apply_preset(responder: Responder, name: str, profile: NodeProfile = FULL_PR
         bank.set_faults(FaultBits.PRESSURE_FAULT)
     elif name == "onewire_healthy":
         bank.set_onewire(_ow_devices())
+    elif name == "onewire_named":
+        bank.set_onewire(_ow_devices())
+        bank.load_name_table(encode_name_table(NAMED_ENTRIES, NAMED_REVISION))
     elif name == "onewire_lost":
         bank.set_onewire(_ow_devices(lost=True))
         bank.set_faults(FaultBits.ONEWIRE_BUS_FAULT)
