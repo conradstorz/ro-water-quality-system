@@ -9,7 +9,7 @@ excluded:
   jtag: [39, 40, 41, 42]
   uart0_console: [43, 44]
   octal_psram: [35, 36, 37]
-  board_rgb_led: [38, 48]  # clone RGB LED GPIO not marked; DevKitC uses 38 (v1.1) or 48 (v1.0)
+  board_rgb_led: [48]  # WS2812 RGB LED: factory firmware RMT on GPIO48 + owner sighting, 2026-11-25 (ADR-0012); GPIO38 is a free spare
   not_on_module: [22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34]
 adc1_gpios: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]  # ADC1_CH0..CH9 (WROOM-1 datasheet Table 3)
 pcnt_units: 4  # ESP32-S3 TRM v1.2 chapter 38
@@ -40,4 +40,4 @@ i2c_addresses:
   ADS1115_EC: 0x48
   ADS1115_THERMISTOR: 0x49
   LCD_PCF8574: "0x20-0x27 (PCF8574) or 0x38-0x3F (PCF8574A), via PCA9306"
-status_led: board on-board RGB LED, GPIO not marked (38 or 48 expected; identify in Stage D); no carrier pin
+status_led: board on-board WS2812 RGB LED on GPIO48 (RMT); no carrier pin
