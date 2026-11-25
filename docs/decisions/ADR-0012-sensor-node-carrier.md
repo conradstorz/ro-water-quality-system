@@ -107,8 +107,8 @@ RJ45 IN/OUT +24V (pins 1,2) -- F1 Bourns MF-R065 PTC -- D1 onsemi MBRS3100T3G (a
             RFBT 100 kΩ 0.1 % / RFBB 23.2 kΩ 0.1 %, L 15 µH, COUT 3 × 22 µF, CIN 4.7 µF + 2 × 220 nF, CFF 20 pF
             (LMR36015 Table 10-1, 400 kHz / 5 V row, except RFBB from Equation 3)
 5V_CARRIER -> LCD, EC modules, HX711 VCC, 1-Wire +5V, pulse pull-ups, PCA9306 5 V side
-5V_CARRIER -- U8 TI LM66100DCKR ideal diode (VIN pin 1, VOUT pin 6, CE pin 3 tied to VOUT, ST pin 5 and N/C pin 4 to GND)
-           -- board 5Vin pin -> [possible on-board SL diode] -> 1117-3.3 LDO (on the board) -> 3V3 pin
+5V_CARRIER -- board 5Vin pin, direct (no carrier diode; D2 deleted 2026-11-25)
+           -> [possible on-board SL diode] -> 1117-3.3 LDO (on the board) -> 3V3 pin
 3V3 (from the board 3V3 pin) -> RS485, ADS1115, DS2482, HX711 DVDD, LVC2G17, PCA9306 3.3 V side, pull-ups,
                                 C_3V3 22 µF solid tantalum at the header pin (1117 stability),
                                 R_BLEED 120 Ω 1 % 0.25 W to GND (sinks fault injection; the LDO is source-only)
@@ -119,7 +119,7 @@ RJ45 IN/OUT +24V (pins 1,2) -- F1 Bourns MF-R065 PTC -- D1 onsemi MBRS3100T3G (a
   - The LMR36015's VIN absolute maximum is 66 V (Absolute Maximum Ratings), which is above 53.3 V.
   - Recorded gap: the ADR-0010 LM317 has a 40 V input-to-output absolute maximum (LM317 datasheet SLVS044Z, Absolute Maximum Ratings). With the pressure terminals shorted and a full surge at the same time, it would see 53.3 − 2.9 = 50.4 V. Normal shorted-loop operation is 24 − 2.9 = 21.1 V. This double fault is accepted for a monitoring channel; a 60 V-rated limiter is the upgrade path.
 - **Buck converter:** U1 is a TI **LMR36015ARNXR**: 4.2-60 V input, 1.5 A, "90% efficiency at 400 kHz (24 VIN, 5 VOUT, 1 A)" (Features).
-  - **Setpoint:** Equation 3, RFBB = RFBT / (VOUT / VREF − 1), gives 100 / 4.3 = 23.26 kΩ for 5.3 V; the nearest E96 value is **23.2 kΩ**. With VFB 0.985-1.015 V (Electrical Characteristics) and **0.1 %** feedback resistors, VOUT = VFB × (1 + RFBT / RFBB) = **5.22-5.40 V**, nominal 5.31 V (0.985 × (1 + 99.9 / 23.2232) = 5.222 V; 1.015 × (1 + 100.1 / 23.1768) = 5.399 V). With 1 % resistors it would be 5.15-5.48 V, which fails the headroom below, so the 0.1 % tolerance is part of the design.
+  - **Setpoint:** Equation 3, RFBB = RFBT / (VOUT / VREF − 1), gives 100 / 4.3 = 23.26 kΩ for 5.3 V; the nearest E96 value is **23.2 kΩ**. With VFB 0.985-1.015 V (Electrical Characteristics) and **0.1 %** feedback resistors, VOUT = VFB × (1 + RFBT / RFBB) = **5.22-5.40 V**, nominal 5.31 V (0.985 × (1 + 99.9 / 23.2232) = 5.222 V; 1.015 × (1 + 100.1 / 23.1768) = 5.399 V). The design requires at least 100 mV of dropout headroom (section 2.1). With 1 % resistors the band would be 5.15-5.48 V: that leaves 97 mV of headroom and puts the maximum 22 mV from the 5.5 V load limits, so the 0.1 % tolerance is part of the design.
   - **Inductor:** Equation 4 gives the ripple factor K = (VIN − VOUT) × VOUT / (fSW × L × IOUT,max × VIN). With 15 µH at 24 V in and 5.31 V out, K = 18.69 × 5.31 / (400 kHz × 15 µH × 1.5 A × 24 V) = 0.46. The Table 10-1 5 V row itself gives 0.44 at 24 V, so the table's L, COUT, CIN and CFF are kept. The datasheet's guideline is 20-40 %; the converter carries at most 823.4 mA of its 1.5 A (section 2.2). Check ripple in Stage D.
 - **Why 5.31 V and not 5.0 V:** see the 3.3 V path below. Every 5 V load whose datasheet is in the repo accepts 5.40 V:
   - HX711 VSUP 2.7-5.5 V (HX711 Pin Description); the SparkFun board's AVDD 4.30 V stays ≤ 5.22 − 0.1 = 5.12 V (section 6);
@@ -127,7 +127,6 @@ RJ45 IN/OUT +24V (pins 1,2) -- F1 Bourns MF-R065 PTC -- D1 onsemi MBRS3100T3G (a
   - PCA9306 VREF2 0-5.5 V (PCA9306 Recommended Operating Conditions);
   - PCF8574 VCC 2.5-6 V (PCF8574 Recommended Operating Conditions);
   - TPD1E10B06 VRWM 5.5 V (Electrical Characteristics), on 1-Wire +5V;
-  - LM66100 VIN 1.5-5.5 V (Recommended Operating Conditions);
   - SN74LVC2G17 VI up to 5.5 V (section 4).
   - **Owner facts, not covered by a datasheet:** the EC modules, the LCD module itself (the HD44780-type controller, not the backpack), a flow meter powered from JP_SUPPLY = 5 V, and the parts on the clone's own 5 V net (the USB-UART bridge and possibly the RGB LED) **must each accept 5.40 V**. A part that does not is fed from its own regulator or the setpoint is revisited.
 
@@ -140,21 +139,20 @@ RJ45 IN/OUT +24V (pins 1,2) -- F1 Bourns MF-R065 PTC -- D1 onsemi MBRS3100T3G (a
   - **Quiescent and minimum load:** quiescent current 5 mA typical, **11 mA maximum** for the fixed versions; minimum load current 5 mA typical, **10 mA maximum** (Note 5: "guaranteed to regulate if the output current is greater than 10mA").
   - **Stability:** "requires the use of an output capacitor as part of the device frequency compensation. The addition of 22µF solid tantalum on the output will ensure stability for all operating conditions" (Application Hints, Stability).
 - **Peak load:** the 3V3 budget peak is 482.7 mA (section 2.2). The 1117 input current is that plus its 11 mA quiescent current: 493.7 mA.
-- **Dropout headroom, original design (fails):** buck minimum 0.985 × (1 + 100 / 24.9) = 4.941 V, minus D2 1N5819HW 0.45 V (DS30217 VF max at 1 A), minus a worst-case on-board SL diode 0.45 V, is **4.04 V**. The 1117 needs 3.3 + 1.3 = **4.60 V**. It fails by 0.56 V, and still fails (4.49 V) without the SL diode.
-- **Options checked:**
-  - Ideal diode in place of D2, buck left at 5.0 V: 4.941 − 0.054 − 0.45 = 4.44 V. **Fails.**
-  - Raise the buck and keep D2: the buck minimum would have to be 4.60 + 0.45 + 0.45 = 5.50 V, so its maximum would exceed the 5.5 V limit of the HX711, DS18B20, PCA9306 and TPD1E10B06. **Not possible.**
-  - Ideal diode **and** a raised buck: **passes** (below). **Chosen.**
-- **Ideal diode:** U8 is a TI **LM66100DCKR** (SLVSEZ8A):
-  - 1.5-5.5 V, 1.5 A continuous (Features; Recommended Operating Conditions).
-  - RON at VIN = 5 V and IOUT = 200 mA: 79 mΩ typical, 95 mΩ maximum (−40 to 85 °C), **110 mΩ maximum (−40 to 125 °C)** (Electrical Characteristics). At 493.7 mA the drop is 0.4937 × 0.110 = **0.054 V**. Its dissipation is 0.4937² × 0.110 = 27 mW, a 5.1 °C rise at θJA 192 °C/W (Thermal Information).
-  - With CE tied to VOUT, "If the output is forced above the selected input by VOFF, the channel will switch off to stop the reverse current" (section 8.3.2, Always-ON Reverse Current Blocking). VOFF is at most 80 mV (Electrical Characteristics). The OUT-to-IN leakage is at most 8 µA up to 105 °C for VOUT − VIN ≤ 5.5 V. So it keeps D2's job: USB-only power (bench flashing) cannot back-feed the buck output and the field loads.
-- **Dropout headroom, chosen design:** 5.222 − 0.054 − 0.45 = **4.718 V ≥ 4.60 V**, a **118 mV** margin against 3.3 V + the 1.3 V maximum dropout.
-  - **Recorded residual:** against the AMS1117-3.3 output maximum over temperature (3.399 V), the margin is 4.718 − (3.399 + 1.3) = **19 mV**. It is offset by two margins that the datasheets do not let us quantify: the 1.3 V dropout is specified at 0.8 A while the load is 0.49 A, and the SL VF of 0.45 V is the 1 A figure (DS30217 gives 0.32 V at 0.1 A).
+- **Dropout headroom, original design (fails):** buck minimum 0.985 × (1 + 100 / 24.9) = 4.941 V, minus D2 1N5819HW 0.45 V (DS30217 VF max at 1 A), minus a worst-case on-board SL diode 0.45 V, is **4.04 V**. The 1117 needs 3.3 + 1.3 = **4.60 V**. It fails by 0.56 V.
+- **5 V feed (owner decision 2026-11-25):** the carrier diode **D2 is deleted**. 5V_CARRIER feeds the board's 5Vin pin directly, and no ideal diode or P-FET replaces D2. The board may still have one SL diode between 5Vin and the 1117; that is kept as the worst case.
+- **Options checked (one SL diode assumed):**
+  - Delete D2, buck left at 5.0 V: 4.941 − 0.45 = 4.49 V. **Fails** by 0.11 V.
+  - Keep D2 and raise the buck: the buck minimum would have to be 4.60 + 0.45 + 0.45 = 5.50 V, so its maximum would exceed the 5.5 V limit of the HX711, DS18B20, PCA9306 and TPD1E10B06. **Not possible.**
+  - Delete D2 and raise the buck to 5.22-5.40 V (a resistor value, no added part): **passes** (below). **Chosen.**
+- **Dropout headroom, chosen design:** 5.222 − 0.45 = **4.772 V ≥ 4.60 V**, a **172 mV** margin against 3.3 V + the 1.3 V maximum dropout. The design criterion is at least 100 mV. Without an on-board SL diode the 1117 input is the full 5.22 V.
+  - **Recorded residual:** against the AMS1117-3.3 output maximum over temperature (3.399 V), the margin is 4.772 − (3.399 + 1.3) = **73 mV**. The 1.3 V dropout is specified at 0.8 A while the load is 0.49 A, and the SL VF of 0.45 V is the 1 A figure (DS30217 gives 0.32 V at 0.1 A); both add margin the datasheets do not quantify. Against it, the DS30217 VF figures are at 25 °C, and a Schottky's VF rises when cold.
   - The band is DC only. Buck ripple and droop during Wi-Fi TX bursts come out of the same margin; the Stage D dropout measurement includes them.
 - **Current rating:** 482.7 mA is within the 0.8 A at which dropout is specified, the 900 mA minimum current limit, and the 1 A rating. The 1 A rating also meets WROOM-1 DS Table 10, which requires an external supply able to deliver at least 0.5 A.
 - **No second 3.3 V regulator:** the carrier's 3.3 V loads hang on the board's 3V3 pin, and no regulator is paralleled onto it.
-- **USB coexistence:** whether USB and 5Vin may be live together is a bench check, because the user guide calls the supply options mutually exclusive (Stage D). With the LM66100 and the board's SL diodes both blocking reverse current, neither source should back-feed the other. Until the bench confirms it, flash over USB with the trunk unplugged.
+- **USB and back-feed:** with D2 deleted, nothing on the carrier blocks reverse current. If USB is connected while the trunk is unpowered, USB VBUS reaches the board's 5 V net and, unless an on-board SL diode blocks it, flows out of the 5Vin pin into 5V_CARRIER: it would power the carrier's 5 V loads (up to 823.4 − 493.7 = 329.7 mA in the budget, section 2.2) and back-drive the buck output, which this design does not cover.
+  - **USB operating rule (owner decision 2026-11-25):** connect USB (COM or USB port) only while the 24 V trunk is powered. For USB work without trunk power, take the board out of the carrier first. Unplugging the trunk alone is enough only if the Stage D bench check shows that 5Vin passes through an on-board SL diode that blocks the board's 5 V net from the 5Vin pin.
+  - With the trunk powered and USB connected, the buck and the USB VBUS (through the board's SL diodes) both feed the board's 5 V net. The user guide calls the supply options mutually exclusive, so this coexistence, and that no SL diode lets 5V_CARRIER back-feed the USB host, are Stage D checks.
 - **Stability capacitor:** the clone appears to use ceramic capacitors around its 1117 (LDO close-up photo). The carrier adds **C_3V3, a 22 µF solid tantalum (≥ 10 V)** from the 3V3 header pin to GND. This meets the AMS1117 stability requirement whatever the board fits. Scope 3V3 for oscillation in Stage D.
 - **3V3 fault injection and bleeder:** the AMS1117 datasheet specifies only a source current limit and a minimum load (Note 5); it gives no sink capability. The 1117 is therefore treated as unable to sink current, so 24 V field faults through the clamps must not lift the 3V3 rail. Worst case, with every field input at 24 V at once:
   - pulse 2 × 1.86 = 3.72 mA (section 4);
@@ -163,7 +161,7 @@ RJ45 IN/OUT +24V (pins 1,2) -- F1 Bourns MF-R065 PTC -- D1 onsemi MBRS3100T3G (a
   - pressure clamp 2.0 mA (ADR-0010).
   - Total 26.39 mA. No minimum ESP32 load is specified (WROOM-1 DS Table 13 gives typical values only), so R_BLEED = 120 Ω sinks 3.3 / 120 = 27.5 mA by itself (91 mW, within 0.25 W).
   - R_BLEED's 27.5 mA also covers the AMS1117's 10 mA minimum load (Note 5) by itself.
-- **LDO thermal limit:** the worst case ignores the LM66100 and SL drops, so the 1117 input is the buck maximum, 5.40 V. θJA is the datasheet's 90 °C/W, which assumes copper over a ground plane; the clone's layout is unknown and may be worse.
+- **LDO thermal limit:** the worst case assumes no on-board SL diode, so the 1117 input is the buck maximum, 5.40 V. θJA is the datasheet's 90 °C/W, which assumes copper over a ground plane; the clone's layout is unknown and may be worse.
   - With Wi-Fi off, the 3V3 load is 235.6 mA: 355.0 is replaced by 107.9 mA, the largest typical figure in WROOM-1 DS Table 13 (240 MHz, dual core, all peripheral clocks on). The LDO then dissipates (5.40 − 3.3) × 0.2356 = 0.495 W, a 44.5 °C rise (junction to tab 15 °C/W × 0.495 W = 7.4 °C). At the 50 °C design ambient, TJ = 94.5 °C, below 125 °C.
   - With continuous Wi-Fi TX (482.7 mA) it would dissipate 1.014 W, a 91.2 °C rise. TJ = 141.2 °C at 50 °C ambient, above the 125 °C maximum.
   - The largest continuous 3V3 load at 50 °C ambient is (125 − 50) / 90 / (5.40 − 3.3) = 397 mA.
@@ -332,7 +330,6 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
 | U1 | TI LMR36015ARNXR | 60 V 1.5 A buck, 400 kHz | 24 V to 5 V |
 | L1, C | per LMR36015 Table 10-1 | 15 µH; 3 × 22 µF; 4.7 µF + 2 × 220 nF; 20 pF | buck components |
 | RFBT, RFBB | 100 kΩ 0.1 %, 23.2 kΩ 0.1 % | 5.22-5.40 V | buck setpoint (LMR36015 Equation 3) |
-| U8 | TI LM66100DCKR | 5.5 V 1.5 A ideal diode, RON ≤ 110 mΩ | 5V_CARRIER to board 5Vin pin, no back-feed (replaces the 1N5819HW D2) |
 | C_3V3 | 22 µF solid tantalum, ≥ 10 V | 22 µF | 1117 output stability, at the 3V3 header pin |
 | U2 | TI THVD1450DR | 3.3 V RS485, failsafe | transceiver |
 | TVS2 | Littelfuse SM712-02HTG | −7/+12 V | RS485 A/B protection |
@@ -382,9 +379,9 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
 - **Bare GPIO 1-Wire with a resistor pull-up:** there is no spare GPIO after the exclusions; DATA would not tolerate a 5 V miswire; there is no active pull-up for long lines.
 - **Second 3.3 V regulator on the carrier, feeding the board's 3V3 pin:** it would parallel the board's 1117 whenever USB is plugged, or split the 3.3 V domain with back-powering through I/O. With 5Vin unpowered, the carrier's 3.3 V would also back-feed the board's unknown 5 V net through the 1117's internal diode between output and input (AMS1117 Application Hints, Protection Diodes). The user guide also calls the 3V3-pin and USB supplies mutually exclusive.
 - **Keeping the 1N5819HW (D2) with the buck at 5.0 V:** the 1117 input would be 4.04 V against the 4.60 V it needs (section 2.1).
-- **LM66100 alone, with the buck at 5.0 V:** 4.44 V, still short (section 2.1).
+- **Deleting D2 with the buck left at 5.0 V:** 4.49 V, still short (section 2.1).
 - **Raising the buck and keeping D2:** the buck minimum would have to be 5.50 V, above what the 5 V loads accept (sections 2 and 2.1).
-- **A discrete P-FET instead of the LM66100:** a P-FET in reverse-polarity orientation conducts in both directions once on, so it would not block USB back-feed into the field loads without a comparator; the LM66100 integrates one.
+- **A TI LM66100 ideal diode (or a P-FET) in place of D2:** with the raised buck it gave 4.713 V at the 1117 input (RON 120 mΩ maximum at −40 to 125 °C, LM66100 SLVSEZ8A Electrical Characteristics) and blocked USB back-feed. The owner rejected it on 2026-11-25: this is a prototype, and the USB operating rule (section 2.1) replaces reverse-current blocking. The datasheet stays in `hardware/sensor-node/datasheets/` for a later revision.
 - **Replacing the board's 1117 with a lower-dropout regulator:** it reworks the owner's board and gives a part that differs from every other board of the same kind.
 - **Isolated RS485:** ADR-0008 runs GND on the trunk; the isolated footprint remains an option.
 - **Opto-coupled pulse inputs:** isolation buys nothing when the meter is powered and grounded by the node. Opto CTR spread complicates one universal 5-24 V input.
@@ -405,7 +402,7 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
 - **Bench (Stage D):**
   - idle-bus bias at the controller, and the A/B polarity;
   - trunk voltage drop and per-node current against this budget;
-  - USB plus 5Vin coexistence on the board;
+  - USB plus 5Vin coexistence on the board, with the trunk powered (USB operating rule, section 2.1);
   - the RGB LED GPIO (38, 48 or another pin);
   - whether 5Vin passes through an SL diode on its way to the 1117 input;
   - the orientation of each SL diode, and that none lets the carrier's 5 V back-feed a USB host (VBUS);

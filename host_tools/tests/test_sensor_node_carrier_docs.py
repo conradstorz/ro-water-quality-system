@@ -12,6 +12,7 @@ PINOUT = REPO / "hardware" / "sensor-node" / "pinout.yaml"
 HARDWARE_SPEC = REPO / "hardware" / "sensor-node" / "HARDWARE_SPEC.md"
 INTERCONNECT = REPO / "hardware" / "interconnect" / "NODE_BUS_INTERCONNECT.md"
 TODO = REPO / "docs" / "TODO.md"
+ACCEPTANCE = REPO / "docs" / "test" / "ACCEPTANCE_TEST_PLAN.md"
 DATASHEETS = REPO / "hardware" / "sensor-node" / "datasheets"
 
 # Cited pin facts (WROOM-1 datasheet v1.2 Tables 3-4, S3 datasheet Table 2-14, DevKitC-1 user guide v1.1).
@@ -189,9 +190,9 @@ VFB_MIN, VFB_MAX = 0.985, 1.015
 BUCK_MIN = VFB_MIN * (1 + RFBT * (1 - R_TOL) / (RFBB * (1 + R_TOL)))
 BUCK_MAX = VFB_MAX * (1 + RFBT * (1 + R_TOL) / (RFBB * (1 - R_TOL)))
 SL_VF_MAX = 0.45  # 1N5819HW (marking SL) VF max at 1 A, DS30217
-D2_OLD_VF_MAX = 0.45  # the replaced 1N5819HW D2
-LM66100_RON_MAX = 0.110  # SLVSEZ8A, VIN = 5 V, -40 to 125 C
-FIVE_V_LOAD_MAX = 5.5  # HX711 VSUP, DS18B20 VDD, PCA9306 VREF2, TPD1E10B06 VRWM, LM66100 VIN
+D2_OLD_VF_MAX = 0.45  # the deleted 1N5819HW D2
+FIVE_V_LOAD_MAX = 5.5  # HX711 VSUP, DS18B20 VDD, PCA9306 VREF2, TPD1E10B06 VRWM
+HEADROOM_MIN_V = 0.1  # design criterion, ADR-0012 section 2.1
 AMBIENT_C = 50
 
 
@@ -210,30 +211,40 @@ def test_buck_setpoint_band_and_5v_load_limits() -> None:
     text = ADR12.read_text(encoding="utf-8")
     assert "5.22-5.40 V" in text
     assert "23.2 kΩ 0.1 %" in text
-    # With 1 % feedback resistors the headroom would shrink below 0.1 V: hence 0.1 %.
+    # With 1 % feedback resistors the headroom would be 97 mV, below the criterion: hence 0.1 %.
     one_pct_min = VFB_MIN * (1 + RFBT * 0.99 / (RFBB * 1.01))
-    i_in = (_total("3V3") + AMS1117_IQ_MAX_MA) / 1000
-    assert one_pct_min - i_in * LM66100_RON_MAX - SL_VF_MAX < 3.3 + AMS1117_DROPOUT_MAX_V + 0.1
+    assert one_pct_min - SL_VF_MAX - (3.3 + AMS1117_DROPOUT_MAX_V) < HEADROOM_MIN_V
 
 
-def test_1117_dropout_headroom() -> None:
-    i_in = (_total("3V3") + AMS1117_IQ_MAX_MA) / 1000
+def test_1117_dropout_headroom_without_d2() -> None:
     need = 3.3 + AMS1117_DROPOUT_MAX_V
     old_buck_min = VFB_MIN * (1 + 100 / 24.9)
     # Original design: buck 5.0 V, 1N5819HW D2, worst-case on-board SL diode. Fails.
     old = old_buck_min - D2_OLD_VF_MAX - SL_VF_MAX
     assert old == pytest.approx(4.04, abs=0.01)
     assert old < need
-    # LM66100 alone with the buck at 5.0 V still fails.
-    assert old_buck_min - i_in * LM66100_RON_MAX - SL_VF_MAX < need
-    # Chosen: LM66100 and the buck at 5.22-5.40 V.
-    ldo_in = BUCK_MIN - i_in * LM66100_RON_MAX - SL_VF_MAX
-    assert ldo_in == pytest.approx(4.718, abs=0.001)
-    assert ldo_in - need >= 0.1
-    assert ldo_in > AMS1117_VOUT_MAX_V + AMS1117_DROPOUT_MAX_V  # recorded residual, 19 mV
+    # D2 deleted (owner decision 2026-11-25) but buck left at 5.0 V: still fails.
+    assert old_buck_min - SL_VF_MAX < need
+    # Chosen: D2 deleted, buck at 5.22-5.40 V, one SL diode assumed.
+    ldo_in = BUCK_MIN - SL_VF_MAX
+    assert ldo_in == pytest.approx(4.772, abs=0.001)
+    assert ldo_in - need >= HEADROOM_MIN_V
+    assert ldo_in - (AMS1117_VOUT_MAX_V + AMS1117_DROPOUT_MAX_V) == pytest.approx(0.073, abs=0.001)
     text = ADR12.read_text(encoding="utf-8")
-    assert "4.718 V ≥ 4.60 V" in text
-    assert "**118 mV**" in text
+    assert "4.772 V ≥ 4.60 V" in text
+    assert "**172 mV**" in text
+    assert "**73 mV**" in text
+
+
+def test_d2_deleted_and_usb_rule_recorded() -> None:
+    text = ADR12.read_text(encoding="utf-8")
+    bom = text[text.index("## 8. Carrier BOM") : text.index("## 9.")]
+    assert "1N5819HW" not in bom and "LM66100" not in bom
+    assert "D2 is deleted" in text
+    rule = "connect USB (COM or USB port) only while the 24 V trunk is powered"
+    assert rule in text
+    for doc in (HARDWARE_SPEC, ACCEPTANCE):
+        assert "only while the 24 V trunk is powered" in doc.read_text(encoding="utf-8"), doc.name
 
 
 BUCK_V, ETA, D1_VF = 5.40, 0.85, 0.79  # buck maximum output, used for power

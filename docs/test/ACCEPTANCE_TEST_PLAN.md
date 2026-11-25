@@ -28,6 +28,11 @@
 - Against a protocol 1.3 node: the write answers ILLEGAL_DATA_ADDRESS, the controller reports names unsupported (`ro-tools onewire push` exit 4), does not retry until `boot_counter` changes, and `production_permitted` and node health are identical to the no-write case.
 - With names pushed, the LCD shows each label in columns 1-11 with column 20 free; unnamed devices show `?FF-SSSS`.
 
+## Sensor-node power (ADR-0012)
+- USB operating rule (owner decision 2026-11-25): connect USB only while the 24 V trunk is powered; for USB work without trunk power, take the board out of the carrier first. The carrier has no diode between its 5 V rail and the board's 5Vin pin.
+- With the trunk powered, measure 5V_CARRIER (expect 5.22-5.40 V) and the 1117 input during Wi-Fi TX bursts (must stay at or above 4.60 V; ADR-0012 section 2.1).
+- With the trunk powered and USB connected, confirm no current flows from 5V_CARRIER into the USB host (SL diode orientation).
+
 ## Actuators and safety
 - Bench test with dummy loads. Confirm power-off contactor OFF and flush valve opens. Diversion valve (K3, normally closed) is closed when unpowered; confirm it energizes to drain only while the controller commands a dump.
 - Permeate diversion (ADR-0006): startup dump until EC below threshold then switch to tank; high permeate EC during production switches to dump and raises a fault; dump-time limit triggers the configured fault; stale or invalid EC inhibits production (rule 4). Thresholds and limits TBD.
