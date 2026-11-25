@@ -89,9 +89,15 @@ def test_onewire_section_names_connector_and_signals():
 
 
 def test_onewire_ratings_and_electrical_values_are_tbd():
+    """Connector ratings and cable length are owner/bench facts; carrier values cite ADR-0012."""
     ow = load()["onewire"]
-    for key in ("rating_voltage", "rating_current", "polyfuse", "pull_up", "gpio", "max_length"):
+    for key in ("rating_voltage", "rating_current", "max_length", "max_devices"):
         assert ow[key] == "TBD", key
+    for key in ("polyfuse", "pull_up", "gpio", "series_resistor", "esd"):
+        assert "ADR-0012" in ow[key], key
+    assert "MF-R010" in ow["polyfuse"]
+    assert "DS2482" in ow["gpio"] and "0x18" in ow["gpio"]
+    assert "33 ohm" in ow["series_resistor"]
     assert ow["power"] == "node 5V rail, non-parasitic"
 
 
@@ -136,9 +142,12 @@ def _sections(path: Path) -> list[str]:
 
 
 def _violations(lines: list[str]) -> list[str]:
+    """Flag GPIO/pull-up/series-resistor lines that neither cite ADR-0012 nor are a bare TBD."""
     bad = []
     for line in lines:
-        if _TOPIC.search(line) and ("TBD" not in line or _NUMERIC.search(line)):
+        if not _TOPIC.search(line) or "ADR-0012" in line:
+            continue
+        if "TBD" not in line or _NUMERIC.search(line):
             bad.append(line)
     return bad
 
@@ -148,17 +157,26 @@ def test_onewire_sections_are_found() -> None:
     assert any("series resistor" in line.lower() for line in _sections(HARDWARE_SPEC))
 
 
-def test_onewire_gpio_pullup_resistor_lines_are_tbd_without_numbers() -> None:
+def test_onewire_gpio_pullup_resistor_lines_cite_adr_0012_or_are_tbd() -> None:
     lines = _sections(DOC) + _sections(HARDWARE_SPEC)
     assert _violations(lines) == []
 
 
-def test_pinout_onewire_electrical_keys_are_tbd_without_numbers() -> None:
+def test_pinout_onewire_numeric_values_cite_adr_0012() -> None:
     ow = load()["onewire"]
     for key, value in ow.items():
         if _TOPIC.search(key):
-            assert value == "TBD", key
-    assert not [v for v in ow.values() if isinstance(v, str) and _NUMERIC.search(v)]
+            assert value == "TBD" or "ADR-0012" in value, key
+    assert not [
+        v for v in ow.values() if isinstance(v, str) and _NUMERIC.search(v) and "ADR-0012" not in v
+    ]
+
+
+def test_violation_detector_accepts_adr_0012_values() -> None:
+    assert (
+        _violations(["- Bus driver: DS2482, 33 ohm series resistor, internal pull-up (ADR-0012)."])
+        == []
+    )
 
 
 @pytest.mark.parametrize(

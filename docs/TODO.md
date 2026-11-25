@@ -22,7 +22,6 @@ Owner decisions (2026-11-23):
 The change is acceptable because the LCD is not part of any safety mechanism: the main controller and hardwired protections act regardless of what the display shows.
 
 Remaining open questions:
-- **Existing layouts that do not yet fit columns 1-19:** `STARTING / DATA WAIT` is 20 characters, and `RO STATE: <state>` exceeds 19 for `production` (20), `maintenance` (21), `startup_flush` (23) and `shutdown_flush` (24) if the enum names are shown as-is; the last three already exceeded 20 (`EXCEPTION_DRIVEN_LCD_AND_FAULTS_SPEC.md`). They need shorter wording.
 - **HOLD marker:** should the screen show one while frozen, and where?
 - **Diagnostic pages:** part of the normal sequence, or a separate set reached by a long press or both buttons together?
 
@@ -42,8 +41,48 @@ To define:
   
   Whether any maintenance action (for example, entering calibration mode) is ever allowed needs its own safety review.
 - **Hardware:**
-  - GPIO assignment, avoiding strapping pins, ADC1 (GPIO1 is used by pressure, ADR-0010), PCNT, I2C, RS485 and 1-Wire pins.
-  - Pull-up/pull-down choice, debounce (hardware RC or firmware), ESD protection.
+  - GPIO assignment: NEXT on GPIO10, HOLD on GPIO47 (ADR-0012).
+  - Pull-up, debounce and ESD: 10 kohm pull-up, 100 nF, 1 kohm, TPD1E10B06; firmware debounce 20 ms (ADR-0012, section 7).
   - Panel-mount, waterproof button type, enclosure position and labeling.
 - **Firmware:** nonblocking button service, debounce timing, stuck-button detection (a stuck button must not lock the display), host-side tests with a mock input.
 - **Docs to update when defined:** sensor-node hardware spec, both LCD specs, `LCD_FAULT_PRIORITY_TESTS.md`, acceptance test plan, CHANGELOG.
+
+## Exact hardware specification
+Added 2026-11-23. Replace every hardware TBD with a specific part, value or measured figure. Record the decisions in ADRs like ADR-0010 (circuit, parts list, arithmetic checked by a test), and update the specs listed under each item. AGENTS.md rule 5 still applies: owner facts and datasheets, never guesses.
+
+### Owner to supply (model number, listing link, or "not chosen yet")
+- [ ] **Main controller:** confirm the Waveshare ESP32-S3-ETH-8DI-8RO (Amazon B0FBKH9YPM) and its manual. Then size fuse F1 (`hardware/main-controller/HARDWARE_SPEC.md`, `WIRING.md`).
+- [ ] **Sensor-node ESP32-S3 board**, if one is already owned (`hardware/sensor-node/HARDWARE_SPEC.md`).
+- [ ] **Flow meters (permeate, concentrate):** pulse output type and voltage, K-factor, and whether temperature is built in and how it is read (Modbus spec temperature rows).
+- [ ] **Conductivity probes and modules (feed, permeate):** range (the permeate low range must be verified), output signal, supply.
+- [ ] **Tank load cells and HX711 boards:** capacity, excitation, mounting.
+- [ ] **Flush valve and permeate diversion valve:** model, voltage, coil current and inrush, duty cycle, fail state. The USS-MSV00072 is provisional. Then size F2 and settle the 12 V rail (ADR-0006, `WIRING.md`).
+- [ ] **Pump contactor:** coil voltage and current. **Booster pump** model.
+- [ ] **RO membrane** datasheet: permeate back-pressure limit (`docs/safety/SAFETY_REQUIREMENTS.md`), recovery limit.
+- [ ] **Plumbing:** pressure ratings, low-crack check valve, relief discharge routing (`hardware/plumbing/PROCESS_AND_INSTRUMENTATION.md`).
+- [ ] **Power supplies:** 24 V (trunk and controller) and 12 V (valves, coil) models and ratings (`hardware/power/POWER_AND_WIRING.md`).
+- [ ] **LCD module:** 20×4 I²C backpack part and its character ROM (A00 assumption in ADR-0011).
+- [ ] **Trunk cable and 1-Wire connector:** RJ45 cable type, and the Nilight connector's cavity numbering and ratings.
+
+### Claude to design (sensor-node carrier board; no owner facts needed)
+Designed 2026-11-23 in `docs/decisions/ADR-0012-sensor-node-carrier.md` (Proposed). Where a design part is done but an owner fact remains, the box is ticked and the remaining fact is noted.
+- [x] Full GPIO map for the ESP32-S3 carrier: avoid strapping pins (0, 3, 45, 46), USB (19/20) and JTAG (39-42); keep GPIO1 for pressure (ADR-0010); reserve two GPIOs for the diagnostic buttons (section above). Recorded in `hardware/sensor-node/pinout.yaml` (generic ESP32-S3 N16R8 board, DevKitC-1 pin-compatible, owner-supplied 2026-11-25; buttons on GPIO10 and GPIO47).
+- [x] Trunk input stage: fuse, reverse-polarity protection, TVS, 24→5 V buck, 3.3 V regulator, per-node current budget. Budget 305.6 mA from 24 V; confirm by measurement in Stage D. 3.3 V comes from the board's 1117 LDO, fed directly from the buck at 5.31 V; D2 deleted, USB only while the trunk is powered (reworked 2026-11-25).
+- [x] RS485: transceiver part, bias resistor values at the controller, termination plan including the controller's jumper (ADR-0008). Whether bias is fitted depends on the Stage D idle-bus check.
+- [x] Pulse inputs: level conditioning and protection into PCNT. Universal front end done. **Remaining owner fact:** flow-meter output type, voltage and supply, which set the two jumpers.
+- [x] 1-Wire front end: DS2482-100 master (no GPIO), series resistor, pull-up, polyfuse rating, ESD/TVS (ADR-0009). **Remaining owner fact:** Nilight connector cavity numbering and ratings.
+- [x] ADS1115 (EC and thermistors) and HX711 wiring, I²C addresses, input protection. **Remaining owner facts:** EC module output range (the divider covers up to 5.5 V), thermistor nominal resistance (sets Rref), load-cell bridge resistance.
+- [x] DIP-switch node-ID input; LCD I²C connection; push-button inputs and debounce. Panel button model and position stay with the enclosure layout.
+- [x] Carrier BOM with part numbers; DIN-rail enclosure and connectors. **Remaining:** the enclosure model and dimensions, and terminal-block catalog numbers, chosen at layout.
+
+### Bench measurements (Stage D)
+- [ ] Maximum trunk length, voltage drop, per-node current.
+- [ ] Idle-bus bias check; whether the controller board already biases RS485.
+- [ ] 1-Wire maximum cable length and device count.
+- [ ] Sensor-node ESP32-S3 board (ADR-0012, Stage D list): RGB LED GPIO; whether 5Vin passes through an SL diode; SL diode orientation (USB back-feed); IN-OUT and USB-OTG jumpers open; 1117 temperature and actual dropout; 3V3 oscillation; USB plus trunk coexistence. (Genuine N16R8 and CH343 bridge closed 2026-11-25 by esptool.) Owner facts: EC modules, LCD module and any 5 V flow meter must accept 5.40 V.
+- [ ] Pressure loop: limiter current, ADC at 4/12/20 mA, shorted and open loop (acceptance plan).
+
+### Firmware-side TBDs tied to hardware
+- [ ] Pinned Arduino-ESP32 and PlatformIO versions; Modbus RTU library choice (ADR-0007).
+- [ ] EC acceptance threshold for dump→tank, maximum dump time (ADR-0006).
+- [ ] Pressure calibration tolerance (acceptance plan).

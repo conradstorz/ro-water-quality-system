@@ -56,3 +56,32 @@
 - Owner decision (option A): column 20 of every LCD row on every page is reserved for a fault indicator: a space in normal operation, `*` while any WARNING or CRITICAL fault is active. Labels are 1-11 characters (`label_max_chars: 11`); 1-Wire rows are label + space + 7-character value + column 20. 1-Wire pages join NORMAL rotation after diagnostics and never preempt. Both LCD specs, LCD fault tests and the acceptance plan updated.
 - Host tools: bindings validation, name-table codec and node-side validation (including all-zero ROM rejection), simulator support, reference LCD renderer with a column-20 indicator, `ro-tools onewire scan | validate | push` (`push` exits 4 for an unsupported node). Docs checked by `test_onewire_names_docs.py`.
 - `protocol/examples/sample_snapshot.json` and the README `validate` example now say protocol 1.4.
+
+## LCD texts fit columns 1-19 — 2026-11-23
+- `STARTING / DATA WAIT` becomes `STARTING: DATA WAIT`.
+- Row 4 of critical pages shows `RO: <text>` from a fixed per-state table (`START FLUSH`, `STOP FLUSH`, `MAINTENANCE`, ...) instead of raw enum names.
+- Fault page header: `!! CRITICAL` / `! WARNING` with `n/m` right-aligned to column 19; counts above 99 show `99+`.
+- Checked by `test_lcd_texts_docs.py`.
+
+## Sensor-node carrier board and ADR-0012 — 2026-11-23
+- ADR-0012 (proposed): an ESP32-S3-DevKitC-1-N16R8 on headers (owner decision 2026-11-24; the DevKitC-1-N8 is EOL). GPIO35-37 belong to the octal PSRAM.
+  - GPIO map in `hardware/sensor-node/pinout.yaml`. It avoids strapping, USB, JTAG, UART0, octal-PSRAM and RGB-LED pins; GPIO1 stays pressure; buttons on GPIO10 and GPIO47.
+  - Trunk input: MF-R065 PTC, MBRS3100, SMBJ33A, LMR36015 buck to 5 V, and the DevKitC SGM2212 for 3.3 V.
+  - Per-node budget: 286.0 mA from 24 V, replacing the 200 mA assumption.
+  - THVD1450 failsafe RS485 with SM712. Termination: controller cap on, far-end node J_TERM. Conditional controller bias values.
+  - Universal pulse front end. DS2482-100 1-Wire master (0x18) with MF-R010 and TPD1E10B06.
+  - ADS1115 at 0x48/0x49 with divider and clamp. HX711 with DVDD on 3.3 V (SparkFun board, SJ2 open). PCA9306 for the LCD.
+  - BOM, and datasheets in `hardware/sensor-node/datasheets/`.
+- Review fixes: a 120 ohm 3V3 bleeder sinks the worst-case 24 V fault injection (26.4 mA), because the DevKitC LDO cannot sink; 1 kohm series resistors on push-pull-driven pins that glitch at power-up (GPIO11, 13, 15, 16, 18); LMR36015 inductor 15 µH per Table 10-1.
+- Corrected the 1-Wire ROM notation line in `NODE_BUS_INTERCONNECT.md`: the CLI prints wire order, family byte first and CRC last.
+- HX711 excitation is 4.30 V AVDD, not 5 V.
+- ADR-0008/0009 TBD lines, interconnect, power and controller wiring docs updated. Checked by `test_sensor_node_carrier_docs.py`. The 1-Wire guards in `test_interconnect_docs.py` now require ADR-0012 values instead of TBD for the closed keys.
+
+## Sensor-node carrier reworked for the owner's ESP32-S3 board — 2026-11-25
+- ADR-0012: the owner now uses a generic ESP32-S3 N16R8 board, DevKitC-1 pin-compatible (silkscreen ESP32-S3 2025-V1.4), instead of the DevKitC-1-N16R8. The DevKitC-1 user guide stays the pin-compatibility reference; the GPIO map is unchanged. Photos are in `hardware/sensor-node/reference/`.
+- The board's regulator is a generic 1117-3.3, designed to AMS1117 maximums (1.3 V dropout at 0.8 A, θJA 90 °C/W). The old path (buck 5.0 V, 1N5819HW D2, possible on-board SL diode) gave 4.04 V against the 4.60 V needed. The buck is raised to 5.31 V nominal (RFBB 23.2 kΩ, 0.1 % resistors, 5.22-5.40 V). A first revision also replaced D2 with a TI LM66100 ideal diode (4.713 V, RON 120 mΩ max); see the owner decision below.
+- Added C_3V3 (22 µF tantalum) for 1117 stability. Budget is now 305.6 mA from 24 V. The Wi-Fi-off rule stays (Wi-Fi TX gives TJ 141 °C at 50 °C ambient). EC modules, the LCD module and a 5 V flow meter must accept 5.40 V (owner facts).
+- New Stage D items: RGB LED GPIO, 5Vin SL diode, SL orientation, IN-OUT/USB-OTG jumpers, 1117 temperature and dropout, 3V3 oscillation, `esptool` genuineness check.
+- AMS1117 and LM66100 datasheets added. `test_sensor_node_carrier_docs.py` checks the 1117 limits and the dropout headroom.
+- Owner decision (same day): D2 is deleted and no ideal diode replaces it; the buck feeds the board's 5Vin pin directly. With the buck still at 5.22-5.40 V and one on-board SL diode assumed, the 1117 input is 4.772 V (172 mV margin; 73 mV against the 1117's 3.399 V output maximum). Operating rule: connect USB only while the 24 V trunk is powered (recorded in ADR-0012, HARDWARE_SPEC and the acceptance plan). The LM66100 option is recorded as rejected.
+- Bench (esptool v5.7.0 `flash-id`, COM port): ESP32-S3 (QFN56) v0.2, embedded PSRAM 8 MB AP_3v3 (not R8V; GPIO47/48 are 3.3 V), 16 MB flash (0x1C/0x7018), USB bridge WCH CH343. The genuine-module and bridge bench items are closed in ADR-0012.

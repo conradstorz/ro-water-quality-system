@@ -16,4 +16,6 @@
 - Ethernet-confusion risk remains a human-factors risk, not eliminated.
 - Hardware docs updated: `hardware/interconnect/NODE_BUS_INTERCONNECT.md`, sensor-node `HARDWARE_SPEC.md`, `POWER_AND_WIRING.md`, controller `WIRING.md`.
 
-**TBD (do not guess):** termination and bias resistor values; transceiver part; maximum trunk length, voltage drop and per-node current (current under 200 mA is an assumption); whether to use the isolated footprint (verify the ground scheme in Stage D); pressure transducer model and ADC input protection; supply choice for valves and contactor coil.
+**Resolved in ADR-0012 (2026-11-23):** transceiver part (TI THVD1450, failsafe receivers); termination plan (controller jumper cap on, far-end node J_TERM on, all others off); conditional bias values at the controller (390 ohm from 3.3 V or 680 ohm from 5 V, fitted only if the Stage D idle-bus check needs them); per-node current budget (286.0 mA from 24 V, replacing the 200 mA assumption; 305.6 mA after the 2026-11-25 board rework) and node fuse (Bourns MF-R065). Pressure transducer and ADC input protection: ADR-0010.
+
+**TBD (do not guess):** maximum trunk length, voltage drop and measured per-node current (Stage D); whether the controller needs the bias (Stage D); whether to use the isolated footprint (verify the ground scheme in Stage D); supply choice for valves and contactor coil.
