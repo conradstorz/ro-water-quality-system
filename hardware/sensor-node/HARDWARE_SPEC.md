@@ -11,7 +11,7 @@ Decision record, circuits, BOM, current budget and citations: `docs/decisions/AD
 - 2 thermistor channels on ADS1115 #2 (0x49), ratiometric against the 3.3 V rail. The reference resistor equals the thermistor nominal value, which is an owner fact.
 - 2 pulse inputs (GPIO15/16, PCNT units 0/1): one front end for open-collector or 5-24 V push-pull outputs; 10 k/22 k divider, BAT54S clamp, SN74LVC2G17 Schmitt buffer, SMAJ33A TVS; jumpers for the open-collector pull-up and for a 5 V or 24 V meter supply.
 - 1 optional analog RO pressure transducer (RO feed: LFT2000 0-16 bar 4-20 mA, ADR-0010); independent hardwired pressure cutoff remains mandatory.
-- Node ID: 4-position DIP switch on GPIO4-7 with 10 kohm pull-ups, read at boot, IDs 1-15; duplicate or out-of-range ID leaves the node silent.
+- Node ID: hardwired jumpers to GND on GPIO4-7 with 10 kohm pull-ups (RO skid: GPIO4 only; tank: GPIO5 only), read at boot, IDs 1-15; duplicate or out-of-range ID leaves the node silent.
 - LCD: I2C through a TI PCA9306 level translator (3.3 V to 5 V), because the PCF8574 backpack needs VIH 0.7 × VCC. The I2C bus runs at 100 kHz.
 - Diagnostic buttons: NEXT on GPIO10, HOLD on GPIO47. Each has a 10 kohm pull-up, 100 nF and 1 kohm (1 ms RC), and TPD1E10B06 ESD protection; firmware debounces at 20 ms. Display-only.
 - Owner facts still open: flow-meter output type and supply, EC module output range, thermistor nominal resistance, load-cell bridge resistance, LCD module, 1-Wire connector cavities.

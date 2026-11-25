@@ -18,10 +18,10 @@ i2c_bus_khz: 100  # PCF8574 fSCL max
 gpio:
   1: {signal: PRESSURE_ADC, kind: analog, note: "ADC1_CH0, ADR-0010"}
   2: {signal: SPARE_ADC, kind: analog, note: "ADC1_CH1, test pad only"}
-  4: {signal: NODE_ID_0, kind: dip}
-  5: {signal: NODE_ID_1, kind: dip}
-  6: {signal: NODE_ID_2, kind: dip}
-  7: {signal: NODE_ID_3, kind: dip}
+  4: {signal: NODE_ID_0, kind: id_jumper}
+  5: {signal: NODE_ID_1, kind: id_jumper}
+  6: {signal: NODE_ID_2, kind: id_jumper}
+  7: {signal: NODE_ID_3, kind: id_jumper}
   8: {signal: I2C_SDA, kind: i2c}
   9: {signal: I2C_SCL, kind: i2c}
   10: {signal: BTN_NEXT, kind: button}

@@ -13,3 +13,9 @@ logs/*
 *.map
 .DS_Store
 .superpowers/
+
+# PlatformIO / ESP-IDF build outputs
+.pio/
+firmware/bringup/sdkconfig.bringup*
+firmware/bringup/dependencies.lock
+firmware/bringup/managed_components/

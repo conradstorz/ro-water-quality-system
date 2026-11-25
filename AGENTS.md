@@ -10,3 +10,13 @@
 - The LCD must be exception-driven. Read `docs/specs/EXCEPTION_DRIVEN_LCD_AND_FAULTS_SPEC.md` and `protocol/CONTROLLER_STATUS_EXTENSION.md` before modifying display or Modbus code.
 - The main-controller-to-sensor-node status block is display-only and must never be used as an actuator command.
 - The 1-Wire name table (holding 240-322, `protocol/ONEWIRE_NAME_TABLE.md`) is display-only like the status block: never an actuator command, never an input to validity or production.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues on `conradstorz/ro-water-quality-system`. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` at the root, decision records in `docs/decisions/`. See `docs/agents/domain.md`.

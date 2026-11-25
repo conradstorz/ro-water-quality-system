@@ -1,0 +1,43 @@
+# Bring-up probe for the sensor-node ESP32-S3 N16R8 clone (ADR-0012).
+CONFIG_IDF_TARGET="esp32s3"
+
+# Flash: 16 MB, DIO (see platformio.ini / README for why not QIO), 80 MHz.
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_DIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_bringup.csv"
+
+# Octal PSRAM. A wrong guess reports instead of aborting.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_IGNORE_NOTFOUND=y
+CONFIG_SPIRAM_USE_CAPS_ALLOC=y
+CONFIG_SPIRAM_MEMTEST=n
+
+# CPU
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+
+# Console: UART0 (CH343 "COM" port) primary, USB-Serial-JTAG ("USB" port) secondary.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
+CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG=y
+
+# Keep IDF log lines from colouring the PROBE stream.
+CONFIG_LOG_COLORS=n
+CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+
+# Brownout detector on (default level); the probe reports the configured level.
+CONFIG_ESP_BROWNOUT_DET=y
+
+# Long PSRAM/flash tests yield every chunk, but do not let a slow pass reset the chip.
+CONFIG_ESP_TASK_WDT_TIMEOUT_S=30
+
+# No Bluetooth.
+CONFIG_BT_ENABLED=n
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# 1 kHz tick: the 5 ms button/walk polls must not round to 0 ticks
+# (at 100 Hz, pdMS_TO_TICKS(5) == 0 and the poll task starves IDLE0).
+CONFIG_FREERTOS_HZ=1000

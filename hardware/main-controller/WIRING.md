@@ -43,7 +43,7 @@ Do not power the board from USB-C and the 7-36 V terminal at the same time until
 
 ## 3. RS485 to the sensor nodes
 
-Link parameters (from `docs/specs/SENSOR_NODE_MODBUS_RS485_SPEC.md`): 19200 8E1, controller = master polling unit ids 1..15 (start with 1 = RO skid, 2 = tank), sensor nodes = servers. Node id comes from each node's DIP switch.
+Link parameters (from `docs/specs/SENSOR_NODE_MODBUS_RS485_SPEC.md`): 19200 8E1, controller = master polling unit ids 1..15 (start with 1 = RO skid, 2 = tank), sensor nodes = servers. Node id comes from each node's hardwired ID jumper.
 
 | Main controller `[T]` | Sensor nodes (trunk pins) | Notes |
 |---|---|---|
