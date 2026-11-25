@@ -76,3 +76,10 @@
 - Corrected the 1-Wire ROM notation line in `NODE_BUS_INTERCONNECT.md`: the CLI prints wire order, family byte first and CRC last.
 - HX711 excitation is 4.30 V AVDD, not 5 V.
 - ADR-0008/0009 TBD lines, interconnect, power and controller wiring docs updated. Checked by `test_sensor_node_carrier_docs.py`. The 1-Wire guards in `test_interconnect_docs.py` now require ADR-0012 values instead of TBD for the closed keys.
+
+## Sensor-node carrier reworked for the owner's ESP32-S3 board — 2026-11-25
+- ADR-0012: the owner now uses a generic ESP32-S3 N16R8 board, DevKitC-1 pin-compatible (silkscreen ESP32-S3 2025-V1.4), instead of the DevKitC-1-N16R8. The DevKitC-1 user guide stays the pin-compatibility reference; the GPIO map is unchanged. Photos are in `hardware/sensor-node/reference/`.
+- The board's regulator is a generic 1117-3.3, designed to AMS1117 maximums (1.3 V dropout at 0.8 A, θJA 90 °C/W). The old path (buck 5.0 V, 1N5819HW D2, possible on-board SL diode) gave 4.04 V against the 4.60 V needed. D2 is replaced by a TI LM66100 ideal diode, and the buck is raised to 5.31 V nominal (RFBB 23.2 kΩ, 0.1 % resistors, 5.22-5.40 V): 4.718 V at the 1117 input, a 118 mV margin.
+- Added C_3V3 (22 µF tantalum) for 1117 stability. Budget is now 305.6 mA from 24 V. The Wi-Fi-off rule stays (Wi-Fi TX gives TJ 141 °C at 50 °C ambient). EC modules, the LCD module and a 5 V flow meter must accept 5.40 V (owner facts).
+- New Stage D items: RGB LED GPIO, 5Vin SL diode, SL orientation, IN-OUT/USB-OTG jumpers, 1117 temperature and dropout, 3V3 oscillation, `esptool` genuineness check.
+- AMS1117 and LM66100 datasheets added. `test_sensor_node_carrier_docs.py` checks the 1117 limits and the dropout headroom.

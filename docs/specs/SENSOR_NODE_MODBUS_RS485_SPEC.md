@@ -89,7 +89,7 @@ Use fixed-size buffers where practical, deterministic scheduling, watchdog with 
 9. Test with simulated sensors and dummy loads before connecting live equipment.
 
 ## 11. Unresolved hardware selections
-Settled by ADR-0012 (sensor-node carrier): ESP32 board (ESP32-S3-DevKitC-1-N16R8) and GPIO map; RS485 transceiver (THVD1450, non-isolated, fail-safe receivers) and termination; external ADC (ADS1115 ×2) and EC input divider/clamp provision; pulse-input front end; per-node power budget (286 mA at 24 V) and fuse.
+Settled by ADR-0012 (sensor-node carrier): ESP32 board (generic ESP32-S3 N16R8 board, DevKitC-1 pin-compatible, silkscreen ESP32-S3 2025-V1.4; owner-supplied 2026-11-25, replacing the DevKitC-1-N16R8) and GPIO map; RS485 transceiver (THVD1450, non-isolated, fail-safe receivers) and termination; external ADC (ADS1115 ×2) and EC input divider/clamp provision; pulse-input front end; per-node power budget (305.6 mA at 24 V) and fuse; 3.3 V from the board's 1117 LDO behind an LM66100 ideal diode.
 
 Still open: controller pinout; EC module output range; flow-meter pulse output type and pressure ratings; temperature sensor type (thermistor nominal resistance); enclosure; grounding and bus bias (bench, Stage D). These are gates, not permission to guess.
 
