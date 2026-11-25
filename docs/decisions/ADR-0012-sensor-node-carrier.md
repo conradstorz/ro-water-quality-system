@@ -21,9 +21,9 @@ Each value below cites a datasheet table or page, or shows its arithmetic. `host
 ### Board facts (owner's photos, 2026-11-25)
 Photos in `hardware/sensor-node/reference/`: `esp32-s3-n16r8-board-v1.4-top.jpg`, `esp32-s3-n16r8-board-v1.4-bottom.jpg`, `esp32-s3-n16r8-board-v1.4-ldo-1117-closeup.jpg` and `esp32-s3-n16r8-board-v1.4-sl-diodes-closeup.jpg`.
 - **Board:** a generic clone, not Espressif. The back silkscreen reads "ESP32-S3 2025-V1.4". The seller is unknown and no schematic is available.
-- **Module:** the shield reads "ESP32-S3-N16R8", not the Espressif "ESP32-S3-WROOM-1" marking. It has a PCB antenna and an IPEX connector. Genuineness (chip, flash and PSRAM) is a Stage D item (`esptool chip_id` / `flash_id`).
+- **Module:** the shield reads "ESP32-S3-N16R8", not the Espressif "ESP32-S3-WROOM-1" marking. It has a PCB antenna and an IPEX connector. The esptool bench result below confirms the chip, PSRAM and flash.
 - **Headers:** the pin order is identical to the Espressif DevKitC-1 J1/J3. Top: 3V3, 3V3, RST, 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, 5Vin, GND. Bottom: GND, TX, RX, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19, GND, GND. The DevKitC "5V" pin is labelled **"5Vin"**. Every pin assigned below is on a header.
-- **USB:** two USB-C ports, labelled "COM" (USB-UART bridge) and "USB" (native OTG). The bridge is a QFN package whose marking is not readable in the photos; identify it in Stage D.
+- **USB:** two USB-C ports, labelled "COM" (USB-UART bridge) and "USB" (native OTG). The bridge is a WCH CH343 (esptool bench result below).
 - **Jumpers:** an **"IN-OUT"** solder jumper near the RGB LED, and a **"USB-OTG"** pad pair on the back. They probably pass 5 V to or from the OTG port. **Leave both open**, and bench-check them (Stage D).
 - **RGB LED:** an addressable RGB LED labelled "RGB". Its GPIO is not marked. The map avoids both DevKitC candidates (38 and 48); identifying the pin is a Stage D item.
 - **3.3 V regulator:** a SOT-223 marked "1117 / 33 2629", a generic 1117-family 3.3 V LDO from an unknown maker. It is **not** the DevKitC's SGM2212. Section 2 designs it against the AMS1117 datasheet maximums.
@@ -38,13 +38,20 @@ Photos in `hardware/sensor-node/reference/`: `esp32-s3-n16r8-board-v1.4-top.jpg`
 - **UART0:** TX/RX (GPIO43/44) go to the USB-to-UART bridge, the console and flashing port. The clone's TX/RX header pins and COM port follow the same arrangement, so RS485 uses UART1 on other pins.
 - **History:** the guide's ordering table marks "ESP32-S3-DevKitC-1-N8 (EOL)". The DevKitC schematic (`SCH_ESP32-S3-DevKitC-1_V1.1_20221130.pdf`) and the SGM2212 datasheet stay in the repo for that board only; none of their board-level facts (SGM2212, CP2102N, D1/D7) applies to the clone.
 
-**Module facts (WROOM-1 DS; chip-level facts unchanged).** The clone module is assumed to have the same pin-out and memory as an ESP32-S3-WROOM-1-N16R8 (ESP32-S3R8 die plus 16 MB flash). The Stage D `esptool` check confirms it, including that the PSRAM is the 3.3 V part (see GPIO47 below).
+**Bench result, 2026-11-25 (esptool v5.7.0 `flash-id` over the COM port, owner's board):**
+- **USB bridge:** WCH **CH343** (USB VID 1A86, PID 55D3) on the "COM" USB-C port. Program and flash over the COM port.
+- **Chip:** ESP32-S3 (QFN56), revision v0.2, 40 MHz crystal. Features: Wi-Fi, BT 5 (LE), dual core plus LP core, 240 MHz.
+- **PSRAM:** "Embedded PSRAM 8MB (AP_3v3)": the octal PSRAM is inside the chip package (an ESP32-S3R8-class chip) and runs at 3.3 V. It is **not** the 1.8 V ESP32-S3R8V, so GPIO47 and GPIO48 are 3.3 V pins (S3 DS Table 2-1, note 5). GPIO35-37 stay reserved for the octal PSRAM.
+- **Flash:** 16 MB, manufacturer ID 0x1C, device ID 0x7018; quad mode set in eFuse; flash voltage 3.3 V set in eFuse.
+- This closes the "genuine module" bench item: the chip, the 8 MB 3.3 V octal PSRAM and the 16 MB flash match an N16R8.
+
+**Module facts (WROOM-1 DS; chip-level facts unchanged).** The clone module is taken to have the same pin-out as an ESP32-S3-WROOM-1-N16R8; the esptool result above confirms the same memory (ESP32-S3R8-class chip, 8 MB 3.3 V octal PSRAM, 16 MB flash).
 - **Table 3, note b:** in variants that embed ESP32-S3R8, "pins IO35, IO36, and IO37 connect to the OSPI PSRAM and are not available for other uses".
 - **Table 3 pin list:** the module brings out GPIO0-21 and 35-48 only. GPIO22-34 are not on module pins; the in-package flash and PSRAM use them (S3 DS Table 2-14).
 - **Strapping pins** (section 3.3, Table 4): GPIO0, 3, 45, 46.
 - **JTAG:** MTCK, MTDO, MTDI and MTMS are GPIO39-42 (Table 3).
 - **USB:** USB_D-/D+ are GPIO19/20 (Table 3).
-- **GPIO47/48 voltage:** S3 DS Table 2-1, note 5, says they run at 1.8 V only on the **ESP32-S3R8V** chip. WROOM-1 v1.2 Table 1 lists no R8V variant, so GPIO47 is a 3.3 V pin on an N16R8 module. On the clone this holds only if the chip is not an R8V; the Stage D `esptool` check confirms it.
+- **GPIO47/48 voltage:** S3 DS Table 2-1, note 5, says they run at 1.8 V only on the **ESP32-S3R8V** chip. WROOM-1 v1.2 Table 1 lists no R8V variant, so GPIO47 is a 3.3 V pin on an N16R8 module. The esptool result above ("Embedded PSRAM 8MB (AP_3v3)") confirms the clone's chip is not an R8V.
 
 **Power-up glitches (S3 DS Table 2-2):**
 - GPIO1-14, XTAL_32K_P/N (GPIO15/16) and GPIO17 show a 60 µs low-level glitch at power-up.
@@ -89,7 +96,7 @@ That leaves 19 usable pins: GPIO1, 2, 4-18, 21 and 47. The map uses 18 of them a
 | 17 | RS485_TX | out | UART1 TXD (IO MUX default, WROOM-1 DS Table 3) |
 | 18 | RS485_RX | in | UART1 RXD; the high glitch is an input-side concern only (section 3) |
 | 21 | RS485_DE_RE | out | not in Table 2-2; 10 kΩ pull-down keeps the driver off at boot |
-| 47 | BTN_HOLD | in | diagnostic button 2; 3.3 V on an N16R8 (not R8V) chip |
+| 47 | BTN_HOLD | in | diagnostic button 2; 3.3 V (esptool: PSRAM AP_3v3, not R8V) |
 
 - **Analog signals:** the only analog signals are on ADC1 (GPIO1, and the spare GPIO2). EC and thermistors use the ADS1115s, so no ADC2 pin is needed while Wi-Fi is active.
 - **Status LED:** the board's own RGB LED is the status LED. Its GPIO is not marked on the clone; firmware drives it only after Stage D identifies the pin (38 or 48 expected). The carrier adds no LED pin.
@@ -182,7 +189,7 @@ All front ends are counted as populated, which is conservative for both node typ
 | DIP, button, RX and DE resistors, 8 × 3.3 V / 10 kΩ | 3V3 | 2.6 | arithmetic |
 | Thermistor reference resistors, 2 × 1.0 (allowance, Rref ≥ 3.3 kΩ) | 3V3 | 2.0 | allowance |
 | 3V3 reference divider on ADS1115 #2, 3.3 V / 20 kΩ | 3V3 | 0.2 | arithmetic |
-| Board on-board LEDs, RGB LED and USB bridge (allowance; clone parts unknown) | 3V3 | 25.0 | allowance |
+| Board on-board LEDs, RGB LED and CH343 USB bridge (allowance; clone parts unverified) | 3V3 | 25.0 | allowance |
 | 3V3 bleeder, 3.3 V / 120 Ω | 3V3 | 27.5 | arithmetic (sinks fault injection) |
 | **3V3 total** | 3V3 | 482.7 | sum |
 | Board 5Vin pin: the 3V3 total plus the 1117 quiescent current (11 mA max) | 5V | 493.7 | AMS1117 quiescent current; linear regulator I_in = I_out + I_Q |
@@ -410,11 +417,13 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
   - the 1117 temperature with the production firmware, against the 397 mA average-load limit;
   - the 1117's actual dropout at the peak load, measured at the 1117 input during Wi-Fi TX bursts with the buck at its setpoint (ripple and droop included);
   - 3V3 for oscillation on a scope, with C_3V3 fitted;
-  - that the module is a genuine ESP32-S3 N16R8: `esptool chip_id` (chip type, revision, and embedded PSRAM 8 MB at 3.3 V, not R8V) and `esptool flash_id` (16 MB flash);
-  - the USB-UART bridge part number, and that it is on GPIO43/44;
+  - continuity from the header TX/RX pins to GPIO43/44 (the bridge is the CH343, closed below);
   - BOOT on GPIO0, and continuity from the module's GPIO15/16 to the header (no 32.768 kHz crystal);
   - which parts sit on the board's 5 V net, and that each accepts 5.40 V;
   - buck output ripple at 5.31 V with the Table 10-1 inductor;
+- **Bench items closed:**
+  - genuine ESP32-S3 N16R8 module, closed 2026-11-25 by esptool v5.7.0 `flash-id` (section 1): ESP32-S3 (QFN56) v0.2, embedded PSRAM 8 MB AP_3v3 (not R8V), 16 MB flash (manufacturer 0x1C, device 0x7018);
+  - USB-UART bridge part number: WCH CH343 (VID 1A86, PID 55D3), closed 2026-11-25.
   - 1-Wire maximum length and device count;
   - I²C rise time with the LCD cable;
   - enclosure internal temperature against the 50 °C design ambient.

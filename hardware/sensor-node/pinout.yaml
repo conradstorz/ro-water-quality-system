@@ -1,7 +1,7 @@
 # Normative GPIO map of the sensor-node carrier (ADR-0012).
 # Test: host_tools/tests/test_sensor_node_carrier_docs.py
 board: generic ESP32-S3 N16R8 board, DevKitC-1 pin-compatible (silkscreen ESP32-S3 2025-V1.4)  # owner-supplied 2026-11-25, replaces the DevKitC-1-N16R8
-module: ESP32-S3-N16R8 (shield marking; pin-out as ESP32-S3-WROOM-1-N16R8)  # 16 MB flash, 8 MB octal PSRAM on GPIO35-37; genuineness is a Stage D esptool check
+module: ESP32-S3-N16R8 (shield marking; pin-out as ESP32-S3-WROOM-1-N16R8)  # esptool 2026-11-25: ESP32-S3 v0.2, embedded PSRAM 8 MB AP_3v3 (not R8V, so GPIO47/48 are 3.3 V) on GPIO35-37, 16 MB flash
 # Pins never assigned, with the reason (WROOM-1 datasheet v1.2 Tables 3-4, DevKitC-1 user guide v1.1 as the pin-compatibility reference).
 excluded:
   strapping: [0, 3, 45, 46]

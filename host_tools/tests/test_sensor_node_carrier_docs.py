@@ -464,10 +464,13 @@ def test_board_bench_items_listed() -> None:
         "IN-OUT and USB-OTG jumper state",
         "1117 temperature",
         "actual dropout",
-        "esptool chip_id",
-        "esptool flash_id",
     ):
         assert item in bench, item
+    closed = bench.split("- **Bench items closed:**")[1]
+    assert "genuine ESP32-S3 N16R8 module" in closed
+    assert "AP_3v3" in closed and "CH343" in closed
+    open_items = bench.split("- **Bench items closed:**")[0]
+    assert "esptool" not in open_items  # genuineness no longer an open item
 
 
 def test_hardware_spec_names_adr_and_no_5v_excitation() -> None:

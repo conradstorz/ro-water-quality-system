@@ -79,7 +79,7 @@ Designed 2026-11-23 in `docs/decisions/ADR-0012-sensor-node-carrier.md` (Propose
 - [ ] Maximum trunk length, voltage drop, per-node current.
 - [ ] Idle-bus bias check; whether the controller board already biases RS485.
 - [ ] 1-Wire maximum cable length and device count.
-- [ ] Sensor-node ESP32-S3 board (ADR-0012, Stage D list): RGB LED GPIO; whether 5Vin passes through an SL diode; SL diode orientation (USB back-feed); IN-OUT and USB-OTG jumpers open; 1117 temperature and actual dropout; 3V3 oscillation; `esptool chip_id` / `flash_id` genuine N16R8; USB plus trunk coexistence. Owner facts: EC modules, LCD module and any 5 V flow meter must accept 5.40 V.
+- [ ] Sensor-node ESP32-S3 board (ADR-0012, Stage D list): RGB LED GPIO; whether 5Vin passes through an SL diode; SL diode orientation (USB back-feed); IN-OUT and USB-OTG jumpers open; 1117 temperature and actual dropout; 3V3 oscillation; USB plus trunk coexistence. (Genuine N16R8 and CH343 bridge closed 2026-11-25 by esptool.) Owner facts: EC modules, LCD module and any 5 V flow meter must accept 5.40 V.
 - [ ] Pressure loop: limiter current, ADC at 4/12/20 mA, shorted and open loop (acceptance plan).
 
 ### Firmware-side TBDs tied to hardware
