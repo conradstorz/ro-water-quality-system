@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 from loguru import logger
 
-from ro_tools import codegen, schema
+from ro_tools import bringup_capture, codegen, schema
 from ro_tools.client import CommsError, ModbusExceptionError, SensorNodeClient
 from ro_tools.generated import registers as reg
 from ro_tools.monitor import OneWireBinding, _slot_unusable_cause, critical_required
@@ -76,7 +76,7 @@ _NODE_PROFILES: dict[str, NodeProfile] = {"ro_skid": RO_SKID_PROFILE, "tank": TA
 
 
 def _unit_id(text: str) -> int:
-    """Parse a Modbus unit id in 1..15 (the DIP-switch range).
+    """Parse a Modbus unit id in 1..15 (the node-ID jumper range).
 
     :param text: Command-line text.
     :returns: The unit id.
@@ -134,7 +134,7 @@ def _positive_float(text: str) -> float:
 def build_parser() -> argparse.ArgumentParser:
     """Build the argument parser.
 
-    :returns: Parser with the six sub-commands.
+    :returns: Parser with the seven sub-commands.
     """
     parser = argparse.ArgumentParser(prog="ro-tools", description="RO protocol host tools")
     parser.add_argument(
@@ -187,6 +187,23 @@ def build_parser() -> argparse.ArgumentParser:
         q.add_argument("--bindings", type=Path, default=DEFAULT_BINDINGS_PATH, metavar="PATH")
     q = ow.add_parser("validate", help="check the 1-Wire bindings file")
     q.add_argument("--bindings", type=Path, default=DEFAULT_BINDINGS_PATH, metavar="PATH")
+
+    p = sub.add_parser(
+        "bringup", help="capture the sensor-node bring-up probe report (firmware/bringup)"
+    )
+    p.add_argument("--port", required=True, metavar="DEVICE", help='"COM" (CH343) port, e.g. COM5')
+    p.add_argument(
+        "--pre-erase",
+        action="store_true",
+        help="run read-only esptool/espefuse commands only (before erasing the factory image)",
+    )
+    p.add_argument("--logs", type=Path, default=bringup_capture.DEFAULT_LOG_DIR, metavar="DIR")
+    p.add_argument("--timeout", type=_positive_float, default=120.0, metavar="S")
+    p.add_argument(
+        "--no-reset",
+        action="store_true",
+        help="do not reset the board; send 'report' instead",
+    )
     return parser
 
 
@@ -719,6 +736,30 @@ def _cmd_onewire(parser: argparse.ArgumentParser, args: argparse.Namespace) -> i
     return _cmd_onewire_push(parser, args)
 
 
+def _cmd_bringup(args: argparse.Namespace) -> int:
+    """Run the bring-up probe capture, or the read-only pre-erase esptool reads.
+
+    :param args: Parsed arguments.
+    :returns: Exit status: 0 on a complete report (or all pre-erase commands run),
+        1 on a partial capture, 2 on a serial error.
+    """
+    if args.pre_erase:
+        bringup_capture.run_pre_erase(args.port, args.logs)
+        return EXIT_OK
+    try:
+        _, _, log = bringup_capture.capture(
+            args.port,
+            args.logs,
+            timeout_s=args.timeout,
+            reset=not args.no_reset,
+            request_report=args.no_reset,
+        )
+    except OSError as exc:
+        logger.error("serial port {}: {}", args.port, exc)
+        return EXIT_COMMS
+    return EXIT_OK if log.complete else EXIT_FAIL
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI.
 
@@ -740,6 +781,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return _cmd_read(parser, args)
         if args.command == "onewire":
             return _cmd_onewire(parser, args)
+        if args.command == "bringup":
+            return _cmd_bringup(args)
         return _cmd_publish_status(parser, args)
     finally:
         logger.remove()

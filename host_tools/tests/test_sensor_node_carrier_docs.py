@@ -113,7 +113,7 @@ def test_required_functions_present() -> None:
     assert kinds.count("rs485") == 3
     assert kinds.count("i2c") == 2
     assert kinds.count("hx711") == 4
-    assert kinds.count("dip") == 4
+    assert kinds.count("id_jumper") == 4
     assert "onewire" not in kinds  # DS2482-100 on I2C, no GPIO
 
 

@@ -49,7 +49,7 @@ This is a plain RJ45 and the controller has a genuine Ethernet RJ45. Plugging 24
 - Never plug it into the controller's Ethernet port.
 
 ## Node ID
-4-position DIP switch read at boot, IDs 1-15. A duplicate or out-of-range ID leaves the node silent (it does not answer on the bus).
+Hardwired jumpers from GPIO4-7 to GND, read at boot, IDs 1-15 (RO skid: GPIO4 only; tank: GPIO5 only). A duplicate or out-of-range ID leaves the node silent (it does not answer on the bus).
 
 ## 1-Wire bus
 Design basis: `docs/superpowers/specs/2026-11-13-onewire-input-design.md`. Decision record: `docs/decisions/ADR-0009-onewire-monitoring-input.md`. Normative data: the `onewire` section of `hardware/interconnect/pinout.yaml`. **Monitoring only**: 1-Wire data never permits or inhibits RO production.

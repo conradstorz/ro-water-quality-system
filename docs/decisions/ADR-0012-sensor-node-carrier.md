@@ -5,7 +5,7 @@
 **Decision:** Every sensor node is one carrier board that holds a **generic ESP32-S3 N16R8 board, DevKitC-1 pin-compatible (silkscreen ESP32-S3 2025-V1.4)** on headers. The owner supplied this board on 2026-11-25 and now uses it instead of the Espressif ESP32-S3-DevKitC-1-N16R8 chosen on 2026-11-24 (which itself replaced the end-of-life DevKitC-1-N8). The board is a clone from an unknown seller. Its module shield reads "ESP32-S3-N16R8" (16 MB flash, 8 MB octal PSRAM; GPIO35-37 are taken by the PSRAM and never assigned). The carrier provides:
 - the 24 V trunk input stage and a 5 V buck converter;
 - RS485;
-- the pulse, 1-Wire, ADS1115, HX711, pressure, DIP-switch, button and LCD front ends.
+- the pulse, 1-Wire, ADS1115, HX711, pressure, node-ID jumper, button and LCD front ends.
 
 The board is the owner's part, not provisional. Because it is a clone, every board-level fact below comes from the owner's photos or is a Stage D bench item; only the chip-level facts are cited from Espressif documents. The GPIO map also avoids the octal-PSRAM pins, so a later swap to another R8 board keeps working. Everything here is monitoring hardware: no carrier circuit drives a pump or valve, and the hardwired protections stay independent (AGENTS.md rules 3 and 4).
 
@@ -29,7 +29,7 @@ Photos in `hardware/sensor-node/reference/`: `esp32-s3-n16r8-board-v1.4-top.jpg`
 - **Discrete LEDs:** three single LEDs (red, green, blue) besides the RGB LED. Under the factory firmware with the COM port connected, red and green stay mostly lit and blue flickers with data (owner observation, 2026-11-25). What drives each one (a supply rail, the CH343 or a GPIO) is not known; identify them in Stage D.
 - **3.3 V regulator:** a SOT-223 marked "1117 / 33 2629", a generic 1117-family 3.3 V LDO from an unknown maker. It is **not** the DevKitC's SGM2212. Section 2 designs it against the AMS1117 datasheet maximums.
 - **Diodes:** three SMD diodes next to the USB ports, marked "SL". "SL" is the 1N5819HW product marking code (Diodes Inc DS30217, Marking Information). There is no date code, so they are treated as generic 1N5819HW-class parts (VF max 450 mV at 1 A). Two presumably isolate the two USB VBUS lines. The third means **5Vin may also pass through one of them**, which is unknown, so section 2 designs for one SL diode drop between the 5Vin pin and the 1117 input.
-- **Buttons:** "BOOT" and "RST". BOOT is assumed to be GPIO0 as on the DevKitC; confirm in Stage D.
+- **Buttons:** "BOOT" and "RST". BOOT is GPIO0 (bring-up probe, 2026-11-25).
 - **32.768 kHz crystal:** none is visible in the top photo, so GPIO15 and GPIO16 are taken to be free. Confirm continuity from the module pads to the header (Stage D).
 
 **DevKitC-1 user guide v1.1** (`https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html`) stays the **pin-compatibility reference**:
@@ -55,6 +55,17 @@ Photos in `hardware/sensor-node/reference/`: `esp32-s3-n16r8-board-v1.4-top.jpg`
 - **RGB LED pin:** disassembling `app_main` shows the `rmt_config_t` built with `gpio_num = 48`, channel 0, `clk_div = 2`, 38 kHz carrier fields and `idle_output_en`, which is the ESP-IDF WS2812 example's TX config, and a `led_strip` of 24 pixels (the example default, so the image is not tailored to this board). The source file is `../main/led_strip_tusb_console.c`, apparently Espressif's DevKitC-1 v1.0 factory test. With the owner's sighting of the colour cycle, this closes the RGB LED GPIO item: **GPIO48**.
 - **Other facts:** the image header says DIO, 80 MHz, 2 MB flash, and PSRAM is not enabled. That is a generic build setting, not a board fact; project firmware uses the 16 MB flash and the quad mode set in eFuse (esptool result above). The app runs a TinyUSB CDC console on the native USB port (GPIO19/20, Espressif VID 0x303A default descriptors), after logging boot to UART0. Its RMT and TinyUSB code is ESP-IDF v4.4-dev and is not reused.
 - **Disposition:** flashing project firmware starts with `esptool erase-flash`, which removes all of it. The chip's mask-ROM bootloader is Espressif silicon and is not in flash.
+
+**Bench result, 2026-11-25 (bring-up probe, `firmware/bringup/`, owner's board out of the carrier, COM port only):** the factory image was erased and the probe flashed. Raw evidence is in `logs/bringup-preerase-20261125-111016.log` (read-only esptool/espefuse, before erasing) and `logs/bringup-20261125-111852.log`/`.json` (probe report); `logs/` is not committed.
+- **eFuse:** no security eFuse is burned: secure boot, flash encryption (`SPI_BOOT_CRYPT_CNT` 0), every JTAG, USB, USB-Serial-JTAG and download-mode disable bit are 0, and all six key blocks are empty. `BLOCK_USR_DATA` is all zeros. Block version v1.4, wafer v0.2, package 0. `PSRAM_CAP` 8M, `PSRAM_VENDOR` AP_3v3, `PSRAM_TEMP` 85C. `FLASH_CAP`, `FLASH_VENDOR` and `FLASH_TEMP` are blank, consistent with external (not in-package) flash. `VDD_SPI_FORCE`, `_TIEH` and `_XPD` are 1 (VDD_SPI fixed at 3.3 V). Base MAC `7c:e8:b1:a3:b8:3c`.
+- **Strap latch** (`GPIO_STRAP` 0x0008): GPIO0 = 1, GPIO3 = 0, GPIO45 = 0, GPIO46 = 0, a normal SPI boot.
+- **Flash:** JEDEC 0x1C 0x7018, 16 MB physical. A valid SFDP table is present (signature "SFDP", revision 1.0, one parameter header: basic table v1.0, 9 DWORDs at 0x30). The unique-ID command gets no response. ESP-IDF 5.5.3 uses its generic driver and has no QIO-enable entry for vendor 0x1C, so the probe runs **DIO at 80 MHz** (1 MB read at 8.7 MB/s). Whether QIO works with this part is an open item, listed in TODO.md.
+- **PSRAM:** AP Memory generation 3, 64 Mbit, 3 V, fixed latency, octal at 80 MHz. A full 8 MB pattern test (address, inverted address, 0x55, 0xAA, walking 1, walking 0) found 0 errors; write 28.9 MB/s, read 24.2 MB/s.
+- **Clocks:** 40 MHz crystal, CPU 240 MHz. **No 32.768 kHz crystal:** the 32 kHz oscillator on GPIO15/16 gave no cycles after a 1 s start-up wait.
+- **Pin scan:** every free GPIO (1, 2, 4-18, 21, 38-42, 47) followed both its internal pull-up and pull-down, so nothing on the board loads them. The floating ADC1 reading on GPIO1-10 averaged 370-515 mV. This suggests none of the three discrete LEDs sits on these GPIOs. The active `sweep` ran, but nobody watched the LEDs, so the LED item stays open.
+- **BOOT button:** three presses and releases registered on GPIO0. **BOOT is GPIO0.**
+- **Other:** die temperature 36.2 °C, brownout detector enabled at level 7. The native "USB" port enumerated as VID 303A, PID 4001 under the factory TinyUSB console (before erasing). It was not cabled during the probe run.
+- **Still open from the probe:** watching the discrete LEDs during `sweep`, the RST button, the header `walk` (silkscreen-to-GPIO mapping), the `bringup_wifi` antenna scan, and native USB under the probe.
 
 **Module facts (WROOM-1 DS; chip-level facts unchanged).** The clone module is taken to have the same pin-out as an ESP32-S3-WROOM-1-N16R8; the esptool result above confirms the same memory (ESP32-S3R8-class chip, 8 MB 3.3 V octal PSRAM, 16 MB flash).
 - **Table 3, note b:** in variants that embed ESP32-S3R8, "pins IO35, IO36, and IO37 connect to the OSPI PSRAM and are not available for other uses".
@@ -91,10 +102,10 @@ That leaves 20 usable pins: GPIO1, 2, 4-18, 21, 38 and 47. The map uses 18 of th
 |---|---|---|---|
 | 1 | PRESSURE_ADC | analog in | ADC1_CH0, ADR-0010 |
 | 2 | SPARE_ADC | analog in | ADC1_CH1, test pad only, not connected |
-| 4 | NODE_ID_0 | in | DIP switch 1 (bit 0), 10 kΩ pull-up |
-| 5 | NODE_ID_1 | in | DIP switch 2 (bit 1) |
-| 6 | NODE_ID_2 | in | DIP switch 3 (bit 2) |
-| 7 | NODE_ID_3 | in | DIP switch 4 (bit 3) |
+| 4 | NODE_ID_0 | in | ID jumper to GND (bit 0), 10 kΩ pull-up |
+| 5 | NODE_ID_1 | in | ID jumper to GND (bit 1) |
+| 6 | NODE_ID_2 | in | ID jumper to GND (bit 2) |
+| 7 | NODE_ID_3 | in | ID jumper to GND (bit 3) |
 | 8 | I2C_SDA | open drain | ADS1115 ×2, DS2482-100, PCA9306 to LCD |
 | 9 | I2C_SCL | open drain | same bus, 100 kHz |
 | 10 | BTN_NEXT | in | diagnostic button 1 |
@@ -197,7 +208,7 @@ All front ends are counted as populated, which is conservative for both node typ
 | DS2482-100 ICC | 3V3 | 0.8 | DS2482-100 Electrical Characteristics, 0.75 mA max |
 | 1-Wire pull-up with the line low, 3.3 V / 1000 Ω | 3V3 | 3.3 | DS2482-100 RWPU min 1000 Ω |
 | I²C pull-ups, 2 × 3.3 V / 4.7 kΩ | 3V3 | 1.4 | arithmetic |
-| DIP, button, RX and DE resistors, 8 × 3.3 V / 10 kΩ | 3V3 | 2.6 | arithmetic |
+| Node-ID, button, RX and DE resistors, 8 × 3.3 V / 10 kΩ | 3V3 | 2.6 | arithmetic |
 | Thermistor reference resistors, 2 × 1.0 (allowance, Rref ≥ 3.3 kΩ) | 3V3 | 2.0 | allowance |
 | 3V3 reference divider on ADS1115 #2, 3.3 V / 20 kΩ | 3V3 | 0.2 | arithmetic |
 | Board on-board LEDs, RGB LED and CH343 USB bridge (allowance; clone parts unverified) | 3V3 | 25.0 | allowance |
@@ -323,8 +334,8 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
   - An on-board equivalent copies the same circuit (PNP, 20 kΩ / 8.2 kΩ, DVDD on 3V3).
 - **Spec correction:** excitation is AVDD = 4.30 V, not "5V excitation" as the previous spec said.
 
-## 7. DIP switch, LCD and buttons
-- **DIP switch:** a 4-position SPST DIP switch from GPIO4-7 to GND, each with a 10 kΩ pull-up to 3V3 (0.33 mA when ON). ON reads 0; firmware inverts it to the ID bit. The ESP32's internal 45 kΩ pull-ups (WROOM-1 DS Table 11) are not relied on.
+## 7. Node-ID jumpers, LCD and buttons
+- **Node-ID jumpers (owner decision 2026-11-25, replaces the 4-position DIP switch):** hardwired wire links from GPIO4-7 to GND, each pin with a 10 kΩ pull-up to 3V3 (0.33 mA when linked). A linked pin reads 0; firmware inverts it to the ID bit. The RO skid (unit 1) links GPIO4 only; the tank (unit 2) links GPIO5 only; no link reads ID 0 and the node stays silent. The ESP32's internal 45 kΩ pull-ups (WROOM-1 DS Table 11) are not relied on.
 - **LCD:** the PCF8574 VIH is 0.7 × VCC (PCF8574 datasheet, Recommended Operating Conditions), which is 3.65-3.78 V on the 5.22-5.40 V rail. A 3.3 V ESP32 cannot drive that reliably, and the backpack's pull-ups may sit at 5 V. So the LCD goes through a TI **PCA9306DCUR** translator:
   - VREF1 = 3V3; VREF2 to 5V_CARRIER through **200 kΩ**, with EN tied to VREF2 (PCA9306 section 9.2, Figure 9-1; "3.3-V VREF1 and 5-V VREF2" is a supported pairing).
   - 4.7 kΩ pull-ups on the 3.3 V side. These are the bus pull-ups: 3.3 / 4.7 k = 0.70 mA, against the ESP32's 28 mA IOL (WROOM-1 DS Table 11).
@@ -370,8 +381,8 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
 | A2, A3 | SparkFun Load Cell Amplifier HX711 (SJ2 open), or on-board equivalent | AVDD 4.30 V | load cells (tank node) |
 | U7 | TI PCA9306DCUR | 3.3 V / 5 V I²C | LCD level shift |
 | R | 4.7 kΩ ×2 (3.3 V side), 4.7 kΩ ×2 unfitted (5 V side), 200 kΩ | | I²C pull-ups and PCA9306 bias |
-| SW1 | 4-position SPST DIP switch | | node ID |
-| R | 10 kΩ ×4 | | DIP pull-ups |
+| W_ID | wire link to GND (GPIO4-7 positions) | one per node for IDs 1 and 2 | node ID |
+| R | 10 kΩ ×4 | | node-ID pull-ups |
 | R, C | 10 kΩ, 100 Ω, 1 kΩ, 100 nF (×2) | | button debounce |
 | Pressure | LM317, 43 Ω, Bourns MF-R005 (0.05 A hold, 0.10 A trip, 60 V), 100 Ω 0.1 %, 10 kΩ, 100 nF, BAT54S | | ADR-0010 loop; MF-R005 meets its PTC rule |
 | J_RJ45 ×2 | shielded RJ45, red | IN and OUT in parallel | trunk (ADR-0008) |
@@ -421,7 +432,7 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
   - idle-bus bias at the controller, and the A/B polarity;
   - trunk voltage drop and per-node current against this budget;
   - USB plus 5Vin coexistence on the board, with the trunk powered (USB operating rule, section 2.1);
-  - what drives each of the three discrete LEDs (red, green, blue), and that none sits on an assigned header pin;
+  - what drives each of the three discrete LEDs (red, green, blue), and that none sits on an assigned header pin (the passive pin scan found no load on any free GPIO; confirm by watching the LEDs during the probe `sweep`);
   - whether 5Vin passes through an SL diode on its way to the 1117 input;
   - the orientation of each SL diode, and that none lets the carrier's 5 V back-feed a USB host (VBUS);
   - the IN-OUT and USB-OTG jumper state (both must be open), and what each connects;
@@ -429,7 +440,7 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
   - the 1117's actual dropout at the peak load, measured at the 1117 input during Wi-Fi TX bursts with the buck at its setpoint (ripple and droop included);
   - 3V3 for oscillation on a scope, with C_3V3 fitted;
   - continuity from the header TX/RX pins to GPIO43/44 (the bridge is the CH343, closed below);
-  - BOOT on GPIO0, and continuity from the module's GPIO15/16 to the header (no 32.768 kHz crystal);
+  - header silkscreen-to-GPIO mapping, including GPIO15/16 (bring-up probe `walk`);
   - which parts sit on the board's 5 V net, and that each accepts 5.40 V;
   - buck output ripple at 5.31 V with the Table 10-1 inductor;
   - 1-Wire maximum length and device count;
@@ -440,3 +451,4 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
   - USB-UART bridge part number: WCH CH343 (VID 1A86, PID 55D3), closed 2026-11-25.
   - factory firmware review: stock Espressif `led_strip` demo, no network stack, closed 2026-11-25 (section 1 bench note).
   - RGB LED GPIO: GPIO48, closed 2026-11-25 by the factory firmware's RMT config and the owner's sighting of its colour cycle (section 1 bench note).
+  - BOOT on GPIO0, no 32.768 kHz crystal, no burned security eFuses, and a full 8 MB PSRAM test with 0 errors, all closed 2026-11-25 by the bring-up probe (section 1 bench result).
