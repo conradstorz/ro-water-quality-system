@@ -44,7 +44,9 @@ Feed EC temperature compensation needs a defensible temperature measurement. A d
 ## 5. Polling and acquisition
 - Main controller polls input registers 100..199 every **1 second** (configurable).
 - Sensor acquisition tasks run independently: pulse counts continuously, flow rate ~1 s rolling window, load cells ~5–10 Hz if hardware permits, pressure ~5–10 Hz, temperature and conductivity ~1–5 s.
-- Each channel carries last-good sample time internally. Publish age of oldest **required critical** channel in milliseconds, saturated at 65535.
+- Each channel carries last-good sample time internally. Publish age of oldest **required critical** channel in milliseconds, saturated at 65535. A node with no critical channel fitted publishes 65535.
+- `module_status` operational is set once the node ID is valid and the first snapshot has been committed.
+- `sensor_error_code` is 0; a code table is TBD.
 - Publish snapshot sequence monotonically modulo 65536, advancing only on newly committed acquisition snapshots. Repeated identical counters across excessive polls are stale.
 - Client accepts snapshot only if protocol major version compatible, status operational, configured critical validity bits set, critical age <= 3000 ms, and communication is healthy.
 - Main controller shuts down RO production if no acceptable snapshot arrives within **3 seconds**. These are initial software defaults to validate, not substitutes for hardwired protections.

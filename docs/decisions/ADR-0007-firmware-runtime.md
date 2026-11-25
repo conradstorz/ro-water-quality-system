@@ -1,6 +1,6 @@
 # ADR-0007: Firmware runtime for both ESP32 boards
 
-**Status:** Proposed (2026-11-12) — pending owner review. Resolves the "embedded firmware platform selection" item in `README.md` and Stage B/C of `docs/CLAUDE_IMPLEMENTATION_BRIEF.md`.
+**Status:** Accepted (2026-11-25; proposed 2026-11-12). Resolves the "embedded firmware platform selection" item in `README.md` and Stage B/C of `docs/CLAUDE_IMPLEMENTATION_BRIEF.md`.
 
 **Decision:** Use C++ on the Arduino-ESP32 core (>= 3.0, which is built on ESP-IDF) for both the sensor node and the main controller, built with PlatformIO and a single shared toolchain. Keep all decision logic (fault-priority engine, validity/freshness checks, snapshot assembly, diversion and production state machine, register codec) in a framework-independent C++ library with no Arduino or ESP-IDF includes, tested on the host with PlatformIO's `native` environment. Hardware access (UART, I2C, GPIO, pulse counting, flash) sits behind small interfaces with mock implementations for host tests. ESP-IDF APIs (FreeRTOS tasks, PCNT, task watchdog) are called directly from the Arduino core where needed. Native ESP-IDF stays available as a later migration if the Arduino layer proves limiting.
 

@@ -21,4 +21,6 @@
 
 **Resolved in ADR-0012 (2026-11-23):** bus master DS2482S-100+ on I2C at 0x18 (no GPIO); internal pull-up (RWPU 1000-1675 ohm) with active pullup; 33 ohm series resistor; polyfuse Bourns MF-R010; TPD1E10B06 ESD on DATA and +5V.
 
+**Bench-only exception (2026-11-25):** until a DS2482-100 is on hand, the sensor-node bench slice may drive one DS18B20 directly from GPIO38, behind the same driver interface the DS2482 driver will implement (`firmware/sensor_node/README.md`). The carrier design is unchanged.
+
 **TBD (do not guess):** connector cavity numbering and voltage/current rating; maximum cable length and device count; rescan interval; supported DS2438 variants and other families.

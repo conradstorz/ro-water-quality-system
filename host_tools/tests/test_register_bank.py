@@ -552,3 +552,11 @@ def test_legacy_bank_load_name_table_raises(legacy_bank):
 def test_legacy_bank_still_serves_status_block(legacy_bank):
     assert legacy_bank.handle_pdu(write16(220, GOOD))[0] == 16
     assert words_of(legacy_bank.handle_pdu(read(3, 220, 8))) == GOOD
+
+
+def test_no_critical_channel_installed_publishes_saturated_age(bank):
+    bank.configure_node(int(reg.NodeType.RO_SKID), 0)
+    bank.set_validity(0)
+    bank.set_field("critical_age_ms", 0)
+    bank.commit()
+    assert bank.published().critical_age_ms == 65535

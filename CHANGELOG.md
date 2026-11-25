@@ -98,3 +98,7 @@
 
 ## Node-ID jumpers replace the DIP switch — 2026-11-25
 - Owner decision: hardwired jumpers from GPIO4-7 to GND set the node ID (RO skid: GPIO4; tank: GPIO5). GPIO map, pull-ups, ID range and protocol are unchanged. `pinout.yaml` kind `dip` is now `id_jumper`; ADR-0012, ADR-0008, hardware specs, Modbus spec and carrier test updated.
+
+## Sensor-node RS485 slice agreed — 2026-11-25
+- ADR-0007 accepted. First slice (one DS18B20 over RS485) and bench wiring recorded in `firmware/sensor_node/README.md`; bench-only direct-GPIO 1-Wire noted in ADR-0009.
+- Spec section 5 now defines `critical_age_ms` for a node with no critical channel (65535), when operational is set, and `sensor_error_code` 0. The simulator follows the first. No protocol version change.
