@@ -45,6 +45,14 @@ Photos in `hardware/sensor-node/reference/`: `esp32-s3-n16r8-board-v1.4-top.jpg`
 - **Flash:** 16 MB, manufacturer ID 0x1C, device ID 0x7018; quad mode set in eFuse; flash voltage 3.3 V set in eFuse.
 - This closes the "genuine module" bench item: the chip, the 8 MB 3.3 V octal PSRAM and the 16 MB flash match an N16R8.
 
+**Bench note, 2026-11-25 (factory firmware review, owner's board):** the owner read the whole 16 MB flash as shipped, before writing any project firmware, to check it for spyware or a trojan. The dump is `esp32-s3-n16r8-v1.4-factory-full-16MB.bin`, SHA-256 `cd0f30ac9491da499eaf2167f07b5accf23cf6779c506110431aa766f346273e`. It is kept outside the repo, in the owner's `Documents/esp32-flash-backups/`. A static review (partition table, image headers, hashes, erased regions and strings; not a disassembly) found nothing suspicious:
+- **Contents:** the ESP-IDF bootloader at 0x0, a partition table at 0x8000 (`nvs` 0x9000, `phy_init` 0xF000, a single 1 MB `factory` app at 0x10000), and a 216 KiB app. Only 0x0-0x4FFFF holds data. Everything else, including slack inside the partitions, is erased (0xFF). There are no OTA slots and no extra partitions.
+- **App:** Espressif's stock `led_strip` example (an RMT WS2812 driver plus a TinyUSB console), version "1", built Aug 17 2021 with ESP-IDF `v4.4-dev-2594-ga20df743f1-dirty`. That is a normal chip-maker demo build.
+- **Integrity:** the SHA-256 digests appended to the bootloader and the app match their contents, and the partition table carries its MD5 entry.
+- **No network capability:** none of the Wi-Fi, lwIP/TCP-IP or Bluetooth stack code is linked in (no `net80211`, `esp_wifi`, `lwip`, `tcpip`, `coex` or `nimble` strings). The `WIFI`, `HTTP` and `OTA` names found are only ESP-IDF's built-in error-code name table, which every build carries. The app's only outside channel is the local USB console.
+- **Radio never used:** the `nvs` and `phy_init` partitions are fully erased. No Wi-Fi credentials or RF calibration data were ever stored.
+- **Disposition:** flashing project firmware starts with `esptool erase-flash`, which removes all of it. The chip's mask-ROM bootloader is Espressif silicon and is not in flash.
+
 **Module facts (WROOM-1 DS; chip-level facts unchanged).** The clone module is taken to have the same pin-out as an ESP32-S3-WROOM-1-N16R8; the esptool result above confirms the same memory (ESP32-S3R8-class chip, 8 MB 3.3 V octal PSRAM, 16 MB flash).
 - **Table 3, note b:** in variants that embed ESP32-S3R8, "pins IO35, IO36, and IO37 connect to the OSPI PSRAM and are not available for other uses".
 - **Table 3 pin list:** the module brings out GPIO0-21 and 35-48 only. GPIO22-34 are not on module pins; the in-package flash and PSRAM use them (S3 DS Table 2-14).
@@ -421,9 +429,10 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
   - BOOT on GPIO0, and continuity from the module's GPIO15/16 to the header (no 32.768 kHz crystal);
   - which parts sit on the board's 5 V net, and that each accepts 5.40 V;
   - buck output ripple at 5.31 V with the Table 10-1 inductor;
-- **Bench items closed:**
-  - genuine ESP32-S3 N16R8 module, closed 2026-11-25 by esptool v5.7.0 `flash-id` (section 1): ESP32-S3 (QFN56) v0.2, embedded PSRAM 8 MB AP_3v3 (not R8V), 16 MB flash (manufacturer 0x1C, device 0x7018);
-  - USB-UART bridge part number: WCH CH343 (VID 1A86, PID 55D3), closed 2026-11-25.
   - 1-Wire maximum length and device count;
   - I²C rise time with the LCD cable;
   - enclosure internal temperature against the 50 °C design ambient.
+- **Bench items closed:**
+  - genuine ESP32-S3 N16R8 module, closed 2026-11-25 by esptool v5.7.0 `flash-id` (section 1): ESP32-S3 (QFN56) v0.2, embedded PSRAM 8 MB AP_3v3 (not R8V), 16 MB flash (manufacturer 0x1C, device 0x7018);
+  - USB-UART bridge part number: WCH CH343 (VID 1A86, PID 55D3), closed 2026-11-25.
+  - factory firmware review: stock Espressif `led_strip` demo, no network stack, closed 2026-11-25 (section 1 bench note).
