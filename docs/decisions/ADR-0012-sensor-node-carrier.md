@@ -25,7 +25,8 @@ Photos in `hardware/sensor-node/reference/`: `esp32-s3-n16r8-board-v1.4-top.jpg`
 - **Headers:** the pin order is identical to the Espressif DevKitC-1 J1/J3. Top: 3V3, 3V3, RST, 4, 5, 6, 7, 15, 16, 17, 18, 8, 3, 46, 9, 10, 11, 12, 13, 14, 5Vin, GND. Bottom: GND, TX, RX, 1, 2, 42, 41, 40, 39, 38, 37, 36, 35, 0, 45, 48, 47, 21, 20, 19, GND, GND. The DevKitC "5V" pin is labelled **"5Vin"**. Every pin assigned below is on a header.
 - **USB:** two USB-C ports, labelled "COM" (USB-UART bridge) and "USB" (native OTG). The bridge is a WCH CH343 (esptool bench result below).
 - **Jumpers:** an **"IN-OUT"** solder jumper near the RGB LED, and a **"USB-OTG"** pad pair on the back. They probably pass 5 V to or from the OTG port. **Leave both open**, and bench-check them (Stage D).
-- **RGB LED:** an addressable RGB LED labelled "RGB". Its GPIO is not marked. The map avoids both DevKitC candidates (38 and 48); identifying the pin is a Stage D item.
+- **RGB LED:** an addressable RGB LED labelled "RGB", on **GPIO48** (unmarked on the board). The factory firmware drives a WS2812 strip on GPIO48 (bench note below), and the owner saw the LED cycle colours under that firmware (2026-11-25). GPIO48 is excluded; GPIO38, the DevKitC v1.1 candidate, is free.
+- **Discrete LEDs:** three single LEDs (red, green, blue) besides the RGB LED. Under the factory firmware with the COM port connected, red and green stay mostly lit and blue flickers with data (owner observation, 2026-11-25). What drives each one (a supply rail, the CH343 or a GPIO) is not known; identify them in Stage D.
 - **3.3 V regulator:** a SOT-223 marked "1117 / 33 2629", a generic 1117-family 3.3 V LDO from an unknown maker. It is **not** the DevKitC's SGM2212. Section 2 designs it against the AMS1117 datasheet maximums.
 - **Diodes:** three SMD diodes next to the USB ports, marked "SL". "SL" is the 1N5819HW product marking code (Diodes Inc DS30217, Marking Information). There is no date code, so they are treated as generic 1N5819HW-class parts (VF max 450 mV at 1 A). Two presumably isolate the two USB VBUS lines. The third means **5Vin may also pass through one of them**, which is unknown, so section 2 designs for one SL diode drop between the 5Vin pin and the 1117 input.
 - **Buttons:** "BOOT" and "RST". BOOT is assumed to be GPIO0 as on the DevKitC; confirm in Stage D.
@@ -44,6 +45,16 @@ Photos in `hardware/sensor-node/reference/`: `esp32-s3-n16r8-board-v1.4-top.jpg`
 - **PSRAM:** "Embedded PSRAM 8MB (AP_3v3)": the octal PSRAM is inside the chip package (an ESP32-S3R8-class chip) and runs at 3.3 V. It is **not** the 1.8 V ESP32-S3R8V, so GPIO47 and GPIO48 are 3.3 V pins (S3 DS Table 2-1, note 5). GPIO35-37 stay reserved for the octal PSRAM.
 - **Flash:** 16 MB, manufacturer ID 0x1C, device ID 0x7018; quad mode set in eFuse; flash voltage 3.3 V set in eFuse.
 - This closes the "genuine module" bench item: the chip, the 8 MB 3.3 V octal PSRAM and the 16 MB flash match an N16R8.
+
+**Bench note, 2026-11-25 (factory firmware review, owner's board):** the owner read the whole 16 MB flash as shipped, before writing any project firmware, to check it for spyware or a trojan. The dump is `esp32-s3-n16r8-v1.4-factory-full-16MB.bin`, SHA-256 `cd0f30ac9491da499eaf2167f07b5accf23cf6779c506110431aa766f346273e`. It is kept outside the repo, in the owner's `Documents/esp32-flash-backups/`. A static review (partition table, image headers, hashes, erased regions and strings; not a disassembly) found nothing suspicious:
+- **Contents:** the ESP-IDF bootloader at 0x0, a partition table at 0x8000 (`nvs` 0x9000, `phy_init` 0xF000, a single 1 MB `factory` app at 0x10000), and a 216 KiB app. Only 0x0-0x4FFFF holds data. Everything else, including slack inside the partitions, is erased (0xFF). There are no OTA slots and no extra partitions.
+- **App:** Espressif's stock `led_strip` example (an RMT WS2812 driver plus a TinyUSB console), version "1", built Aug 17 2021 with ESP-IDF `v4.4-dev-2594-ga20df743f1-dirty`. That is a normal chip-maker demo build.
+- **Integrity:** the SHA-256 digests appended to the bootloader and the app match their contents, and the partition table carries its MD5 entry.
+- **No network capability:** none of the Wi-Fi, lwIP/TCP-IP or Bluetooth stack code is linked in (no `net80211`, `esp_wifi`, `lwip`, `tcpip`, `coex` or `nimble` strings). The `WIFI`, `HTTP` and `OTA` names found are only ESP-IDF's built-in error-code name table, which every build carries. The app's only outside channel is the local USB console.
+- **Radio never used:** the `nvs` and `phy_init` partitions are fully erased. No Wi-Fi credentials or RF calibration data were ever stored.
+- **RGB LED pin:** disassembling `app_main` shows the `rmt_config_t` built with `gpio_num = 48`, channel 0, `clk_div = 2`, 38 kHz carrier fields and `idle_output_en`, which is the ESP-IDF WS2812 example's TX config, and a `led_strip` of 24 pixels (the example default, so the image is not tailored to this board). The source file is `../main/led_strip_tusb_console.c`, apparently Espressif's DevKitC-1 v1.0 factory test. With the owner's sighting of the colour cycle, this closes the RGB LED GPIO item: **GPIO48**.
+- **Other facts:** the image header says DIO, 80 MHz, 2 MB flash, and PSRAM is not enabled. That is a generic build setting, not a board fact; project firmware uses the 16 MB flash and the quad mode set in eFuse (esptool result above). The app runs a TinyUSB CDC console on the native USB port (GPIO19/20, Espressif VID 0x303A default descriptors), after logging boot to UART0. Its RMT and TinyUSB code is ESP-IDF v4.4-dev and is not reused.
+- **Disposition:** flashing project firmware starts with `esptool erase-flash`, which removes all of it. The chip's mask-ROM bootloader is Espressif silicon and is not in flash.
 
 **Module facts (WROOM-1 DS; chip-level facts unchanged).** The clone module is taken to have the same pin-out as an ESP32-S3-WROOM-1-N16R8; the esptool result above confirms the same memory (ESP32-S3R8-class chip, 8 MB 3.3 V octal PSRAM, 16 MB flash).
 - **Table 3, note b:** in variants that embed ESP32-S3R8, "pins IO35, IO36, and IO37 connect to the OSPI PSRAM and are not available for other uses".
@@ -70,10 +81,10 @@ Photos in `hardware/sensor-node/reference/`: `esp32-s3-n16r8-board-v1.4-top.jpg`
 | 39, 40, 41, 42 | JTAG (WROOM-1 DS Table 3) |
 | 43, 44 | UART0 to the board USB-to-UART bridge ("COM" port: console, flashing) |
 | 35, 36, 37 | Octal PSRAM on R8 variants (WROOM-1 DS Table 3 note b) |
-| 38, 48 | Board RGB LED: GPIO not marked on the clone; the DevKitC uses 38 (v1.1) or 48 (v1.0) (user guide) |
+| 48 | Board RGB LED (factory firmware and owner sighting, 2026-11-25; bench note above) |
 | 22-34 | Not on module pins; in-package flash/PSRAM (S3 DS Table 2-14) |
 
-That leaves 19 usable pins: GPIO1, 2, 4-18, 21 and 47. The map uses 18 of them and keeps GPIO2 as a spare ADC1 input.
+That leaves 20 usable pins: GPIO1, 2, 4-18, 21, 38 and 47. The map uses 18 of them, keeps GPIO2 as a spare ADC1 input and leaves GPIO38 as an unassigned spare digital pin.
 
 ### GPIO map (normative copy: `hardware/sensor-node/pinout.yaml`)
 | GPIO | Signal | Direction | Notes |
@@ -99,7 +110,7 @@ That leaves 19 usable pins: GPIO1, 2, 4-18, 21 and 47. The map uses 18 of them a
 | 47 | BTN_HOLD | in | diagnostic button 2; 3.3 V (esptool: PSRAM AP_3v3, not R8V) |
 
 - **Analog signals:** the only analog signals are on ADC1 (GPIO1, and the spare GPIO2). EC and thermistors use the ADS1115s, so no ADC2 pin is needed while Wi-Fi is active.
-- **Status LED:** the board's own RGB LED is the status LED. Its GPIO is not marked on the clone; firmware drives it only after Stage D identifies the pin (38 or 48 expected). The carrier adds no LED pin.
+- **Status LED:** the board's own RGB LED, a WS2812-type LED on GPIO48 driven by the RMT peripheral, is the status LED. The carrier adds no LED pin.
 - **I²C addresses:** DS2482-100 is 0x18 (DS2482-100 datasheet Figure 9, AD1 = AD0 = 0). The ADS1115s are 0x48 and 0x49 (ADS1115 Table 7-2: ADDR to GND gives 1001000b, ADDR to VDD gives 1001001b). The PCF8574 LCD backpack is in the 0x20-0x27 range, or 0x38-0x3F for the "A" part. No address collides.
 - **Bus speed:** the bus runs at 100 kHz because the PCF8574 fSCL maximum is 100 kHz (PCF8574 datasheet, Timing Requirements).
 
@@ -410,7 +421,7 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
   - idle-bus bias at the controller, and the A/B polarity;
   - trunk voltage drop and per-node current against this budget;
   - USB plus 5Vin coexistence on the board, with the trunk powered (USB operating rule, section 2.1);
-  - the RGB LED GPIO (38, 48 or another pin);
+  - what drives each of the three discrete LEDs (red, green, blue), and that none sits on an assigned header pin;
   - whether 5Vin passes through an SL diode on its way to the 1117 input;
   - the orientation of each SL diode, and that none lets the carrier's 5 V back-feed a USB host (VBUS);
   - the IN-OUT and USB-OTG jumper state (both must be open), and what each connects;
@@ -421,9 +432,11 @@ Thresholds come from the SN74LVC2G17 datasheet (SCES381O, Electrical Characteris
   - BOOT on GPIO0, and continuity from the module's GPIO15/16 to the header (no 32.768 kHz crystal);
   - which parts sit on the board's 5 V net, and that each accepts 5.40 V;
   - buck output ripple at 5.31 V with the Table 10-1 inductor;
-- **Bench items closed:**
-  - genuine ESP32-S3 N16R8 module, closed 2026-11-25 by esptool v5.7.0 `flash-id` (section 1): ESP32-S3 (QFN56) v0.2, embedded PSRAM 8 MB AP_3v3 (not R8V), 16 MB flash (manufacturer 0x1C, device 0x7018);
-  - USB-UART bridge part number: WCH CH343 (VID 1A86, PID 55D3), closed 2026-11-25.
   - 1-Wire maximum length and device count;
   - I²C rise time with the LCD cable;
   - enclosure internal temperature against the 50 °C design ambient.
+- **Bench items closed:**
+  - genuine ESP32-S3 N16R8 module, closed 2026-11-25 by esptool v5.7.0 `flash-id` (section 1): ESP32-S3 (QFN56) v0.2, embedded PSRAM 8 MB AP_3v3 (not R8V), 16 MB flash (manufacturer 0x1C, device 0x7018);
+  - USB-UART bridge part number: WCH CH343 (VID 1A86, PID 55D3), closed 2026-11-25.
+  - factory firmware review: stock Espressif `led_strip` demo, no network stack, closed 2026-11-25 (section 1 bench note).
+  - RGB LED GPIO: GPIO48, closed 2026-11-25 by the factory firmware's RMT config and the owner's sighting of its colour cycle (section 1 bench note).
