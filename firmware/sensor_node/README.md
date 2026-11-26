@@ -23,6 +23,7 @@ Production firmware increment on temporary bench wiring: bare ESP32-S3 board on 
 ## Bench wiring (temporary, not the carrier pin map)
 - DS18B20, three-wire power (not parasitic): VDD to 3V3, GND to GND, DQ to GPIO38, 4.7 kohm from DQ to 3V3. Keep the lead short; there is no ESD or short protection.
 - Node ID 1: 10 kohm pull-ups to 3V3 on GPIO4-7, and GPIO4 linked to GND. With no link the node stays silent.
-- RS485 module: sold as "TTL RS485 XY-485". Identify its chip before powering it: use 3V3 for a 3.3 V part (SP3485 or MAX3485); stop if it is a MAX485. UART1 TX GPIO17 to the module's receive input, RX GPIO18 from its transmit output.
+- RS485 module: a 3.3 V MAX3485 TTL interface board (ordered 2026-11-25, not yet received), powered from 3V3. UART1 TX GPIO17 to the module's receive input, RX GPIO18 from its transmit output.
+- Rejected: the "TTL RS485 XY-485" board (owner read MAX485 and 74HC04D on it, 2026-11-25). MAX485 is a 5 V part, and a 74HC input at 5 V needs 3.5 V for a guaranteed high, so do not connect it to the ESP32.
 
-**TBD (check before wiring):** the module's chip marking; whether it switches direction automatically (if so, GPIO21 is unused); what its TXD/RXD labels mean; whether it has its own 120 ohm termination or bias; A/B polarity against the USB adapter.
+**TBD (check before wiring):** the new board's chip marking; whether it has a direction pin or switches automatically (if automatic, GPIO21 is unused); what its TXD/RXD labels mean; whether it has its own 120 ohm termination or bias; A/B polarity against the USB adapter.
