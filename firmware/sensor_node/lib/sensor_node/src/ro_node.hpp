@@ -22,11 +22,11 @@ constexpr std::uint16_t INSTALLED_MASK = 0;  // no process channel is fitted
 // section 5). Not in the register map, so not generated.
 constexpr std::uint16_t NO_CRITICAL_AGE_MS = 65535;
 
-// Holding 200-202. The register map names these but defines no values; they
-// match the simulator. Not protocol versions.
+// Holding 200-201. The register map names these but defines no values; they
+// match the simulator. Not protocol versions. Holding 202, device_id, is the
+// unit id (Modbus spec, node identity).
 constexpr std::uint16_t CONFIGURATION_SCHEMA_VERSION = 1;
 constexpr std::uint16_t CALIBRATION_REVISION = 0;  // no calibration store
-constexpr std::uint16_t DEVICE_ID = 1;
 
 class Node {
 public:

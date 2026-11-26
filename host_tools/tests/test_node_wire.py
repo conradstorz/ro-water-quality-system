@@ -90,6 +90,16 @@ def test_unit_id_comes_from_the_jumpers(run_node, unit_id):
         _assert_silent(port, 1)
 
 
+@pytest.mark.parametrize("unit_id", [5, 15])
+def test_device_id_is_the_jumper_unit_id(run_node, unit_id):
+    with run_node("--id-jumpers", str(unit_id)) as port, _client(port, unit_id) as client:
+        assert client.read_metadata() == {
+            "configuration_schema_version": 1,
+            "calibration_revision": 0,
+            "device_id": unit_id,
+        }
+
+
 @pytest.mark.parametrize(
     ("args", "unit_ids"),
     [

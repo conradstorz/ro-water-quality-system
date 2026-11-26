@@ -13,6 +13,7 @@ import time
 from collections.abc import Callable, Sequence
 
 from ro_tools.generated.registers import (
+    ADDR_DEVICE_ID,
     CRITICAL_VALIDITY,
     INPUT_COUNT,
     INPUT_START,
@@ -125,6 +126,18 @@ class RegisterBank:
         self._last_rejection: str | None = None
         self._names_supported = names_supported
         self._name_words = [0] * NAMES_COUNT
+
+    def set_device_id(self, unit_id: int) -> None:
+        """Set holding register 202, which on a node equals its unit id.
+
+        :param unit_id: Unit id the node answers.
+        :raises ValueError: If ``unit_id`` is not a u16.
+        """
+        lo, hi = TYPE_RANGES["u16"]
+        if not lo <= unit_id <= hi:
+            raise ValueError(f"device_id {unit_id} outside {lo}..{hi}")
+        with self._lock:
+            self._metadata[ADDR_DEVICE_ID - METADATA_START] = unit_id
 
     def set_field(self, name: str, raw: int) -> None:
         """Set a pending snapshot field.

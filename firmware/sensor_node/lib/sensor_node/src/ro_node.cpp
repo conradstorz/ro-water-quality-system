@@ -53,7 +53,7 @@ void Node::copy_metadata(std::uint16_t (&words)[reg::METADATA_COUNT]) const {
     reg::Metadata metadata;
     metadata.configuration_schema_version = CONFIGURATION_SCHEMA_VERSION;
     metadata.calibration_revision = CALIBRATION_REVISION;
-    metadata.device_id = DEVICE_ID;
+    metadata.device_id = unit_id_;
     reg::encode_metadata(metadata, words);
 }
 

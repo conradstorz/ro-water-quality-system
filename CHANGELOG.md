@@ -109,3 +109,4 @@
 - `ro-tools generate [--check]` now also writes and verifies the C++ header `firmware/lib/ro_protocol/src/ro_registers.hpp`.
 - Client: `SensorNodeClient.rtu_over_tcp`. Tests build the node and check it at the wire (`test_node_wire.py`); they need `pio` and `g++` on PATH.
 - ADR-0007 amended: in-repo server, pytest wire seam as the native test framework, `native@1.2.1` pinned; ESP32 platform pin left TBD.
+- Holding 202 `device_id` now equals the node's unit ID, in the firmware and the simulator (owner decision). No address, type or access change; no protocol version change.
