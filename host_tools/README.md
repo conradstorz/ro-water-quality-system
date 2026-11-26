@@ -1,6 +1,6 @@
 # ro_tools: host-side protocol tooling
 
-Host-side Python tools for the sensor-node Modbus protocol. They need no hardware: a simulated sensor node stands in for it. `protocol/register_map.yaml` is the single source of truth; this package validates it, generates the Python codec from it, simulates a sensor node (Modbus TCP and serial RTU) with fault injection, and provides a client and the `ro-tools` CLI.
+Host-side Python tools for the sensor-node Modbus protocol. They need no hardware: a simulated sensor node stands in for it. `protocol/register_map.yaml` is the single source of truth; this package validates it, generates the Python codec and the firmware's C++ header from it, simulates a sensor node (Modbus TCP and serial RTU) with fault injection, and provides a client and the `ro-tools` CLI.
 
 ## Setup and tests
 
@@ -10,6 +10,8 @@ Run from `host_tools/`. Use `uv` only.
 uv sync
 uv run pytest
 ```
+
+`test_node_wire.py` builds the sensor-node firmware as a PC program and checks it over Modbus RTU on a local socket. It needs PlatformIO (`pio`) and `g++` on PATH and fails without them. The first build may download the pinned `native` platform.
 
 ## Commands
 
@@ -25,7 +27,7 @@ uv run ro-tools publish-status (--tcp HOST:PORT | --serial DEVICE) --state NAME 
 
 - `validate`: check the register map; prints `OK: protocol 1.4, 100 input words`, or one violation per line on stderr (exit 1).
   `uv run ro-tools validate`
-- `generate`: rewrite `generated/registers.py`; `--check` writes nothing and exits 1 on drift.
+- `generate`: rewrite `generated/registers.py` and `firmware/lib/ro_protocol/src/ro_registers.hpp`; `--check` writes nothing and exits 1 if either differs from the register map.
   `uv run ro-tools generate --check`
 - `sim`: run the simulated sensor node until Ctrl-C. A new snapshot is committed every `--period` seconds (default 1.0). Presets: `healthy` (default), `critical_sensor_invalid`, `stale`, `frozen_sequence`, `silent`, `pressure_failed` (needs a pressure channel; rejected for tank nodes). `--nodes ro_skid:1,tank:2` simulates several nodes on one bus (unit ids 1..15, preset applied to each); without it, one full node on unit 1.
   `uv run ro-tools sim --tcp 127.0.0.1:5020 --preset healthy`

@@ -145,7 +145,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("validate", help="validate the register map")
     p.add_argument("path", nargs="?", type=Path, default=schema.DEFAULT_MAP_PATH)
 
-    p = sub.add_parser("generate", help="regenerate generated/registers.py")
+    p = sub.add_parser("generate", help="regenerate registers.py and ro_registers.hpp")
     p.add_argument("--check", action="store_true", help="write nothing; fail on drift")
 
     p = sub.add_parser("sim", help="run the simulated sensor node (SIMULATED VALUES ONLY)")
@@ -242,7 +242,7 @@ def _cmd_validate(args: argparse.Namespace) -> int:
 
 
 def _cmd_generate(args: argparse.Namespace) -> int:
-    """Regenerate or check the generated codec module.
+    """Regenerate or check the generated Python module and C++ header.
 
     :param args: Parsed arguments.
     :returns: Exit status.
@@ -258,19 +258,27 @@ def _cmd_generate(args: argparse.Namespace) -> int:
         return EXIT_FAIL
     try:
         if args.check:
-            if codegen.is_current(m):
-                print("generated/registers.py is current")
-                return EXIT_OK
-            print(
-                "generated/registers.py differs from register_map.yaml; run `ro-tools generate`",
-                file=sys.stderr,
-            )
-            return EXIT_FAIL
+            status = EXIT_OK
+            for label, is_current in (
+                ("generated/registers.py", codegen.is_current),
+                (codegen.CPP_PATH.name, codegen.is_cpp_current),
+            ):
+                if is_current(m):
+                    print(f"{label} is current")
+                else:
+                    print(
+                        f"{label} differs from register_map.yaml; run `ro-tools generate`",
+                        file=sys.stderr,
+                    )
+                    status = EXIT_FAIL
+            return status
         codegen.write(m)
+        codegen.write_cpp(m)
     except (ValueError, OSError) as exc:
-        print(f"cannot generate registers.py: {exc}", file=sys.stderr)
+        print(f"cannot generate registers.py or ro_registers.hpp: {exc}", file=sys.stderr)
         return EXIT_FAIL
     print("wrote generated/registers.py")
+    print(f"wrote {codegen.CPP_PATH.name}")
     return EXIT_OK
 
 

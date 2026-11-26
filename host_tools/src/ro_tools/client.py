@@ -15,6 +15,7 @@ from typing import Any, Self
 
 from pymodbus.client import ModbusSerialClient, ModbusTcpClient
 from pymodbus.exceptions import ModbusException
+from pymodbus.framer import FramerType
 
 from ro_tools.generated.registers import (
     INPUT_COUNT,
@@ -81,7 +82,7 @@ class SensorNodeClient:
     """Reads the sensor node's snapshot and publishes controller status."""
 
     def __init__(self, client: ModbusTcpClient | ModbusSerialClient, unit_id: int) -> None:
-        """Wrap a configured pymodbus client (use :meth:`tcp` or :meth:`serial`).
+        """Wrap a configured pymodbus client (use :meth:`tcp`, :meth:`rtu_over_tcp` or :meth:`serial`).
 
         :param client: pymodbus client built with ``retries=0``.
         :param unit_id: Modbus unit id to address.
@@ -100,6 +101,23 @@ class SensorNodeClient:
         :returns: An unconnected client.
         """
         return cls(ModbusTcpClient(host, port=port, timeout=timeout, retries=0), unit_id)
+
+    @classmethod
+    def rtu_over_tcp(
+        cls, host: str, port: int, *, timeout: float = 1.0, unit_id: int = UNIT_ID
+    ) -> Self:
+        """Create a client that sends RTU frames over a TCP socket.
+
+        This reaches the host-built sensor node, and serial-to-TCP bridges.
+
+        :param host: Server host.
+        :param port: Server port.
+        :param timeout: Per-request timeout in seconds.
+        :param unit_id: Modbus unit id.
+        :returns: An unconnected client.
+        """
+        client = ModbusTcpClient(host, port=port, framer=FramerType.RTU, timeout=timeout, retries=0)
+        return cls(client, unit_id)
 
     @classmethod
     def serial(
