@@ -44,7 +44,9 @@ Feed EC temperature compensation needs a defensible temperature measurement. A d
 ## 5. Polling and acquisition
 - Main controller polls input registers 100..199 every **1 second** (configurable).
 - Sensor acquisition tasks run independently: pulse counts continuously, flow rate ~1 s rolling window, load cells ~5–10 Hz if hardware permits, pressure ~5–10 Hz, temperature and conductivity ~1–5 s.
-- Each channel carries last-good sample time internally. Publish age of oldest **required critical** channel in milliseconds, saturated at 65535.
+- Each channel carries last-good sample time internally. Publish age of oldest **required critical** channel in milliseconds, saturated at 65535. A node with no critical channel fitted publishes 65535.
+- `module_status` operational is set once the node ID is valid and the first snapshot has been committed.
+- `sensor_error_code` is 0; a code table is TBD.
 - Publish snapshot sequence monotonically modulo 65536, advancing only on newly committed acquisition snapshots. Repeated identical counters across excessive polls are stale.
 - Client accepts snapshot only if protocol major version compatible, status operational, configured critical validity bits set, critical age <= 3000 ms, and communication is healthy.
 - Main controller shuts down RO production if no acceptable snapshot arrives within **3 seconds**. These are initial software defaults to validate, not substitutes for hardwired protections.
@@ -96,7 +98,7 @@ Still open: controller pinout; EC module output range; flow-meter pulse output t
 ## Node identity and multi-node bus (protocol 1.2)
 Two read-only input registers identify the node: register 133 `node_type` (0 ro_skid, 1 tank) and register 134 `installed_mask` (same bit positions as `validity_mask`; a set bit means that sensor is physically fitted). Invariant: `validity_mask` is a subset of `installed_mask`; a fitted-but-failing sensor has its installed bit set and its validity bit clear. Registers 135-139 remain reserved.
 
-Unit ids 1-15 are set by hardwired jumpers to ground on the carrier board (GPIO4-7), read at boot. A duplicate or out-of-range id leaves the node silent on the bus.
+Unit ids 1-15 are set by hardwired jumpers to ground on the carrier board (GPIO4-7), read at boot. A duplicate or out-of-range id leaves the node silent on the bus. Holding register 202 `device_id` equals this unit id (owner decision 2026-11-25).
 
 ## 1-Wire input (protocol 1.3)
 Additive, monitoring-only. The input polling window is now 100..199 (100 words, one atomic function-04 read). Registers 140..143 are the 1-Wire header (`onewire_device_count`, `onewire_bus_status`, `onewire_scan_generation`, `onewire_age_ms`) and 144..199 hold eight 7-word slots (ROM ID in 4 words, `primary` i16, `secondary` i16, `status`). Fault bit 10 is `onewire_bus_fault`. 1-Wire data is never part of `validity_mask`/`critical_validity_bits` and never affects production permission. Pinout, pull-up, voltage and cable limits remain TBD; see `docs/superpowers/specs/2026-11-13-onewire-input-design.md` and `protocol/REGISTER_MAP_REFERENCE.md`.

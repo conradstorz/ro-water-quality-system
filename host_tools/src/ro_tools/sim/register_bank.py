@@ -13,6 +13,8 @@ import time
 from collections.abc import Callable, Sequence
 
 from ro_tools.generated.registers import (
+    ADDR_DEVICE_ID,
+    CRITICAL_VALIDITY,
     INPUT_COUNT,
     INPUT_START,
     METADATA_COUNT,
@@ -124,6 +126,18 @@ class RegisterBank:
         self._last_rejection: str | None = None
         self._names_supported = names_supported
         self._name_words = [0] * NAMES_COUNT
+
+    def set_device_id(self, unit_id: int) -> None:
+        """Set holding register 202, which on a node equals its unit id.
+
+        :param unit_id: Unit id the node answers.
+        :raises ValueError: If ``unit_id`` is not a u16.
+        """
+        lo, hi = TYPE_RANGES["u16"]
+        if not lo <= unit_id <= hi:
+            raise ValueError(f"device_id {unit_id} outside {lo}..{hi}")
+        with self._lock:
+            self._metadata[ADDR_DEVICE_ID - METADATA_START] = unit_id
 
     def set_field(self, name: str, raw: int) -> None:
         """Set a pending snapshot field.
@@ -244,7 +258,8 @@ class RegisterBank:
         """Publish the pending snapshot, advancing sequence unless frozen.
 
         A commit is rejected, and the published snapshot is left as it was, if the
-        pending validity mask sets a bit for a sensor that is not installed. The bad
+        pending validity mask sets a bit for a sensor that is not installed. A node
+        with no critical channel installed publishes ``critical_age_ms`` 65535. The bad
         pending value stays pending: the caller must correct it (``set_validity``
         or ``configure_node``) before a later commit or reboot can succeed.
 
@@ -257,6 +272,8 @@ class RegisterBank:
                     self._pending["snapshot_sequence"] + 1
                 ) % 65536
             self._pending["uptime_seconds"] = int(self._clock() - self._boot_time)
+            if not self._pending["installed_mask"] & int(CRITICAL_VALIDITY):
+                self._pending["critical_age_ms"] = 65535
             self._published = Snapshot(**self._pending)
 
     def reboot(self) -> None:

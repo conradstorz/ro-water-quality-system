@@ -98,3 +98,15 @@
 
 ## Node-ID jumpers replace the DIP switch — 2026-11-25
 - Owner decision: hardwired jumpers from GPIO4-7 to GND set the node ID (RO skid: GPIO4; tank: GPIO5). GPIO map, pull-ups, ID range and protocol are unchanged. `pinout.yaml` kind `dip` is now `id_jumper`; ADR-0012, ADR-0008, hardware specs, Modbus spec and carrier test updated.
+
+## Sensor-node RS485 slice agreed — 2026-11-25
+- ADR-0007 accepted. First slice (one DS18B20 over RS485) and bench wiring recorded in `firmware/sensor_node/README.md`; bench-only direct-GPIO 1-Wire noted in ADR-0009.
+- Spec section 5 now defines `critical_age_ms` for a node with no critical channel (65535), when operational is set, and `sensor_error_code` 0. The simulator follows the first. No protocol version change.
+
+## Sensor node answers a snapshot read on the PC — 2026-11-25
+- First sensor-node firmware (issue #12): framework-independent node logic and a minimal in-repo Modbus RTU server (functions 03, 04) serving input 100-199 and holding 200-202, with hardware behind interfaces. It builds as a PC program (PlatformIO `native`) that speaks RTU over a local socket. No sensors, no ESP32 build, no actuator code.
+- The node reports protocol 1.3 as its own capability (the register map stays 1.4; no map change).
+- `ro-tools generate [--check]` now also writes and verifies the C++ header `firmware/lib/ro_protocol/src/ro_registers.hpp`.
+- Client: `SensorNodeClient.rtu_over_tcp`. Tests build the node and check it at the wire (`test_node_wire.py`); they need `pio` and `g++` on PATH.
+- ADR-0007 amended: in-repo server, pytest wire seam as the native test framework, `native@1.2.1` pinned; ESP32 platform pin left TBD.
+- Holding 202 `device_id` now equals the node's unit ID, in the firmware and the simulator (owner decision). No address, type or access change; no protocol version change.

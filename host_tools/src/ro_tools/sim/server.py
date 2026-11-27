@@ -31,11 +31,13 @@ class Responder:
     def __init__(self, bank: RegisterBank, unit_id: int = UNIT_ID) -> None:
         """Create a responder.
 
-        :param bank: Register bank that answers requests.
+        :param bank: Register bank that answers requests. Its ``device_id`` is set
+            to ``unit_id``.
         :param unit_id: The only unit id this responder answers.
         """
         self.bank = bank
         self.unit_id = unit_id
+        bank.set_device_id(unit_id)
         self.drop_responses = False
         self.delay_s = 0.0
         self.request_count = 0

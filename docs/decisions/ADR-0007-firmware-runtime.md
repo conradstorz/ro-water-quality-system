@@ -1,6 +1,6 @@
 # ADR-0007: Firmware runtime for both ESP32 boards
 
-**Status:** Proposed (2026-11-12) — pending owner review. Resolves the "embedded firmware platform selection" item in `README.md` and Stage B/C of `docs/CLAUDE_IMPLEMENTATION_BRIEF.md`.
+**Status:** Accepted (2026-11-25; proposed 2026-11-12). Resolves the "embedded firmware platform selection" item in `README.md` and Stage B/C of `docs/CLAUDE_IMPLEMENTATION_BRIEF.md`.
 
 **Decision:** Use C++ on the Arduino-ESP32 core (>= 3.0, which is built on ESP-IDF) for both the sensor node and the main controller, built with PlatformIO and a single shared toolchain. Keep all decision logic (fault-priority engine, validity/freshness checks, snapshot assembly, diversion and production state machine, register codec) in a framework-independent C++ library with no Arduino or ESP-IDF includes, tested on the host with PlatformIO's `native` environment. Hardware access (UART, I2C, GPIO, pulse counting, flash) sits behind small interfaces with mock implementations for host tests. ESP-IDF APIs (FreeRTOS tasks, PCNT, task watchdog) are called directly from the Arduino core where needed. Native ESP-IDF stays available as a later migration if the Arduino layer proves limiting.
 
@@ -19,4 +19,11 @@
 - Enable the task watchdog on both boards; a hung main controller must leave K1 de-energized.
 - Loguru and `uv` apply to host tools only, not firmware.
 
-**TBD (do not guess):** pinned Arduino-ESP32 and PlatformIO platform versions; Modbus RTU server library versus a minimal in-repo implementation (evaluate against 19200 8E1, exception responses, CRC, 3-second stale-data inhibit and FC16 status block); unit-test framework for the native environment; ADC library for the sensor node (ADS1115 or better); how to persist calibration with version + CRC (NVS versus a flash partition); whether to adopt ESP-IDF directly if the Arduino layer blocks a requirement.
+**Amendment (2026-11-25, issue #12):**
+- **Modbus RTU server:** a minimal in-repo implementation, not a library (owner choice, 2026-11-25). The sensor node needs functions 03 and 04 only. The FC16 status block and name table are deferred; adding them extends this server.
+- **Native test framework:** pytest at the Modbus wire boundary. All node logic builds into a PC program with fake hardware (`firmware/sensor_node/`, env `native`); pytest builds it with `pio run` and exchanges RTU frames with it over a local TCP socket using the existing Python client. C++ unit tests are added only where the wire cannot reach a case; they would use Unity 2.6.1 under `pio test`, which is not yet used or verified here.
+- **Pinned versions:** PlatformIO platform `platformio/native@1.2.1`, C++17 without exceptions or RTTI. Verified with PlatformIO Core 6.2.0 and g++ 16.2.0 (MinGW) on Windows; Core and the host compiler are not pinned.
+- **Layout:** the generated register header is in `firmware/lib/ro_protocol/` (shared by both boards); sensor-node logic is in `firmware/sensor_node/lib/sensor_node/`; the PC program is in `firmware/sensor_node/src/host/`. The module names and directories depart from section 9 of the Modbus spec (`drivers/`, `services/`, `protocol/{modbus_server,register_codec}`): the code is in `ro_hal`, `ro_node`, `ro_modbus_rtu` and the generated `ro_registers`.
+- **ESP32 platform still TBD (issue #17):** the official `espressif32@6.13.0` declares `framework-arduinoespressif32 ~3.20017.0`, which is Arduino-ESP32 2.0.17 and does not meet the >= 3.0 requirement above. The bring-up probe's use of it (`framework = espidf`) does not carry over. No replacement is named until it has been built.
+
+**TBD (do not guess):** pinned Arduino-ESP32 and ESP32 PlatformIO platform versions; ADC library for the sensor node (ADS1115 or better); how to persist calibration with version + CRC (NVS versus a flash partition); whether to adopt ESP-IDF directly if the Arduino layer blocks a requirement.

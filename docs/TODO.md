@@ -84,6 +84,6 @@ Designed 2026-11-23 in `docs/decisions/ADR-0012-sensor-node-carrier.md` (Propose
 - [ ] Pressure loop: limiter current, ADC at 4/12/20 mA, shorted and open loop (acceptance plan).
 
 ### Firmware-side TBDs tied to hardware
-- [ ] Pinned Arduino-ESP32 and PlatformIO versions; Modbus RTU library choice (ADR-0007).
+- [ ] Pinned Arduino-ESP32 and ESP32 PlatformIO platform versions (ADR-0007; issue #17).
 - [ ] EC acceptance threshold for dump→tank, maximum dump time (ADR-0006).
 - [ ] Pressure calibration tolerance (acceptance plan).

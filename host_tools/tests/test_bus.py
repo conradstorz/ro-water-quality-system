@@ -73,3 +73,17 @@ def test_unit_ids_sorted():
     bus.add(Responder(RegisterBank(), unit_id=5))
     bus.add(Responder(RegisterBank(), unit_id=2))
     assert bus.unit_ids == (2, 5)
+
+
+def test_each_node_reports_its_unit_id_as_device_id():
+    bus = Bus()
+    for unit_id in (5, 15):
+        bus.add(Responder(RegisterBank(), unit_id=unit_id))
+    with TcpSimServer(bus) as server:
+        for unit_id in (5, 15):
+            with SensorNodeClient.tcp(*server.address, unit_id=unit_id) as client:
+                assert client.read_metadata() == {
+                    "configuration_schema_version": 1,
+                    "calibration_revision": 0,
+                    "device_id": unit_id,
+                }
